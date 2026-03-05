@@ -1,4 +1,0 @@
-Running Gradle task 'assembleDebug'...                          
-Checking the license for package Android SDK Platform 34 in C:\Users\Devam\AppData\Local\Android\Sdk\licenses
-License for package Android SDK Platform 34 accepted.
-Preparing "Install Android SDK Platform 34 (revision 3)".

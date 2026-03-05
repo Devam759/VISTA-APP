@@ -8,10 +8,13 @@ class LeaveRequest {
   final DateTime fromDate;
   final DateTime toDate;
   final String reason;
+  final String address;
   final String parentName;
+  final String parentRelation;
   final String parentContact;
   final String studentContact;
   final String status; // Pending, Approved, Rejected
+  final DateTime createdAt;
 
   LeaveRequest({
     required this.id,
@@ -21,10 +24,13 @@ class LeaveRequest {
     required this.fromDate,
     required this.toDate,
     required this.reason,
+    required this.address,
     required this.parentName,
+    required this.parentRelation,
     required this.parentContact,
     required this.studentContact,
     required this.status,
+    required this.createdAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,7 +41,9 @@ class LeaveRequest {
       'fromDate': Timestamp.fromDate(fromDate),
       'toDate': Timestamp.fromDate(toDate),
       'reason': reason,
+      'address': address,
       'parentName': parentName,
+      'parentRelation': parentRelation,
       'parentContact': parentContact,
       'studentContact': studentContact,
       'status': status,
@@ -49,13 +57,16 @@ class LeaveRequest {
       studentId: map['studentId'] ?? '',
       studentName: map['studentName'] ?? '',
       hostel: map['hostel'] ?? '',
-      fromDate: (map['fromDate'] as Timestamp).toDate(),
-      toDate: (map['toDate'] as Timestamp).toDate(),
+      fromDate: (map['fromDate'] as Timestamp? ?? Timestamp.now()).toDate(),
+      toDate: (map['toDate'] as Timestamp? ?? Timestamp.now()).toDate(),
       reason: map['reason'] ?? '',
+      address: map['address'] ?? '',
       parentName: map['parentName'] ?? '',
+      parentRelation: map['parentRelation'] ?? '',
       parentContact: map['parentContact'] ?? '',
       studentContact: map['studentContact'] ?? '',
       status: map['status'] ?? 'Pending',
+      createdAt: (map['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
     );
   }
 }

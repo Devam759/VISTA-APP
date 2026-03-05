@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -64,5 +61,15 @@ class DefaultFirebaseOptions {
     projectId: 'vista-jklu',
     storageBucket: 'vista-jklu.firebasestorage.app',
     iosBundleId: 'com.vista.vistaApp',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyC89dCMuTOETtpjJbGj2ZvVA6tdvGaxzZY',
+    appId: '1:453696388011:web:089e90e69035e8cee3f0ee',
+    messagingSenderId: '453696388011',
+    projectId: 'vista-jklu',
+    authDomain: 'vista-jklu.firebaseapp.com',
+    storageBucket: 'vista-jklu.firebasestorage.app',
+    measurementId: 'G-F4L0EFZCDS',
   );
 }

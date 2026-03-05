@@ -17,9 +17,13 @@ void main() async {
   // Note: Firebase.initializeApp() requires configuration files (google-services.json / GoogleService-Info.plist)
   // which are usually added manually. I will assume they are present or will be added.
   try {
+    debugPrint(
+      "Initializing Firebase with options: ${DefaultFirebaseOptions.currentPlatform}",
+    );
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    debugPrint("Firebase initialized successfully on Web!");
   } catch (e) {
     debugPrint("Firebase initialization failed: \$e");
   }

@@ -6,6 +6,10 @@ class AuthProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
   VistaUser? _userProfile;
   bool _isLoading = false;
+  // When true, the auth state listener will not update _userProfile.
+  // Used during signup to prevent AuthWrapper from navigating away
+  // before the success dialog is shown.
+  bool _suppressAuthChanges = false;
 
   VistaUser? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
@@ -16,6 +20,7 @@ class AuthProvider with ChangeNotifier {
 
   void _init() {
     _firebaseService.userStream.listen((user) async {
+      if (_suppressAuthChanges) return;
       if (user != null) {
         await fetchUserProfile(user.uid);
       } else {
@@ -41,6 +46,7 @@ class AuthProvider with ChangeNotifier {
     String phoneNumber,
   ) async {
     _isLoading = true;
+    _suppressAuthChanges = true; // Block AuthWrapper navigation
     notifyListeners();
     try {
       final credential = await _firebaseService.signUp(email, password);
@@ -53,12 +59,25 @@ class AuthProvider with ChangeNotifier {
         phoneNumber: phoneNumber,
         isApproved: false,
       );
-      await _firebaseService.createUserProfile(newUser);
-      await fetchUserProfile(credential.user!.uid);
+      // Write Firestore profile with a timeout — if Firestore is slow/unavailable
+      // on web, we still consider signup successful since the Auth account exists.
+      try {
+        await _firebaseService
+            .createUserProfile(newUser)
+            .timeout(const Duration(seconds: 10));
+      } catch (firestoreError) {
+        debugPrint(
+          '[Auth] Firestore profile write failed (non-fatal): $firestoreError',
+        );
+      }
+      // Sign out silently — the listener is suppressed so AuthWrapper won't navigate.
+      await _firebaseService.signOut();
     } catch (e) {
-      _isLoading = false;
-      notifyListeners();
       rethrow;
+    } finally {
+      _isLoading = false;
+      _suppressAuthChanges = false; // Re-enable auth listener
+      notifyListeners();
     }
   }
 

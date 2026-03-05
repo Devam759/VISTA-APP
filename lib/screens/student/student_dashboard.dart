@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/attendance_model.dart';
 import '../../models/leave_request_model.dart';
 import '../../models/complaint_model.dart';
 import '../../services/firebase_service.dart';
 import '../../models/vista_user.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THEME CONSTANTS (Consistent with Warden portal for unified feel)
+// ─────────────────────────────────────────────────────────────────────────────
+const _kPrimary = Color(0xFF1E3A8A);
+const _kAccent = Color(0xFF2563EB);
+const _kBg = Color(0xFFF0F4FF);
+const _kSuccess = Color(0xFF10B981);
+const _kWarning = Color(0xFFF59E0B);
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -23,39 +34,146 @@ class _StudentDashboardState extends State<StudentDashboard> {
   Widget build(BuildContext context) {
     final user = Provider.of<AuthProvider>(context).userProfile!;
 
-    final List<Widget> pages = [
-      _AttendanceHome(user: user, firebaseService: _firebaseService),
-      _LeaveHistory(user: user, firebaseService: _firebaseService),
-      _Complaints(user: user, firebaseService: _firebaseService),
-    ];
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('VISTA - Student'),
-        actions: [
-          IconButton(
-            onPressed: () =>
-                Provider.of<AuthProvider>(context, listen: false).signOut(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
+      backgroundColor: _kBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(context, user),
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
+                  child: IndexedStack(
+                    index: _selectedIndex,
+                    children: [
+                      _AttendanceTab(user: user, fs: _firebaseService),
+                      _LeaveTab(user: user, fs: _firebaseService),
+                      _ComplaintsTab(user: user, fs: _firebaseService),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      body: pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle_outline),
-            label: 'Attendance',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: _kPrimary.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          selectedItemColor: _kPrimary,
+          unselectedItemColor: Colors.black26,
+          showUnselectedLabels: true,
+          type: BottomNavigationBarType.fixed,
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.flight_takeoff_outlined),
-            label: 'Leave',
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.feedback_outlined),
-            label: 'Complaints',
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_ind_outlined),
+              activeIcon: Icon(Icons.assignment_ind_rounded),
+              label: 'Attendance',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.event_note_outlined),
+              activeIcon: Icon(Icons.event_note_rounded),
+              label: 'Leaves',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_late_outlined),
+              activeIcon: Icon(Icons.assignment_late_rounded),
+              label: 'Complaints',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, VistaUser user) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Image.asset('assets/images/jklu_logo_bgremove.png', height: 40),
+              const SizedBox(width: 12),
+              const Text(
+                'VISTA',
+                style: TextStyle(
+                  color: _kPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () => _firebaseService.signOut(),
+                icon: const Icon(
+                  Icons.power_settings_new_rounded,
+                  color: Colors.black26,
+                  size: 22,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'STUDENT PORTAL',
+                style: TextStyle(
+                  color: _kPrimary.withOpacity(0.4),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user.name.toUpperCase(),
+                style: const TextStyle(
+                  color: _kPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -63,39 +181,411 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 }
 
-class _AttendanceHome extends StatefulWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// ATTENDANCE TAB
+// ─────────────────────────────────────────────────────────────────────────────
+class _AttendanceTab extends StatefulWidget {
   final VistaUser user;
-  final FirebaseService firebaseService;
-  const _AttendanceHome({required this.user, required this.firebaseService});
+  final FirebaseService fs;
+  const _AttendanceTab({required this.user, required this.fs});
 
   @override
-  State<_AttendanceHome> createState() => _AttendanceHomeState();
+  State<_AttendanceTab> createState() => _AttendanceTabState();
 }
 
-class _AttendanceHomeState extends State<_AttendanceHome> {
+class _AttendanceTabState extends State<_AttendanceTab> {
   bool _isMarking = false;
 
-  bool _isWithinAttendanceWindow() {
+  bool _isWithinGracePeriod() {
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day, 22, 0); // 10:00 PM
-    final end = DateTime(now.year, now.month, now.day, 22, 30); // 10:30 PM
+    final start = DateTime(now.year, now.month, now.day, 22, 0);
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
     return now.isAfter(start) && now.isBefore(end);
   }
 
-  void _markAttendance() async {
-    if (!_isWithinAttendanceWindow()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Attendance can only be marked between 10:00 PM and 10:30 PM',
+  bool _isLate() {
+    final now = DateTime.now();
+    final lateStart = DateTime(now.year, now.month, now.day, 22, 30);
+    final midnight = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    return now.isAfter(lateStart) && now.isBefore(midnight);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.phonelink_lock_rounded,
+                  size: 64,
+                  color: Colors.redAccent,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Mobile Only Feature',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: _kPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Attendance marking is restricted to the VISTA Mobile App for security and location verification purposes.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: [
+                  _buildDownloadButton(Icons.apple, 'App Store'),
+                  _buildDownloadButton(Icons.android_rounded, 'Play Store'),
+                ],
+              ),
+            ],
           ),
         ),
       );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _SectionLabel("Night Attendance"),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _kPrimary.withOpacity(0.05)),
+            boxShadow: [
+              BoxShadow(
+                color: _kPrimary.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Reporting Window',
+                style: TextStyle(
+                  color: Colors.black45,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Text(
+                '10:00 PM - 10:30 PM',
+                style: TextStyle(
+                  color: _kPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 40),
+              GestureDetector(
+                onTap: _isMarking ? null : _handleMarkAttendance,
+                child:
+                    Container(
+                          width: 180,
+                          height: 180,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: _isWithinGracePeriod()
+                                    ? (_isLate() ? _kWarning : _kPrimary)
+                                          .withOpacity(0.1)
+                                    : Colors.black.withOpacity(0.05),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: _isWithinGracePeriod()
+                                      ? (_isLate()
+                                            ? [_kWarning, Colors.orange]
+                                            : [_kPrimary, _kAccent])
+                                      : [
+                                          Colors.grey.shade300,
+                                          Colors.grey.shade400,
+                                        ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Center(
+                                child: _isMarking
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                    : Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            _isLate()
+                                                ? Icons.history_rounded
+                                                : Icons.touch_app_rounded,
+                                            color: Colors.white,
+                                            size: 40,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            _isWithinGracePeriod()
+                                                ? (_isLate()
+                                                      ? 'MARK LATE'
+                                                      : 'TAP TO MARK')
+                                                : 'CLOSED',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 1.2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                        )
+                        .animate(
+                          onPlay: (c) => _isWithinGracePeriod()
+                              ? c.repeat(reverse: true)
+                              : null,
+                        )
+                        .scale(
+                          begin: const Offset(1, 1),
+                          end: const Offset(1.03, 1.03),
+                          duration: 2.seconds,
+                          curve: Curves.easeInOut,
+                        ),
+              ),
+              const SizedBox(height: 40),
+              Text(
+                _isWithinGracePeriod()
+                    ? (_isLate()
+                          ? "You are outside the reporting window. Marking now will be flagged as Late."
+                          : "It's time! Please mark your presence.")
+                    : "Attendance window is currently closed.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _isWithinGracePeriod()
+                      ? (_isLate() ? _kWarning : _kSuccess)
+                      : Colors.black38,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 32),
+              TextButton.icon(
+                onPressed: () => _showAttendanceHistory(context, widget.user),
+                icon: const Icon(Icons.history_rounded, size: 20),
+                label: const Text(
+                  'View My Attendance History',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: _kPrimary,
+                  backgroundColor: _kPrimary.withOpacity(0.05),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showAttendanceHistory(BuildContext context, VistaUser user) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Attendance History',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: _kPrimary,
+                ),
+              ),
+            ),
+            Expanded(
+              child: StreamBuilder<List<Attendance>>(
+                stream: FirebaseService().getStudentAttendance(user.uid),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final list = snap.data ?? [];
+                  if (list.isEmpty) {
+                    return const _EmptyState(
+                      icon: Icons.history_rounded,
+                      title: 'No Records',
+                      subtitle: 'You havent marked any attendance yet.',
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: list.length,
+                    itemBuilder: (context, i) {
+                      final a = list[i];
+                      final isLate = a.status == 'Late';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _kBg.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              color: isLate ? _kWarning : _kSuccess,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                DateFormat('dd MMM yyyy').format(a.timestamp),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  DateFormat('hh:mm a').format(a.timestamp),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (isLate)
+                                  const Text(
+                                    'LATE',
+                                    style: TextStyle(
+                                      color: _kWarning,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDownloadButton(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: _kPrimary,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: _kPrimary.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleMarkAttendance() async {
+    if (!_isWithinGracePeriod()) {
+      _showError('Attendance can only be marked between 10:00 PM and Midnight');
       return;
     }
 
     setState(() => _isMarking = true);
     try {
+      final isLateMarker = _isLate();
       final attendance = Attendance(
         id: '',
         studentId: widget.user.uid,
@@ -103,131 +593,150 @@ class _AttendanceHomeState extends State<_AttendanceHome> {
         hostel: widget.user.hostel!,
         roomNumber: widget.user.roomNumber ?? 'N/A',
         timestamp: DateTime.now(),
-        status: 'Present',
+        status: isLateMarker ? 'Late' : 'Present',
       );
-      await widget.firebaseService.markAttendance(attendance);
+      await widget.fs.markAttendance(attendance);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Attendance marked successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        _showSuccess('Attendance marked successfully!');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to mark attendance: $e')),
-        );
-      }
+      if (mounted) _showError('Failed: $e');
     } finally {
       if (mounted) setState(() => _isMarking = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  const Text(
-                    'Assigned Room',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  Text(
-                    widget.user.roomNumber ?? 'Awaiting Assignment',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Hostel: ${widget.user.hostel}',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 60),
-          const Text(
-            'Night Attendance (10:00 PM - 10:30 PM)',
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: 200,
-            height: 200,
-            child: ElevatedButton(
-              onPressed: _isMarking ? null : _markAttendance,
-              style: ElevatedButton.styleFrom(shape: const CircleBorder()),
-              child: _isMarking
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      'Mark\nAttendance',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 18),
-                    ),
-            ),
-          ),
-        ],
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        content: Text(msg),
+      ),
+    );
+  }
+
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: _kSuccess,
+        behavior: SnackBarBehavior.floating,
+        content: Text(msg),
       ),
     );
   }
 }
 
-class _LeaveHistory extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// LEAVES TAB
+// ─────────────────────────────────────────────────────────────────────────────
+class _LeaveTab extends StatelessWidget {
   final VistaUser user;
-  final FirebaseService firebaseService;
-  const _LeaveHistory({required this.user, required this.firebaseService});
+  final FirebaseService fs;
+  const _LeaveTab({required this.user, required this.fs});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showLeaveDialog(context, user, firebaseService),
-        label: const Text('Apply Leave'),
-        icon: const Icon(Icons.add),
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showLeaveDialog(context, user, fs),
+        backgroundColor: _kPrimary,
+        elevation: 4,
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
       body: StreamBuilder<List<LeaveRequest>>(
-        stream: firebaseService
-            .getPendingLeaves(user.hostel!)
-            .map((list) => list.where((l) => l.studentId == user.uid).toList()),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+        stream: fs.getStudentLeaves(user.uid),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: _kPrimary),
+            );
           }
-          final leaves = snapshot.data ?? [];
-          if (leaves.isEmpty) {
-            return const Center(child: Text('No pending leave requests'));
+          final list = snap.data ?? [];
+          if (list.isEmpty) {
+            return const _EmptyState(
+              icon: Icons.event_note_outlined,
+              title: 'No Leaves Yet',
+              subtitle: 'Your leave application history will appear here.',
+            );
           }
           return ListView.builder(
-            itemCount: leaves.length,
-            padding: const EdgeInsets.all(16),
-            itemBuilder: (context, index) {
-              final l = leaves[index];
-              return Card(
-                child: ListTile(
-                  title: Text(
-                    '${DateFormat('MMM d').format(l.fromDate)} to ${DateFormat('MMM d').format(l.toDate)}',
-                  ),
-                  subtitle: Text('Status: ${l.status}\nReason: ${l.reason}'),
-                  trailing: const Icon(
-                    Icons.pending_actions,
-                    color: Colors.orange,
-                  ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            itemCount: list.length,
+            itemBuilder: (context, i) {
+              final l = list[i];
+              Color statusColor;
+              switch (l.status) {
+                case 'Approved':
+                  statusColor = _kSuccess;
+                  break;
+                case 'Rejected':
+                  statusColor = Colors.redAccent;
+                  break;
+                default:
+                  statusColor = _kWarning;
+              }
+
+              return _Card(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.event_note_rounded,
+                                size: 14,
+                                color: _kPrimary.withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${DateFormat('dd MMM').format(l.fromDate)} - ${DateFormat('dd MMM yyyy').format(l.toDate)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            l.reason,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.black45,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: statusColor.withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        l.status.toUpperCase(),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -237,142 +746,476 @@ class _LeaveHistory extends StatelessWidget {
     );
   }
 
-  void _showLeaveDialog(BuildContext context, user, FirebaseService fs) {
+  void _showLeaveDialog(
+    BuildContext context,
+    VistaUser user,
+    FirebaseService fs,
+  ) {
     final fromController = TextEditingController();
     final toController = TextEditingController();
     final reasonController = TextEditingController();
     final parentNameController = TextEditingController();
     final parentContactController = TextEditingController();
+    final addressController = TextEditingController();
+    String? selectedRelation; // State for dropdown
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Apply Leave'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: fromController,
-                decoration: const InputDecoration(
-                  labelText: 'From Date (YYYY-MM-DD)',
-                ),
-              ),
-              TextField(
-                controller: toController,
-                decoration: const InputDecoration(
-                  labelText: 'To Date (YYYY-MM-DD)',
-                ),
-              ),
-              TextField(
-                controller: reasonController,
-                decoration: const InputDecoration(labelText: 'Reason'),
-              ),
-              TextField(
-                controller: parentNameController,
-                decoration: const InputDecoration(labelText: 'Parent Name'),
-              ),
-              TextField(
-                controller: parentContactController,
-                decoration: const InputDecoration(labelText: 'Parent Contact'),
-              ),
-            ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Apply for Leave',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: _kPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildInput(
+                    'From Date & Time',
+                    fromController,
+                    icon: Icons.access_time_rounded,
+                    readOnly: true,
+                    onTap: () async {
+                      final date = await _selectDate(
+                        context,
+                        DateTime.now(),
+                        DateTime.now(),
+                      );
+                      if (date != null && context.mounted) {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          final fullDateTime = DateTime(
+                            date.year,
+                            date.month,
+                            date.day,
+                            time.hour,
+                            time.minute,
+                          );
+                          fromController.text = DateFormat(
+                            'dd/MM/yyyy hh:mm a',
+                          ).format(fullDateTime);
+                        }
+                      }
+                    },
+                  ),
+                  _buildInput(
+                    'To Date & Time',
+                    toController,
+                    icon: Icons.update_rounded,
+                    readOnly: true,
+                    onTap: () async {
+                      final fromDateStr = fromController.text;
+                      DateTime initialDate = DateTime.now();
+                      if (fromDateStr.isNotEmpty) {
+                        initialDate = DateFormat(
+                          'dd/MM/yyyy hh:mm a',
+                        ).parse(fromDateStr);
+                      }
+
+                      final date = await _selectDate(
+                        context,
+                        initialDate,
+                        initialDate,
+                      );
+                      if (date != null && context.mounted) {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          final fullDateTime = DateTime(
+                            date.year,
+                            date.month,
+                            date.day,
+                            time.hour,
+                            time.minute,
+                          );
+                          toController.text = DateFormat(
+                            'dd/MM/yyyy hh:mm a',
+                          ).format(fullDateTime);
+                        }
+                      }
+                    },
+                  ),
+                  _buildInput(
+                    'Reason',
+                    reasonController,
+                    icon: Icons.edit_note_rounded,
+                  ),
+                  _buildInput(
+                    'Address during leave',
+                    addressController,
+                    icon: Icons.home_work_outlined,
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: _buildInput(
+                          'Parent Name',
+                          parentNameController,
+                          icon: Icons.person_outline,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: DropdownButtonFormField<String>(
+                            value: selectedRelation,
+                            decoration: InputDecoration(
+                              labelText: 'Relation',
+                              filled: true,
+                              fillColor: _kBg.withOpacity(0.5),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 14,
+                              ),
+                            ),
+                            items: ['Father', 'Mother', 'Guardian']
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(
+                                      s,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (v) =>
+                                setDialogState(() => selectedRelation = v),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildInput(
+                    'Parent Contact',
+                    parentContactController,
+                    icon: Icons.phone_android_rounded,
+                    keyboardType: TextInputType.phone,
+                    maxLength: 10,
+                  ),
+                  const SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final contact = parentContactController.text.trim();
+                      if (contact.length != 10 ||
+                          double.tryParse(contact) == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Please enter a valid 10-digit mobile number',
+                            ),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                        return;
+                      }
+
+                      try {
+                        final request = LeaveRequest(
+                          id: '',
+                          studentId: user.uid,
+                          studentName: user.name,
+                          hostel: user.hostel!,
+                          fromDate: DateFormat(
+                            'dd/MM/yyyy hh:mm a',
+                          ).parse(fromController.text),
+                          toDate: DateFormat(
+                            'dd/MM/yyyy hh:mm a',
+                          ).parse(toController.text),
+                          reason: reasonController.text,
+                          address: addressController.text,
+                          parentName: parentNameController.text,
+                          parentRelation: selectedRelation ?? 'Guardian',
+                          parentContact: contact,
+                          studentContact: user.phoneNumber ?? '',
+                          status: 'Pending',
+                          createdAt: DateTime.now(),
+                        );
+                        await fs.submitLeaveRequest(request);
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Leave request submitted successfully!',
+                              ),
+                              backgroundColor: _kSuccess,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Verification failed: Check fields'),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Submit Request'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.black38),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<DateTime?> _selectDate(
+    BuildContext context,
+    DateTime initialDate,
+    DateTime firstDate,
+  ) async {
+    DateTime tempDate = initialDate;
+    return showDialog<DateTime>(
+      context: context,
+      builder: (context) => AlertDialog(
+        contentPadding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 24),
+              child: Text(
+                'Select Date',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  color: _kPrimary,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 320,
+              width: 320,
+              child: CalendarDatePicker(
+                initialDate: initialDate,
+                firstDate: firstDate,
+                lastDate: DateTime.now().add(const Duration(days: 90)),
+                onDateChanged: (date) => tempDate = date,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.black38),
+            ),
           ),
           ElevatedButton(
-            onPressed: () async {
-              try {
-                final request = LeaveRequest(
-                  id: '',
-                  studentId: user.uid,
-                  studentName: user.name,
-                  hostel: user.hostel,
-                  fromDate: DateTime.parse(fromController.text),
-                  toDate: DateTime.parse(toController.text),
-                  reason: reasonController.text,
-                  parentName: parentNameController.text,
-                  parentContact: parentContactController.text,
-                  studentContact: user.phoneNumber ?? '',
-                  status: 'Pending',
-                );
-                await fs.submitLeaveRequest(request);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Invalid date or data: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Submit'),
+            onPressed: () => Navigator.pop(context, tempDate),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kPrimary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Confirm'),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildInput(
+    String label,
+    TextEditingController ctrl, {
+    IconData? icon,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    TextInputType? keyboardType,
+    int? maxLength,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: ctrl,
+        readOnly: readOnly,
+        onTap: onTap,
+        keyboardType: keyboardType,
+        maxLength: maxLength,
+        decoration: InputDecoration(
+          labelText: label,
+          counterText: "",
+          prefixIcon: icon != null ? Icon(icon, size: 20) : null,
+          filled: true,
+          fillColor: _kBg.withOpacity(0.5),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _Complaints extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLAINTS TAB
+// ─────────────────────────────────────────────────────────────────────────────
+class _ComplaintsTab extends StatelessWidget {
   final VistaUser user;
-  final FirebaseService firebaseService;
-  const _Complaints({required this.user, required this.firebaseService});
+  final FirebaseService fs;
+  const _ComplaintsTab({required this.user, required this.fs});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showComplaintDialog(context, user, firebaseService),
-        label: const Text('New Complaint'),
-        icon: const Icon(Icons.add),
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showComplaintDialog(context, user, fs),
+        backgroundColor: _kPrimary,
+        elevation: 4,
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
       body: StreamBuilder<List<Complaint>>(
-        stream: firebaseService
-            .getComplaintsForRole('Warden', user.hostel)
-            .map((list) => list.where((c) => c.studentId == user.uid).toList()),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+        stream: fs.getStudentComplaints(user.uid),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: _kPrimary),
+            );
           }
-          final complaints = snapshot.data ?? [];
-          if (complaints.isEmpty) {
-            return const Center(child: Text('No complaints submitted'));
+          final list = snap.data ?? [];
+          if (list.isEmpty) {
+            return const _EmptyState(
+              icon: Icons.assignment_late_outlined,
+              title: 'No Issues Raised',
+              subtitle:
+                  'Your complaint history will appear here once you raise any.',
+            );
           }
           return ListView.builder(
-            itemCount: complaints.length,
-            padding: const EdgeInsets.all(16),
-            itemBuilder: (context, index) {
-              final c = complaints[index];
-              return Card(
-                child: ListTile(
-                  title: Text(c.title),
-                  subtitle: Text(
-                    'Status: ${c.status}\nTarget: ${c.targetRole}',
-                  ),
-                  trailing: c.status == 'Resolved' && c.studentConfirmed == null
-                      ? IconButton(
-                          icon: const Icon(
-                            Icons.rate_review,
-                            color: Colors.blue,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            itemCount: list.length,
+            itemBuilder: (context, i) {
+              final c = list[i];
+              final isResolved =
+                  c.status == 'Resolved' || c.status == 'Confirmed';
+              Color statusColor = isResolved ? _kSuccess : _kWarning;
+              if (!isResolved && c.isEscalated) {
+                statusColor = Colors.redAccent;
+              }
+
+              return _Card(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.assignment_late_outlined,
+                                size: 14,
+                                color: _kPrimary.withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                c.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
                           ),
-                          onPressed: () =>
-                              _confirmResolution(context, c, firebaseService),
-                        )
-                      : Icon(
-                          c.status == 'Resolved'
-                              ? Icons.check_circle
-                              : Icons.pending,
-                          color: c.status == 'Resolved'
-                              ? Colors.green
-                              : Colors.orange,
+                          const SizedBox(height: 6),
+                          Text(
+                            'To: ${c.targetRoles.join(", ")} · ${DateFormat('dd MMM').format(c.createdAt)}',
+                            style: const TextStyle(
+                              color: Colors.black45,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (c.status == 'Resolved' && c.studentConfirmed == null)
+                      TextButton(
+                        onPressed: () => _confirmResolution(context, c, fs),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          backgroundColor: _kPrimary.withOpacity(0.05),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
+                        child: const Text(
+                          'VERIFY',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: statusColor.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Text(
+                          (!isResolved && c.isEscalated)
+                              ? 'ESCALATED'
+                              : c.status.toUpperCase(),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               );
             },
@@ -390,30 +1233,26 @@ class _Complaints extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Issue Resolved?'),
+        title: const Text('Verify Resolution'),
         content: const Text(
-          'Is the issue resolved to your satisfaction? Selecting "No" will escalate this to the Head Warden.',
+          'Is the issue resolved to your satisfaction? Escalating will move it to the Head Warden.',
         ),
         actions: [
           TextButton(
-            onPressed: () async {
-              await fs.updateComplaintStatus(c.id, 'Resolved'); // Confirm
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
+            onPressed: () {
+              fs.updateComplaintStatus(c.id, 'Confirmed');
+              Navigator.pop(context);
             },
-            child: const Text('Yes - Solved'),
+            child: const Text('Yes, Solved'),
           ),
           TextButton(
-            onPressed: () async {
-              await fs.escalateComplaint(c.id);
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
+            onPressed: () {
+              fs.escalateComplaint(c.id);
+              Navigator.pop(context);
             },
             child: const Text(
-              'No - Escalate',
-              style: TextStyle(color: Colors.red),
+              'No, Escalate',
+              style: TextStyle(color: Colors.redAccent),
             ),
           ),
         ],
@@ -421,66 +1260,270 @@ class _Complaints extends StatelessWidget {
     );
   }
 
-  void _showComplaintDialog(BuildContext context, user, FirebaseService fs) {
+  void _showComplaintDialog(
+    BuildContext context,
+    VistaUser user,
+    FirebaseService fs,
+  ) {
     final titleController = TextEditingController();
     final descController = TextEditingController();
-    String target = 'Warden';
+    List<String> selectedTargets = ['Warden'];
+    final authorities = ['Warden', 'Head Warden'];
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          title: const Text('Submit Complaint'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              TextField(
-                controller: descController,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-              const SizedBox(height: 10),
-              DropdownButton<String>(
-                value: target,
-                isExpanded: true,
-                items: ['Warden', 'Head Warden']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (val) => setModalState(() => target = val!),
-              ),
-              const Text(
-                'Complaints are anonymous by default.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
+        builder: (context, setModalState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Raise New Issue',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: _kPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: titleController,
+                    decoration: InputDecoration(
+                      labelText: 'Title',
+                      filled: true,
+                      fillColor: _kBg.withOpacity(0.5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: 'Detailed Description',
+                      alignLabelWithHint: true,
+                      filled: true,
+                      fillColor: _kBg.withOpacity(0.5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'TARGET AUTHORITIES',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: _kPrimary.withOpacity(0.5),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: authorities.map((a) {
+                      final isSelected = selectedTargets.contains(a);
+                      return FilterChip(
+                        label: Text(
+                          a,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isSelected ? Colors.white : Colors.black54,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setModalState(() {
+                            if (val) {
+                              selectedTargets.add(a);
+                            } else {
+                              if (selectedTargets.length > 1) {
+                                selectedTargets.remove(a);
+                              }
+                            }
+                          });
+                        },
+                        selectedColor: _kPrimary,
+                        checkmarkColor: Colors.white,
+                        backgroundColor: _kBg.withOpacity(0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isSelected ? _kPrimary : Colors.black12,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (titleController.text.trim().isEmpty) return;
+
+                      final complaint = Complaint(
+                        id: '',
+                        studentId: user.uid,
+                        title: titleController.text.trim(),
+                        description: descController.text.trim(),
+                        hostel: user.hostel!,
+                        targetRoles: selectedTargets,
+                        status: 'Pending',
+                        isAnonymous: true,
+                        createdAt: DateTime.now(),
+                      );
+                      await fs.submitComplaint(complaint);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Issue reported successfully. Authorities notified.',
+                            ),
+                            backgroundColor: _kSuccess,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _kPrimary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'SUBMIT ANONYMOUS REPORT',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'CANCEL',
+                      style: TextStyle(
+                        color: Colors.black26,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                final complaint = Complaint(
-                  id: '',
-                  studentId: user.uid, // Stored but hidden logic on warden side
-                  title: titleController.text,
-                  description: descController.text,
-                  hostel: user.hostel,
-                  targetRole: target,
-                  status: 'Pending',
-                  isAnonymous: true,
-                  createdAt: DateTime.now(),
-                );
-                await fs.submitComplaint(complaint);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Submit'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT WIDGETS
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          color: _kPrimary,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  final Widget child;
+  const _Card({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black.withOpacity(0.06)),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: _kPrimary.withOpacity(0.1)),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: _kPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black38,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

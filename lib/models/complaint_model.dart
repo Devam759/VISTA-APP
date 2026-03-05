@@ -6,7 +6,8 @@ class Complaint {
   final String title;
   final String description;
   final String hostel;
-  final String targetRole; // Warden, Head Warden
+  final String targetRole; // Keep for backward compat or replace if safe
+  final List<String> targetRoles; // Warden, Head Warden, Maintenance, etc.
   final String status; // Pending, Resolved
   final bool isAnonymous;
   final bool? studentConfirmed; // Yes (Resolved), No (Escalated)
@@ -19,7 +20,8 @@ class Complaint {
     required this.title,
     required this.description,
     required this.hostel,
-    required this.targetRole,
+    this.targetRole = 'Warden',
+    required this.targetRoles,
     required this.status,
     required this.isAnonymous,
     this.studentConfirmed,
@@ -33,7 +35,8 @@ class Complaint {
       'title': title,
       'description': description,
       'hostel': hostel,
-      'targetRole': targetRole,
+      'targetRole': targetRoles.isNotEmpty ? targetRoles.first : 'Warden',
+      'targetRoles': targetRoles,
       'status': status,
       'isAnonymous': isAnonymous,
       'studentConfirmed': studentConfirmed,
@@ -50,11 +53,14 @@ class Complaint {
       description: map['description'] ?? '',
       hostel: map['hostel'] ?? '',
       targetRole: map['targetRole'] ?? 'Warden',
+      targetRoles: List<String>.from(
+        map['targetRoles'] ?? [map['targetRole'] ?? 'Warden'],
+      ),
       status: map['status'] ?? 'Pending',
       isAnonymous: map['isAnonymous'] ?? true,
       studentConfirmed: map['studentConfirmed'],
       isEscalated: map['isEscalated'] ?? false,
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: (map['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
     );
   }
 }
