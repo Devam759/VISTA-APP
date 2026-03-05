@@ -12,8 +12,11 @@ import 'screens/auth/pending_approval_screen.dart';
 import 'utils/theme.dart';
 import 'models/vista_user.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   // Note: Firebase.initializeApp() requires configuration files (google-services.json / GoogleService-Info.plist)
   // which are usually added manually. I will assume they are present or will be added.
   try {

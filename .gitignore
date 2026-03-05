@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+node_modules/
 
 # IntelliJ related
 *.iml
@@ -56,4 +57,7 @@ firebase.json
 
 # Local/Secret files
 .env*
+.env
 *.local
+coordinates.csv
+

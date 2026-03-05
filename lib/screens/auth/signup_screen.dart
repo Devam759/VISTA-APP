@@ -283,7 +283,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
                   const SizedBox(height: 20),
                   DropdownButtonFormField<String>(
-                    value: _selectedHostel,
+                    initialValue: _selectedHostel,
                     items: _hostels
                         .map((h) => DropdownMenuItem(value: h, child: Text(h)))
                         .toList(),

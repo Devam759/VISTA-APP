@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/attendance_model.dart';
 import '../../models/leave_request_model.dart';
@@ -29,9 +31,104 @@ class StudentDashboard extends StatefulWidget {
 class _StudentDashboardState extends State<StudentDashboard> {
   final FirebaseService _firebaseService = FirebaseService();
   int _selectedIndex = 0;
+  bool _checkingPermissions = true;
+  bool _permissionsGranted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    if (kIsWeb) {
+      if (mounted) {
+        setState(() {
+          _checkingPermissions = false;
+          _permissionsGranted = true;
+        });
+      }
+      return;
+    }
+
+    final locationStatus = await Permission.location.request();
+    final cameraStatus = await Permission.camera.request();
+
+    if (mounted) {
+      setState(() {
+        _checkingPermissions = false;
+        _permissionsGranted =
+            locationStatus.isGranted && cameraStatus.isGranted;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingPermissions) {
+      return const Scaffold(
+        backgroundColor: _kBg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!_permissionsGranted && !kIsWeb) {
+      return Scaffold(
+        backgroundColor: _kBg,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.security_rounded, size: 64, color: _kWarning),
+                const SizedBox(height: 24),
+                const Text(
+                  'Permissions Required',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: _kPrimary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Location and Camera permissions are strictly required to use the VISTA Mobile App for security purposes.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () {
+                    openAppSettings();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _kPrimary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: const Text(
+                    'Open Settings',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: _checkPermissions,
+                  child: const Text(
+                    'Check Again',
+                    style: TextStyle(color: _kPrimary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final user = Provider.of<AuthProvider>(context).userProfile!;
 
     return Scaffold(
@@ -577,6 +674,38 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     );
   }
 
+  final List<List<double>> _collegeGeofence = const [
+    [26.83578622, 75.65131165],
+    [26.83740740, 75.65114535],
+    [26.83662239, 75.64845745],
+    [26.83605158, 75.64818118],
+    [26.83546162, 75.65019753],
+    [26.83460988, 75.65087344],
+    [26.83401423, 75.65117888],
+    [26.83333241, 75.65138273],
+    [26.83262606, 75.65278552],
+    [26.83388768, 75.65269735],
+    [26.83412283, 75.65222863],
+    [26.83494166, 75.65249585],
+  ];
+
+  bool _isPointInGeofence(double lat, double lng) {
+    bool isInside = false;
+    int j = _collegeGeofence.length - 1;
+    for (int i = 0; i < _collegeGeofence.length; i++) {
+      double xi = _collegeGeofence[i][0], yi = _collegeGeofence[i][1];
+      double xj = _collegeGeofence[j][0], yj = _collegeGeofence[j][1];
+
+      bool intersect =
+          ((yi > lng) != (yj > lng)) &&
+          (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+      if (intersect) isInside = !isInside;
+
+      j = i;
+    }
+    return isInside;
+  }
+
   void _handleMarkAttendance() async {
     if (!_isWithinGracePeriod()) {
       _showError('Attendance can only be marked between 10:00 PM and Midnight');
@@ -585,6 +714,35 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
     setState(() => _isMarking = true);
     try {
+      if (!kIsWeb) {
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          _showError('Location services are disabled. Please enable them.');
+          if (mounted) setState(() => _isMarking = false);
+          return;
+        }
+
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          _showError('Location permissions are denied.');
+          if (mounted) setState(() => _isMarking = false);
+          return;
+        }
+
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+
+        bool inside = _isPointInGeofence(position.latitude, position.longitude);
+        if (!inside) {
+          _showError(
+            'You must be inside the college campus to mark attendance.',
+          );
+          if (mounted) setState(() => _isMarking = false);
+          return;
+        }
+      }
+
       final isLateMarker = _isLate();
       final attendance = Attendance(
         id: '',
@@ -879,7 +1037,7 @@ class _LeaveTab extends StatelessWidget {
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: DropdownButtonFormField<String>(
-                            value: selectedRelation,
+                            initialValue: selectedRelation,
                             decoration: InputDecoration(
                               labelText: 'Relation',
                               filled: true,
