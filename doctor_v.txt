@@ -1,0 +1,40 @@
+[ΓêÜ] Flutter (Channel stable, 3.38.3, on Microsoft Windows [Version 10.0.26200.7840], locale en-US) [513ms]
+    ΓÇó Flutter version 3.38.3 on channel stable at C:\flutter
+    ΓÇó Upstream repository https://github.com/flutter/flutter.git
+    ΓÇó Framework revision 19074d12f7 (4 months ago), 2025-11-20 17:53:13 -0500
+    ΓÇó Engine revision 13e658725d
+    ΓÇó Dart version 3.10.1
+    ΓÇó DevTools version 2.51.1
+    ΓÇó Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop, enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, omit-legacy-version-file, enable-lldb-debugging
+
+[ΓêÜ] Windows Version (Windows 11 or higher, 25H2, 2009) [1,215ms]
+
+[!] Android toolchain - develop for Android devices (Android SDK version 36.1.0) [526ms]
+    ΓÇó Android SDK at C:\Users\Devam\AppData\Local\Android\sdk
+    ΓÇó Emulator version 36.2.12.0 (build_id 14214601) (CL:N/A)
+    X cmdline-tools component is missing.
+      Try installing or updating Android Studio.
+      Alternatively, download the tools from https://developer.android.com/studio#command-line-tools-only and make sure to set the ANDROID_HOME environment variable.
+      See https://developer.android.com/studio/command-line for more details.
+    X Android license status unknown.
+      Run `flutter doctor --android-licenses` to accept the SDK licenses.
+      See https://flutter.dev/to/windows-android-setup for more details.
+
+[ΓêÜ] Chrome - develop for the web [276ms]
+    ΓÇó Chrome at C:\Program Files\Google\Chrome\Application\chrome.exe
+
+[X] Visual Studio - develop Windows apps [275ms]
+    X Visual Studio not installed; this is necessary to develop Windows apps.
+      Download at https://visualstudio.microsoft.com/downloads/.
+      Please install the "Desktop development with C++" workload, including all of its default components
+
+[ΓêÜ] Connected device (4 available) [320ms]
+    ΓÇó A142 (mobile)     ΓÇó 00055348A002549 ΓÇó android-arm64  ΓÇó Android 16 (API 36)
+    ΓÇó Windows (desktop) ΓÇó windows         ΓÇó windows-x64    ΓÇó Microsoft Windows [Version 10.0.26200.7840]
+    ΓÇó Chrome (web)      ΓÇó chrome          ΓÇó web-javascript ΓÇó Google Chrome 145.0.7632.117
+    ΓÇó Edge (web)        ΓÇó edge            ΓÇó web-javascript ΓÇó Microsoft Edge 145.0.3800.82
+
+[ΓêÜ] Network resources [1,882ms]
+    ΓÇó All expected network resources are available.
+
+! Doctor found issues in 2 categories.
