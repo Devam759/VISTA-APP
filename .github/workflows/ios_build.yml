@@ -24,7 +24,6 @@ jobs:
           
       - name: Prepare build environment
         run: |
-          # Create dummy files required by pubspec.yaml
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
             echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
           fi
@@ -34,10 +33,18 @@ jobs:
             echo "FIREBASE_API_KEY_WEB=dummy" >> .env
           fi
 
+      - name: Install iOS Pods
+        run: |
+          cd ios
+          # Ensure Cocoapods is ready
+          pod repo update
+          pod install
+
       - name: Build iOS
         run: |
           # Build specifically for the simulator in debug mode to bypass code signing
-          flutter build ios --debug --simulator --no-codesign
+          # We use --no-pub because we already ran pub get and pod install
+          flutter build ios --debug --simulator --no-codesign --no-pub
           
       - name: Create IPA
         run: |
