@@ -87,7 +87,7 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
                     ),
                     decoration: BoxDecoration(
                       color: selected
-                          ? _kPrimary.withOpacity(0.1)
+                          ? _kPrimary.withValues(alpha: 0.1)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -336,15 +336,19 @@ class _EmptyState extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  _kPrimary.withOpacity(0.08),
-                  _kAccent.withOpacity(0.04),
+                  _kPrimary.withValues(alpha: 0.08),
+                  _kAccent.withValues(alpha: 0.04),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 52, color: _kPrimary.withOpacity(0.35)),
+            child: Icon(
+              icon,
+              size: 52,
+              color: _kPrimary.withValues(alpha: 0.35),
+            ),
           ),
           const SizedBox(height: 20),
           Text(
@@ -383,7 +387,7 @@ class _Card extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -498,12 +502,14 @@ class _StudentsTabState extends State<_StudentsTab> {
           color: isSelected ? _kPrimary : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: Border.all(
-            color: isSelected ? _kPrimary : Colors.black.withOpacity(0.08),
+            color: isSelected
+                ? _kPrimary
+                : Colors.black.withValues(alpha: 0.08),
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: _kPrimary.withOpacity(0.2),
+                    color: _kPrimary.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -594,7 +600,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: _kPrimary.withOpacity(0.3),
+                                        color: _kPrimary.withValues(alpha: 0.3),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -605,7 +611,9 @@ class _StudentsTabState extends State<_StudentsTab> {
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.15),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.15,
+                                          ),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(
@@ -633,8 +641,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                   ? 'Tap to hide detail'
                                                   : 'Tap to review and approve',
                                               style: TextStyle(
-                                                color: Colors.white.withOpacity(
-                                                  0.7,
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.7,
                                                 ),
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w500,
@@ -660,11 +668,13 @@ class _StudentsTabState extends State<_StudentsTab> {
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: _kPrimary.withOpacity(0.1),
+                                      color: _kPrimary.withValues(alpha: 0.1),
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.04),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.04,
+                                        ),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -684,7 +694,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                 CircleAvatar(
                                                   radius: 20,
                                                   backgroundColor: _kPrimary
-                                                      .withOpacity(0.1),
+                                                      .withValues(alpha: 0.1),
                                                   child: Text(
                                                     s.name.isNotEmpty
                                                         ? s.name[0]
@@ -737,8 +747,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                             ),
                                                         decoration: BoxDecoration(
                                                           color: Colors.red
-                                                              .withOpacity(
-                                                                0.08,
+                                                              .withValues(
+                                                                alpha: 0.08,
                                                               ),
                                                           borderRadius:
                                                               BorderRadius.circular(
@@ -746,8 +756,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                               ),
                                                           border: Border.all(
                                                             color: Colors.red
-                                                                .withOpacity(
-                                                                  0.15,
+                                                                .withValues(
+                                                                  alpha: 0.15,
                                                                 ),
                                                           ),
                                                         ),
@@ -772,8 +782,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                             ),
                                                         decoration: BoxDecoration(
                                                           color: Colors.green
-                                                              .withOpacity(
-                                                                0.08,
+                                                              .withValues(
+                                                                alpha: 0.08,
                                                               ),
                                                           borderRadius:
                                                               BorderRadius.circular(
@@ -781,8 +791,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                               ),
                                                           border: Border.all(
                                                             color: Colors.green
-                                                                .withOpacity(
-                                                                  0.15,
+                                                                .withValues(
+                                                                  alpha: 0.15,
                                                                 ),
                                                           ),
                                                         ),
@@ -827,7 +837,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
+                                  color: Colors.black.withValues(alpha: 0.04),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -908,7 +918,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                                           CircleAvatar(
                                             radius: 24,
                                             backgroundColor: _kPrimary
-                                                .withOpacity(0.1),
+                                                .withValues(alpha: 0.1),
                                             child: Text(
                                               m.name.isNotEmpty
                                                   ? m.name[0].toUpperCase()
@@ -995,8 +1005,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                     vertical: 5,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: _kPrimary.withOpacity(
-                                                  0.08,
+                                                color: _kPrimary.withValues(
+                                                  alpha: 0.08,
                                                 ),
                                                 borderRadius:
                                                     BorderRadius.circular(8),
@@ -1652,10 +1662,10 @@ class _LeavesTab extends StatelessWidget {
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
+                            color: Colors.orange.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.orange.withOpacity(0.5),
+                              color: Colors.orange.withValues(alpha: 0.5),
                             ),
                           ),
                           child: const Center(
@@ -1693,14 +1703,14 @@ class _LeavesTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: _kBg.withOpacity(0.3),
+          color: _kBg.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _kPrimary.withOpacity(0.05)),
+          border: Border.all(color: _kPrimary.withValues(alpha: 0.05)),
         ),
         child: Row(
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 20, color: _kPrimary.withOpacity(0.5)),
+              Icon(icon, size: 20, color: _kPrimary.withValues(alpha: 0.5)),
               const SizedBox(width: 12),
             ],
             Expanded(
@@ -1712,7 +1722,7 @@ class _LeavesTab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: _kPrimary.withOpacity(0.4),
+                      color: _kPrimary.withValues(alpha: 0.4),
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -1781,8 +1791,8 @@ class _ComplaintsTab extends StatelessWidget {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: resolved
-                                ? Colors.green.withOpacity(0.1)
-                                : Colors.orange.withOpacity(0.1),
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : Colors.orange.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
@@ -1826,8 +1836,10 @@ class _ComplaintsTab extends StatelessWidget {
                                     ),
                                     decoration: BoxDecoration(
                                       color: resolved
-                                          ? Colors.green.withOpacity(0.1)
-                                          : Colors.orange.withOpacity(0.1),
+                                          ? Colors.green.withValues(alpha: 0.1)
+                                          : Colors.orange.withValues(
+                                              alpha: 0.1,
+                                            ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(

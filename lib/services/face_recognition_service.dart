@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 
@@ -19,9 +19,9 @@ class FaceRecognitionService {
         'assets/models/facenet.tflite',
       );
       _isModelLoaded = true;
-      print('MobileFaceNet model loaded successfully.');
+      debugPrint('MobileFaceNet model loaded successfully.');
     } catch (e) {
-      print('Failed to load MobileFaceNet model: $e');
+      debugPrint('Failed to load MobileFaceNet model: $e');
     }
   }
 

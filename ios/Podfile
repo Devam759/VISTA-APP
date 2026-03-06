@@ -41,9 +41,7 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  if defined?(flutter_install_all_ios_pods)
-    flutter_install_all_ios_pods File.expand_path(File.join('..', '..'), __FILE__)
-  end
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 end
 
 post_install do |installer|

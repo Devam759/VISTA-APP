@@ -1,7 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -158,44 +159,83 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
         InputImageRotationValue.fromRawValue(sensorOrientation) ??
         InputImageRotation.rotation90deg;
 
-    const format = InputImageFormat.nv21;
-
     if (image.planes.isEmpty) return null;
 
-    // Use NV21 conversion logic for Android compatibility
+    if (Platform.isIOS) {
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final Plane plane in image.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      return InputImage.fromBytes(
+        bytes: allBytes.done().buffer.asUint8List(),
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: InputImageFormat.bgra8888,
+          bytesPerRow: image.planes[0].bytesPerRow,
+        ),
+      );
+    }
+
+    // On Android, we must precisely convert YUV_420_888 to NV21
+    // to support overlapping memory buffers in devices like Realme/Motorola.
+    final bytes = _convertYUV420ToNV21(image);
     return InputImage.fromBytes(
-      bytes: _convertNV21(image),
+      bytes: bytes,
       metadata: InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
         rotation: rotation,
-        format: format,
-        bytesPerRow: image.width,
+        format: InputImageFormat.nv21,
+        bytesPerRow: image.planes[0].bytesPerRow,
       ),
     );
   }
 
-  Uint8List _convertNV21(CameraImage image) {
-    // For many Android devices, we need to stitch the planes into NV21
+  Uint8List _convertYUV420ToNV21(CameraImage image) {
+    final width = image.width;
+    final height = image.height;
+
     final yPlane = image.planes[0];
     final uPlane = image.planes[1];
     final vPlane = image.planes[2];
 
-    final yBytes = yPlane.bytes;
-    final uBytes = uPlane.bytes;
-    final vBytes = vPlane.bytes;
+    final yBuffer = yPlane.bytes;
+    final uBuffer = uPlane.bytes;
+    final vBuffer = vPlane.bytes;
 
-    final totalLength = yBytes.length + uBytes.length + vBytes.length;
-    final nv21 = Uint8List(totalLength);
+    final numPixels = (width * height * 1.5).toInt();
+    final nv21 = Uint8List(numPixels);
 
-    nv21.setRange(0, yBytes.length, yBytes);
+    int idY = 0;
+    int idUV = width * height;
+    final uvWidth = width ~/ 2;
+    final uvHeight = height ~/ 2;
+    final uvRowStride = uPlane.bytesPerRow;
+    final uvPixelStride = uPlane.bytesPerPixel ?? 1;
 
-    // Stitching UV planes
-    int offset = yBytes.length;
-    for (int i = 0; i < vBytes.length; i++) {
-      nv21[offset++] = vBytes[i];
-      if (i < uBytes.length) nv21[offset++] = uBytes[i];
+    // Y plane
+    for (int y = 0; y < height; ++y) {
+      final yOffset = y * yPlane.bytesPerRow;
+      for (int x = 0; x < width; ++x) {
+        nv21[idY++] = yBuffer[yOffset + x];
+      }
     }
 
+    // V and U planes (NV21 expects V then U)
+    for (int y = 0; y < uvHeight; ++y) {
+      final uvOffset = y * uvRowStride;
+      for (int x = 0; x < uvWidth; ++x) {
+        final bufferIndex = uvOffset + (x * uvPixelStride);
+        // Sometimes UV planes are out of bounds because of cropped buffers, safe clamp:
+        if (bufferIndex < vBuffer.length) {
+          nv21[idUV] = vBuffer[bufferIndex];
+        }
+        if (bufferIndex < uBuffer.length) {
+          nv21[idUV + 1] = uBuffer[bufferIndex];
+        }
+        idUV += 2;
+      }
+    }
     return nv21;
   }
 

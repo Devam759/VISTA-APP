@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'face_capture_screen.dart'
     if (dart.library.html) 'face_capture_screen_stub.dart';
 import '../../providers/auth_provider.dart';
@@ -173,7 +172,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: _kPrimary.withOpacity(0.08),
+              color: _kPrimary.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -257,7 +256,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               Text(
                 'STUDENT PORTAL',
                 style: TextStyle(
-                  color: _kPrimary.withOpacity(0.4),
+                  color: _kPrimary.withValues(alpha: 0.4),
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.5,
@@ -344,7 +343,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.05),
+                  color: Colors.red.withValues(alpha: 0.05),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -406,10 +405,10 @@ class _AttendanceTabState extends State<_AttendanceTab> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _kPrimary.withOpacity(0.05)),
+                border: Border.all(color: _kPrimary.withValues(alpha: 0.05)),
                 boxShadow: [
                   BoxShadow(
-                    color: _kPrimary.withOpacity(0.03),
+                    color: _kPrimary.withValues(alpha: 0.03),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -435,7 +434,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                   Text(
                     'Late: 10:30 PM - 11:59 PM',
                     style: TextStyle(
-                      color: _kPrimary.withOpacity(0.5),
+                      color: _kPrimary.withValues(alpha: 0.5),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -455,11 +454,11 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                 boxShadow: [
                                   BoxShadow(
                                     color: onLeave
-                                        ? Colors.green.withOpacity(0.1)
+                                        ? Colors.green.withValues(alpha: 0.1)
                                         : _isWithinGracePeriod()
                                         ? (_isLate() ? _kWarning : _kPrimary)
-                                              .withOpacity(0.1)
-                                        : Colors.black.withOpacity(0.05),
+                                              .withValues(alpha: 0.1)
+                                        : Colors.black.withValues(alpha: 0.05),
                                     blurRadius: 30,
                                     spreadRadius: 5,
                                   ),
@@ -588,7 +587,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                     ),
                     style: TextButton.styleFrom(
                       foregroundColor: _kPrimary,
-                      backgroundColor: _kPrimary.withOpacity(0.05),
+                      backgroundColor: _kPrimary.withValues(alpha: 0.05),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 12,
@@ -665,7 +664,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: _kBg.withOpacity(0.3),
+                          color: _kBg.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -727,7 +726,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: _kPrimary.withOpacity(0.2),
+            color: _kPrimary.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -802,6 +801,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         if (!hasFace) {
           // First time: register face
           if (mounted) setState(() => _isMarking = false);
+          if (!mounted) return;
           faceResult = await Navigator.of(context).push<FaceCaptureResult>(
             MaterialPageRoute(
               builder: (_) => FaceCaptureScreen(
@@ -813,6 +813,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         } else {
           // Verify identity
           if (mounted) setState(() => _isMarking = false);
+          if (!mounted) return;
           faceResult = await Navigator.of(context).push<FaceCaptureResult>(
             MaterialPageRoute(
               builder: (_) => FaceCaptureScreen(
@@ -849,7 +850,9 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         }
 
         Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
         );
         bool inside = _isPointInGeofence(position.latitude, position.longitude);
         if (!inside) {
@@ -990,7 +993,7 @@ class _LeaveTab extends StatelessWidget {
                               Icon(
                                 Icons.event_note_rounded,
                                 size: 14,
-                                color: _kPrimary.withOpacity(0.5),
+                                color: _kPrimary.withValues(alpha: 0.5),
                               ),
                               const SizedBox(width: 8),
                               Flexible(
@@ -1025,9 +1028,11 @@ class _LeaveTab extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.08),
+                        color: statusColor.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: statusColor.withOpacity(0.2)),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Text(
                         l.status.toUpperCase(),
@@ -1186,7 +1191,7 @@ class _LeaveTab extends StatelessWidget {
                             decoration: InputDecoration(
                               labelText: 'Relation',
                               filled: true,
-                              fillColor: _kBg.withOpacity(0.5),
+                              fillColor: _kBg.withValues(alpha: 0.5),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
                                 borderSide: BorderSide.none,
@@ -1275,6 +1280,7 @@ class _LeaveTab extends StatelessWidget {
                           );
                         }
                       } catch (e) {
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Verification failed: Check fields'),
@@ -1383,7 +1389,7 @@ class _LeaveTab extends StatelessWidget {
           counterText: "",
           prefixIcon: icon != null ? Icon(icon, size: 20) : null,
           filled: true,
-          fillColor: _kBg.withOpacity(0.5),
+          fillColor: _kBg.withValues(alpha: 0.5),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -1453,7 +1459,7 @@ class _ComplaintsTab extends StatelessWidget {
                               Icon(
                                 Icons.assignment_late_outlined,
                                 size: 14,
-                                color: _kPrimary.withOpacity(0.5),
+                                color: _kPrimary.withValues(alpha: 0.5),
                               ),
                               const SizedBox(width: 8),
                               Flexible(
@@ -1485,7 +1491,7 @@ class _ComplaintsTab extends StatelessWidget {
                         onPressed: () => _confirmResolution(context, c, fs),
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
-                          backgroundColor: _kPrimary.withOpacity(0.05),
+                          backgroundColor: _kPrimary.withValues(alpha: 0.05),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -1505,10 +1511,10 @@ class _ComplaintsTab extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.08),
+                          color: statusColor.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: statusColor.withOpacity(0.2),
+                            color: statusColor.withValues(alpha: 0.2),
                           ),
                         ),
                         child: Text(
@@ -1607,7 +1613,7 @@ class _ComplaintsTab extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: 'Title',
                       filled: true,
-                      fillColor: _kBg.withOpacity(0.5),
+                      fillColor: _kBg.withValues(alpha: 0.5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -1622,7 +1628,7 @@ class _ComplaintsTab extends StatelessWidget {
                       labelText: 'Detailed Description',
                       alignLabelWithHint: true,
                       filled: true,
-                      fillColor: _kBg.withOpacity(0.5),
+                      fillColor: _kBg.withValues(alpha: 0.5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -1635,7 +1641,7 @@ class _ComplaintsTab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
-                      color: _kPrimary.withOpacity(0.5),
+                      color: _kPrimary.withValues(alpha: 0.5),
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -1670,7 +1676,7 @@ class _ComplaintsTab extends StatelessWidget {
                         },
                         selectedColor: _kPrimary,
                         checkmarkColor: Colors.white,
-                        backgroundColor: _kBg.withOpacity(0.5),
+                        backgroundColor: _kBg.withValues(alpha: 0.5),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                           side: BorderSide(
@@ -1786,7 +1792,7 @@ class _Card extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.06)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
       ),
       child: child,
     );
@@ -1812,7 +1818,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 80, color: _kPrimary.withOpacity(0.1)),
+            Icon(icon, size: 80, color: _kPrimary.withValues(alpha: 0.1)),
             const SizedBox(height: 24),
             Text(
               title,
