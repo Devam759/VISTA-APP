@@ -24,15 +24,23 @@ jobs:
           
       - name: Generate iOS Config
         run: |
+          # Create dummy GoogleService-Info.plist if missing
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
             echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
           fi
+          
+          # Create dummy .env if missing (it's ignored by git but required by pubspec.yaml)
+          if [ ! -f ".env" ]; then
+            echo "FIREBASE_API_KEY_ANDROID=dummy" > .env
+            echo "FIREBASE_API_KEY_IOS=dummy" >> .env
+            echo "FIREBASE_API_KEY_WEB=dummy" >> .env
+          fi
+          
           flutter build ios --config-only --no-codesign
           
       - name: Build iOS
         run: |
           # Use --debug with --simulator because Release mode isn't supported for simulators.
-          # This allows us to get the Runner.app without needing an Apple Developer Account.
           flutter build ios --debug --simulator
           
       - name: Create IPA
