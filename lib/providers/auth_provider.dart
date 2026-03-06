@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/vista_user.dart';
 import '../services/firebase_service.dart';
+import '../services/notification_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -34,6 +35,13 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     _userProfile = await _firebaseService.getUserProfile(uid);
+    if (_userProfile != null && _userProfile!.role == UserRole.student) {
+      try {
+        await NotificationService().init(uid);
+      } catch (e) {
+        debugPrint('Error initializing notifications: $e');
+      }
+    }
     _isLoading = false;
     notifyListeners();
   }

@@ -45,6 +45,10 @@ class FirebaseService {
     return _db.collection('users').doc(user.uid).set(user.toMap());
   }
 
+  Future<void> updateFcmToken(String uid, String token) {
+    return _db.collection('users').doc(uid).update({'fcmToken': token});
+  }
+
   Future<VistaUser?> getUserProfile(String uid) async {
     // 1. Try by UID (document ID = uid) — the standard case
     final doc = await _db.collection('users').doc(uid).get();
