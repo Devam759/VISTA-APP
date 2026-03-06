@@ -24,17 +24,13 @@ jobs:
           
       - name: Build iOS
         run: |
-          # Create a dummy GoogleService-Info.plist ONLY if the user hasn't provided one
-          # Since you pushed one, this will usually be skipped
+          # Create dummy GoogleService-Info.plist if missing
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
             echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
           fi
           
-          # Clean build to ensure fresh config files are generated for the Mac environment
-          flutter clean
-          flutter pub get
-          
-          # Use standard build command
+          # The pod install will now use the environment FLUTTER_ROOT from the Podfile
+          # if Generated.xcconfig isn't ready.
           flutter build ios --release --no-codesign
           
       - name: Create IPA
