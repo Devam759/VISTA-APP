@@ -17,19 +17,12 @@ jobs:
           flutter-version: '3.38.3'
           channel: 'stable'
           
-      - name: Clean Environment
-        run: |
-          # Deleting existing config files to prevent local Windows paths from interfering
-          rm -f ios/Flutter/Generated.xcconfig
-          rm -f ios/Flutter/flutter_export_environment.sh
-          flutter clean
-          
       - name: Install dependencies
         run: |
           flutter pub get
           flutter precache --ios
           
-      - name: Prepare Assets
+      - name: Prepare build environment
         run: |
           # Create dummy files required by pubspec.yaml
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
@@ -43,7 +36,7 @@ jobs:
 
       - name: Build iOS
         run: |
-          # The tool will automatically run pod install and generate correct configs
+          # Build specifically for the simulator in debug mode to bypass code signing
           flutter build ios --debug --simulator --no-codesign
           
       - name: Create IPA

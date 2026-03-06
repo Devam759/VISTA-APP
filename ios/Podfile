@@ -12,10 +12,10 @@ project 'Runner', {
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
   
-  # Try environment variable first (best for CI)
+  # 1. Try environment variable first (Best for CI)
   return ENV['FLUTTER_ROOT'] if ENV['FLUTTER_ROOT']
 
-  # Fallback to Generated.xcconfig
+  # 2. Try Generated.xcconfig
   if File.exist?(generated_xcode_build_settings_path)
     File.foreach(generated_xcode_build_settings_path) do |line|
       matches = line.match(/\AFLUTTER_ROOT=(.*)\z/)
@@ -23,14 +23,15 @@ def flutter_root
     end
   end
   
-  # Final fallback
-  '/Users/runner/hostedtoolcache/flutter/stable/macos-latest/packages/flutter_tools' # This is just a guess, better to fail
+  # Fail if not found
+  raise "FLUTTER_ROOT not found. Ensure Flutter is installed and FLUTTER_ROOT is set."
 end
 
 f_root = flutter_root
 
-# The standard Flutter build uses xcode_backend.rb to setup the build environment
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'xcode_backend.rb'), f_root)
+# CRITICAL: Use podhelper.rb for the Podfile, NOT xcode_backend.rb
+podhelper_path = File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'), f_root)
+require podhelper_path
 
 target 'Runner' do
   use_frameworks!
@@ -43,7 +44,7 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
-      # Force iOS 15.0 for all plugins (required by cloud_firestore)
+      # Force iOS 15.0 for all plugins to satisfy cloud_firestore
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end
   end
