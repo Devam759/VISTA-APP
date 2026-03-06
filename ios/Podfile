@@ -1,6 +1,7 @@
 # Podfile for VISTA-APP
 platform :ios, '15.0'
 
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = '1'
 
 project 'Runner', {
@@ -17,23 +18,28 @@ def flutter_root
       return matches[1] if matches
     end
   end
+  # Fallback to environment variable for CI
   ENV['FLUTTER_ROOT']
 end
 
 f_root = flutter_root
+# More robust path joining for Ruby
+xcode_backend_path = File.join(f_root, 'packages', 'flutter_tools', 'bin', 'xcode_backend.rb')
 
-if f_root
-  require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'xcode_backend.rb'), f_root)
+if f_root && File.exist?(xcode_backend_path)
+  require xcode_backend_path
+else
+  # If we are on CI and the file isn't found, we can't do much here, 
+  # but let's at least not crash the script so the flutter tool can try to fix it.
+  puts "Warning: Flutter xcode_backend.rb not found at #{xcode_backend_path}"
 end
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  if f_root
-    flutter_install_all_ios_pods File.expand_path(File.join('..', '..'), __FILE__)
-  end
-  
+  flutter_install_all_ios_pods File.expand_path(File.join('..', '..'), __FILE__)
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -41,9 +47,7 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    if f_root
-      flutter_additional_ios_build_settings(target)
-    end
+    flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end

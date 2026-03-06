@@ -20,20 +20,22 @@ jobs:
       - name: Install dependencies
         run: |
           flutter pub get
-          # Explicitly trigger flutter build ios --config to generate xcconfig files
-          # but don't run the full build yet
-          # This ensures Generated.xcconfig exists with the correct FLUTTER_ROOT
+          # This command ensures all iOS-specific artifacts are downloaded
+          flutter precache --ios
           
       - name: Build iOS
         run: |
-          # Create a dummy GoogleService-Info.plist if missing to allow build to complete
+          # Create a dummy GoogleService-Info.plist if missing
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
             echo "Creating dummy GoogleService-Info.plist"
             echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
           fi
           
-          # We use --pub to ensure it doesn't try to run pub get internally which might reset files
-          # The main goal is to get Runner.app
+          # Use --config-only to generate the missing Generated.xcconfig files
+          # without actually running pod install yet
+          flutter build ios --config-only --no-codesign
+          
+          # Now run the full build
           flutter build ios --release --no-codesign
           
       - name: Create IPA
