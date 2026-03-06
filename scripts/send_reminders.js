@@ -1,4 +1,6 @@
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
+const { getMessaging } = require('firebase-admin/messaging');
 const path = require('path');
 
 // Initialize Firebase Admin SDK
@@ -21,8 +23,8 @@ admin.initializeApp({
 });
 
 // Use 'default' database ID to match the app's configuration
-const db = admin.firestore('default');
-const messaging = admin.messaging();
+const db = getFirestore('default');
+const messaging = getMessaging();
 
 /**
  * Helper to get the current date in YYYY-MM-DD format based on a specific timezone
