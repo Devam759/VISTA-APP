@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14 # Use macOS 14 for latest Xcode tools
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       
@@ -27,18 +27,19 @@ jobs:
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
             echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
           fi
-          # This step explicitly populates the ios/ project before Cocoapods runs
           flutter build ios --config-only --no-codesign
           
       - name: Build iOS
         run: |
-          # Use standard build command
-          flutter build ios --release --no-codesign
+          # The --simulator flag allows the build to finish without needing a paid 
+          # Apple Developer Team ID or code signing certificates.
+          flutter build ios --release --simulator
           
       - name: Create IPA
         run: |
+          # On simulator builds, the output is in the 'iphonesimulator' folder
           mkdir -p Payload
-          mv build/ios/iphoneos/Runner.app Payload/
+          mv build/ios/iphonesimulator/Runner.app Payload/
           zip -r VISTA-APP.ipa Payload
           
       - name: Upload Artifact
