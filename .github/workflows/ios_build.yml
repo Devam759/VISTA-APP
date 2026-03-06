@@ -24,7 +24,6 @@ jobs:
           
       - name: Prepare build environment
         run: |
-          # Create dummy files required by pubspec.yaml
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
             echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
           fi
@@ -34,23 +33,24 @@ jobs:
             echo "FIREBASE_API_KEY_WEB=dummy" >> .env
           fi
           
-          # Generate Generated.xcconfig and ios/Flutter folder content for the Mac environment
           flutter build ios --config-only --no-codesign
 
+      - name: Setup CocoaPods
+        run: |
+          gem install cocoapods --no-document
+          
       - name: Install iOS Pods
         run: |
           cd ios
-          pod install
+          pod install --repo-update
 
       - name: Build iOS
         run: |
           # Build specifically for the simulator in debug mode to bypass code signing
-          # Release mode is not supported for simulators
           flutter build ios --debug --simulator --no-codesign --no-pub
           
       - name: Create IPA
         run: |
-          # Standard structure for IPA creation from simulator build
           mkdir -p Payload
           mv build/ios/iphonesimulator/Runner.app Payload/
           zip -r VISTA-APP.ipa Payload
