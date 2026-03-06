@@ -159,7 +159,9 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
 
   Uint8List _concatenatePlanes(List<Plane> planes) {
     final buf = WriteBuffer();
-    for (final p in planes) buf.putUint8List(p.bytes);
+    for (final p in planes) {
+      buf.putUint8List(p.bytes);
+    }
     return buf.done().buffer.asUint8List();
   }
 

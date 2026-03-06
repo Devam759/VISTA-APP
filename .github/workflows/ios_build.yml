@@ -1,0 +1,44 @@
+name: iOS Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.1'
+          channel: 'stable'
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Build iOS
+        run: |
+          # Create a dummy GoogleService-Info.plist if missing to allow build to complete
+          # Note: The app won't connect to Firebase unless the real file is provided by the user
+          if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
+            echo "Creating dummy GoogleService-Info.plist"
+            echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
+          fi
+          
+          flutter build ios --release --no-codesign
+          
+      - name: Create IPA
+        run: |
+          mkdir -p Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -r VISTA-APP.ipa Payload
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: VISTA-iOS-Install-File
+          path: VISTA-APP.ipa

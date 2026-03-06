@@ -731,9 +731,9 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         return;
       }
 
-      const bool _bypassGeofence = false;
+      const bool bypassGeofence = false;
 
-      if (!kIsWeb && !_bypassGeofence) {
+      if (!kIsWeb && !bypassGeofence) {
         bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!serviceEnabled) {
           _showError('Location services are disabled. Please enable them.');
