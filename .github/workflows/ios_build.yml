@@ -31,13 +31,12 @@ jobs:
           
       - name: Build iOS
         run: |
-          # The --simulator flag allows the build to finish without needing a paid 
-          # Apple Developer Team ID or code signing certificates.
-          flutter build ios --release --simulator
+          # Use --debug with --simulator because Release mode isn't supported for simulators.
+          # This allows us to get the Runner.app without needing an Apple Developer Account.
+          flutter build ios --debug --simulator
           
       - name: Create IPA
         run: |
-          # On simulator builds, the output is in the 'iphonesimulator' folder
           mkdir -p Payload
           mv build/ios/iphonesimulator/Runner.app Payload/
           zip -r VISTA-APP.ipa Payload
