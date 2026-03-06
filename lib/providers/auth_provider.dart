@@ -35,7 +35,7 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     _userProfile = await _firebaseService.getUserProfile(uid);
-    if (_userProfile != null && _userProfile!.role == UserRole.student) {
+    if (_userProfile != null) {
       try {
         await NotificationService().init(uid);
       } catch (e) {

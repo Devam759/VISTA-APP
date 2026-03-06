@@ -32,7 +32,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    debugPrint("Firebase initialized successfully on Web!");
+    debugPrint("Firebase initialized successfully!");
   } catch (e) {
     debugPrint("Firebase initialization failed: \$e");
   }
