@@ -1,15 +1,10 @@
+const functions = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
-const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { setGlobalOptions } = require('firebase-functions/v2');
 
 initializeApp();
 
-// Set global options, specifically region
-setGlobalOptions({ region: 'us-central1' });
-
-// Initialize Firestore for 'default' database ID as specified in your Flutter service
 const db = getFirestore('default');
 const messaging = getMessaging();
 
@@ -32,7 +27,6 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
     console.log(`Starting reminder run for date: ${dateStr}, isMissed: ${isMissedReminder}`);
 
     try {
-        // 1. Get all approved students
         const studentsSnapshot = await db.collection('users')
             .where('role', '==', 'student')
             .where('isApproved', '==', true)
@@ -43,7 +37,6 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             return;
         }
 
-        // 2. Get students currently on leave
         const today = new Date();
         const leavesSnapshot = await db.collection('leave_requests')
             .where('status', '==', 'Approved')
@@ -55,10 +48,8 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             try {
                 const outDate = data.outDate.toDate ? data.outDate.toDate() : new Date(data.outDate);
                 const inDate = data.inDate.toDate ? data.inDate.toDate() : new Date(data.inDate);
-
                 outDate.setHours(0, 0, 0, 0);
                 inDate.setHours(23, 59, 59, 999);
-
                 if (today >= outDate && today <= inDate) {
                     onLeaveStudentIds.add(data.studentId);
                 }
@@ -67,7 +58,6 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             }
         });
 
-        // 3. If it's the missed reminder, check who already marked attendance
         const markedStudentIds = new Set();
         if (isMissedReminder) {
             const attendanceSnapshot = await db.collection('attendance')
@@ -78,13 +68,11 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             });
         }
 
-        // 4. Filter students and collect tokens
         const tokens = [];
         studentsSnapshot.forEach(doc => {
             const data = doc.data();
             const uid = data.uid || doc.id;
             const fcmToken = data.fcmToken;
-
             const isOnLeave = onLeaveStudentIds.has(uid);
             const isMarked = isMissedReminder && markedStudentIds.has(uid);
 
@@ -98,7 +86,6 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             return;
         }
 
-        // 5. Send multicast message
         const message = {
             notification: {
                 title: isMissedReminder ? 'Attendance Reminder!' : 'Time for Night Attendance!',
@@ -110,24 +97,156 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
         };
 
         const response = await messaging.sendEachForMulticast(message);
-        console.log(`${response.successCount} messages sent. ${response.failureCount} failed.`);
+        console.log(`${response.successCount} messages sent.`);
     } catch (error) {
         console.error('Error in sendNotificationToEligibleStudents:', error);
     }
 }
 
 /**
- * Scheduled function for 10:00 PM IST daily
- * 10:00 PM IST is 16:30 UTC
+ * Scheduled function for 10:00 PM IST daily (16:30 UTC)
  */
-exports.nightAttendanceReminder = onSchedule('30 16 * * *', async (event) => {
+exports.nightAttendanceReminder = functions.region('asia-south1').pubsub.schedule('30 16 * * *').onRun(async (context) => {
     await sendNotificationToEligibleStudents(false);
 });
 
 /**
- * Scheduled function for 10:20 PM IST daily
- * 10:20 PM IST is 16:50 UTC
+ * Scheduled function for 10:20 PM IST daily (16:50 UTC)
  */
-exports.nightAttendanceMissedReminder = onSchedule('50 16 * * *', async (event) => {
+exports.nightAttendanceMissedReminder = functions.region('asia-south1').pubsub.schedule('50 16 * * *').onRun(async (context) => {
     await sendNotificationToEligibleStudents(true);
+});
+
+/**
+ * Real-time Triggers
+ */
+
+exports.notifyWardenNewRegistration = functions.region('asia-south1').firestore.document('users/{uid}').onCreate(async (snapshot, context) => {
+    const newUser = snapshot.data();
+    if (newUser.role !== 'student' || newUser.isApproved === true) return;
+
+    try {
+        const wardens = await db.collection('users')
+            .where('role', '==', 'Warden')
+            .where('hostel', '==', newUser.hostel)
+            .get();
+
+        const tokens = [];
+        wardens.forEach(doc => {
+            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+        });
+
+        if (tokens.length > 0) {
+            await messaging.sendEachForMulticast({
+                notification: {
+                    title: 'New Student Registration',
+                    body: `${newUser.name} has registered for ${newUser.hostel}. Approval pending.`,
+                },
+                tokens: tokens,
+            });
+        }
+    } catch (error) {
+        console.error('Error in notifyWardenNewRegistration:', error);
+    }
+});
+
+exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.document('leave_requests/{id}').onCreate(async (snapshot, context) => {
+    const leave = snapshot.data();
+    try {
+        const wardens = await db.collection('users')
+            .where('role', '==', 'Warden')
+            .where('hostel', '==', leave.hostel)
+            .get();
+
+        const tokens = [];
+        wardens.forEach(doc => {
+            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+        });
+
+        if (tokens.length > 0) {
+            await messaging.sendEachForMulticast({
+                notification: {
+                    title: 'New Leave Request',
+                    body: `${leave.studentName} has requested leave from ${leave.outDate}.`,
+                },
+                tokens: tokens,
+            });
+        }
+    } catch (error) {
+        console.error('Error in notifyWardenNewLeave:', error);
+    }
+});
+
+exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.document('complaints/{id}').onCreate(async (snapshot, context) => {
+    const complaint = snapshot.data();
+    try {
+        const wardens = await db.collection('users')
+            .where('role', '==', 'Warden')
+            .where('hostel', '==', complaint.hostel)
+            .get();
+
+        const tokens = [];
+        wardens.forEach(doc => {
+            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+        });
+
+        if (complaint.targetRoles && complaint.targetRoles.includes('Head Warden')) {
+            const headWardens = await db.collection('users').where('role', '==', 'Head Warden').get();
+            headWardens.forEach(doc => {
+                if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+            });
+        }
+
+        if (tokens.length > 0) {
+            await messaging.sendEachForMulticast({
+                notification: {
+                    title: 'New Complaint Received',
+                    body: `A new complaint has been filed for ${complaint.hostel}: ${complaint.subject}`,
+                },
+                tokens: [...new Set(tokens)],
+            });
+        }
+    } catch (error) {
+        console.error('Error in notifyWardenNewComplaint:', error);
+    }
+});
+
+exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.document('{col}/{id}').onUpdate(async (change, context) => {
+    const col = context.params.col;
+    if (!['users', 'leave_requests', 'complaints'].includes(col)) return;
+
+    const oldData = change.before.data();
+    const newData = change.after.data();
+
+    let title = '';
+    let body = '';
+    let studentUid = '';
+
+    if (col === 'users') {
+        if (oldData.isApproved === false && newData.isApproved === true) {
+            title = 'Registration Approved!';
+            body = `Your registration for ${newData.hostel} has been approved. Room: ${newData.roomNumber}`;
+            studentUid = newData.uid;
+        }
+    } else if (col === 'leave_requests') {
+        if (oldData.status !== newData.status) {
+            title = 'Leave Request Update';
+            body = `Your leave request has been ${newData.status.toLowerCase()}.`;
+            studentUid = newData.studentId;
+        }
+    } else if (col === 'complaints') {
+        if (oldData.status !== newData.status || oldData.isEscalated !== newData.isEscalated) {
+            title = 'Complaint Update';
+            body = newData.isEscalated ? 'Your complaint has been escalated.' : `Status now: ${newData.status}`;
+            studentUid = newData.studentId;
+        }
+    }
+
+    if (title && studentUid) {
+        const studentDoc = await db.collection('users').doc(studentUid).get();
+        const token = studentDoc.data()?.fcmToken;
+        if (token) {
+            await messaging.send({ notification: { title, body }, token: token });
+        }
+    }
 });

@@ -13,6 +13,8 @@ class Complaint {
   final bool? studentConfirmed; // Yes (Resolved), No (Escalated)
   final bool isEscalated;
   final DateTime createdAt;
+  final bool isNotified;
+  final String lastStatusNotified;
 
   Complaint({
     required this.id,
@@ -27,6 +29,8 @@ class Complaint {
     this.studentConfirmed,
     this.isEscalated = false,
     required this.createdAt,
+    this.isNotified = false,
+    this.lastStatusNotified = 'Pending',
   });
 
   Map<String, dynamic> toMap() {
@@ -41,6 +45,8 @@ class Complaint {
       'isAnonymous': isAnonymous,
       'studentConfirmed': studentConfirmed,
       'isEscalated': isEscalated,
+      'isNotified': isNotified,
+      'lastStatusNotified': lastStatusNotified,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -61,6 +67,9 @@ class Complaint {
       studentConfirmed: map['studentConfirmed'],
       isEscalated: map['isEscalated'] ?? false,
       createdAt: (map['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
+      isNotified: map['isNotified'] ?? true,
+      lastStatusNotified:
+          map['lastStatusNotified'] ?? (map['status'] ?? 'Pending'),
     );
   }
 }

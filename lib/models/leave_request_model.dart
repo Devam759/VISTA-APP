@@ -15,6 +15,8 @@ class LeaveRequest {
   final String studentContact;
   final String status; // Pending, Approved, Rejected
   final DateTime createdAt;
+  final bool isNotified;
+  final String lastStatusNotified;
 
   LeaveRequest({
     required this.id,
@@ -31,6 +33,8 @@ class LeaveRequest {
     required this.studentContact,
     required this.status,
     required this.createdAt,
+    this.isNotified = false,
+    this.lastStatusNotified = 'Pending',
   });
 
   Map<String, dynamic> toMap() {
@@ -47,6 +51,8 @@ class LeaveRequest {
       'parentContact': parentContact,
       'studentContact': studentContact,
       'status': status,
+      'isNotified': isNotified,
+      'lastStatusNotified': lastStatusNotified,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -67,6 +73,9 @@ class LeaveRequest {
       studentContact: map['studentContact'] ?? '',
       status: map['status'] ?? 'Pending',
       createdAt: (map['createdAt'] as Timestamp? ?? Timestamp.now()).toDate(),
+      isNotified: map['isNotified'] ?? true, // Default true for existing docs
+      lastStatusNotified:
+          map['lastStatusNotified'] ?? (map['status'] ?? 'Pending'),
     );
   }
 }

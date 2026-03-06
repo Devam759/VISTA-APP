@@ -12,6 +12,8 @@ class VistaUser {
   final bool isApproved;
   final String? phoneNumber;
   final String? fcmToken;
+  final bool registrationNotified;
+  final bool approvalNotified;
 
   VistaUser({
     required this.uid,
@@ -23,6 +25,8 @@ class VistaUser {
     this.isApproved = false,
     this.phoneNumber,
     this.fcmToken,
+    this.registrationNotified = false,
+    this.approvalNotified = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -36,6 +40,8 @@ class VistaUser {
       'isApproved': isApproved,
       'phoneNumber': phoneNumber,
       'fcmToken': fcmToken,
+      'registrationNotified': registrationNotified,
+      'approvalNotified': approvalNotified,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -54,6 +60,8 @@ class VistaUser {
       isApproved: map['isApproved'] ?? false,
       phoneNumber: map['phoneNumber'],
       fcmToken: map['fcmToken'],
+      registrationNotified: map['registrationNotified'] ?? true,
+      approvalNotified: map['approvalNotified'] ?? true,
     );
   }
 }

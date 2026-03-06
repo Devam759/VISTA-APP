@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -35,11 +36,79 @@ class _StudentDashboardState extends State<StudentDashboard> {
   int _selectedIndex = 0;
   bool _checkingPermissions = true;
   bool _permissionsGranted = false;
+  final List<StreamSubscription> _subscriptions = [];
 
   @override
   void initState() {
     super.initState();
     _checkPermissions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupStudentListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    for (var sub in _subscriptions) {
+      sub.cancel();
+    }
+    super.dispose();
+  }
+
+  void _setupStudentListeners() {
+    final user = Provider.of<AuthProvider>(context, listen: false).userProfile;
+    if (user == null) return;
+
+    // 1. Listen for Account Approval (if not already approved)
+    if (!user.isApproved) {
+      _subscriptions.add(
+        _firebaseService.db.collection('users').doc(user.uid).snapshots().listen((
+          snap,
+        ) {
+          if (snap.exists && (snap.data()?['isApproved'] ?? false)) {
+            _showInAppAlert(
+              'Account Approved!',
+              'Your registration for ${snap.data()?['hostel']} is now active.',
+            );
+          }
+        }),
+      );
+    }
+
+    // 2. Listen for Leave Updates
+    _subscriptions.add(
+      _firebaseService.getStudentLeaves(user.uid).listen((list) {
+        // We only care about things that changed status recently (local logic or comparing with cached)
+        // For simplicity in-app, we can show an alert if any 'Approved' or 'Rejected' exists that wasn't there before
+      }),
+    );
+
+    // 3. Listen for Complaint Updates
+    _subscriptions.add(
+      _firebaseService.getStudentComplaints(user.uid).listen((list) {
+        // Similar logic for complaints
+      }),
+    );
+  }
+
+  void _showInAppAlert(String title, String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(message, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: _kPrimary,
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   Future<void> _checkPermissions() async {

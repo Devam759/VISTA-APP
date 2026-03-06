@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -27,6 +28,94 @@ class WardenDashboard extends StatefulWidget {
 class _WardenDashboardState extends State<WardenDashboard> {
   final FirebaseService _fs = FirebaseService();
   int _selectedIndex = 0;
+  final List<StreamSubscription> _subscriptions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupWardenListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    for (var sub in _subscriptions) {
+      sub.cancel();
+    }
+    super.dispose();
+  }
+
+  void _setupWardenListeners() {
+    final warden = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    ).userProfile;
+    if (warden == null) return;
+
+    // 1. Listen for New Registrations
+    _subscriptions.add(
+      _fs.getPendingRegistrations(warden.hostel).listen((list) {
+        if (list.isNotEmpty) {
+          _showInAppAlert('New Registration Request', '${list.length} pending');
+        }
+      }),
+    );
+
+    // 2. Listen for New Leaves
+    _subscriptions.add(
+      _fs.getPendingLeaves(warden.hostel).listen((list) {
+        if (list.isNotEmpty) {
+          _showInAppAlert(
+            'New Leave Request',
+            '${list.first.studentName} is requesting leave',
+          );
+        }
+      }),
+    );
+
+    // 3. Listen for New Complaints
+    _subscriptions.add(
+      _fs
+          .getComplaintsForRole(
+            warden.role.toString().split('.').last,
+            warden.hostel,
+          )
+          .listen((list) {
+            final pending = list.where((c) => c.status == 'Pending').toList();
+            if (pending.isNotEmpty) {
+              _showInAppAlert('New Complaint Received', pending.first.title);
+            }
+          }),
+    );
+  }
+
+  void _showInAppAlert(String title, String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(message, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: _kPrimary,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'View',
+          textColor: Colors.white,
+          onPressed: () {
+            // Logic to switch tab if needed
+          },
+        ),
+      ),
+    );
+  }
 
   String get _greeting {
     final h = DateTime.now().hour;
