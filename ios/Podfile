@@ -1,4 +1,4 @@
-# CI-Resilient Standard Podfile for VISTA-APP
+# Standard Flutter Podfile for VISTA-APP
 platform :ios, '15.0'
 
 ENV['COCOAPODS_DISABLE_STATS'] = '1'
@@ -12,50 +12,38 @@ project 'Runner', {
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
   
-  # 1. Try environment variable first (GitHub Actions sets this)
+  # Try environment variable first (best for CI)
   return ENV['FLUTTER_ROOT'] if ENV['FLUTTER_ROOT']
 
-  # 2. Fallback to reading the config file (Local development)
+  # Fallback to Generated.xcconfig
   if File.exist?(generated_xcode_build_settings_path)
     File.foreach(generated_xcode_build_settings_path) do |line|
       matches = line.match(/\AFLUTTER_ROOT=(.*)\z/)
       return matches[1].strip if matches
     end
   end
-  nil
+  
+  # Final fallback
+  '/Users/runner/hostedtoolcache/flutter/stable/macos-latest/packages/flutter_tools' # This is just a guess, better to fail
 end
 
 f_root = flutter_root
 
-if f_root
-  # Load the podhelper script from the Flutter SDK
-  podhelper_path = File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'), f_root)
-  if File.exist?(podhelper_path)
-    require podhelper_path
-  else
-    puts "Warning: podhelper.rb not found at #{podhelper_path}"
-  end
-end
+# The standard Flutter build uses xcode_backend.rb to setup the build environment
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'xcode_backend.rb'), f_root)
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  # This is the CRITICAL line that installs all Flutter plugins
-  if defined?(flutter_install_all_ios_pods)
-    flutter_install_all_ios_pods File.expand_path(File.join('..', '..'), __FILE__)
-  else
-    puts "Error: flutter_install_all_ios_pods not defined. Plugins will not be installed."
-  end
+  flutter_install_all_ios_pods File.expand_path(File.join('..', '..'), __FILE__)
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    if defined?(flutter_additional_ios_build_settings)
-      flutter_additional_ios_build_settings(target)
-    end
+    flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
-      # Force iOS 15.0 for all plugins to satisfy cloud_firestore
+      # Force iOS 15.0 for all plugins (required by cloud_firestore)
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end
   end
