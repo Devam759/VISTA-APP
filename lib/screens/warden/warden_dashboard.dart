@@ -133,96 +133,112 @@ class _WardenDashboardState extends State<WardenDashboard> {
             ),
             child: SafeArea(
               bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Row 1: logo + greeting + hostel chip + signout
-                    Row(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final hPad = constraints.maxWidth > 900
+                      ? (constraints.maxWidth - 900) / 2
+                      : 16.0;
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.asset(
-                          'assets/images/jklu_logo_darkbg_bgremove.png',
-                          height: 40,
-                        ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'VISTA',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            warden.hostel ?? 'Hostel',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                        Row(
+                          children: [
+                            Image.asset(
+                              'assets/images/jklu_logo_darkbg_bgremove.png',
+                              height: 40,
                             ),
-                          ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'VISTA',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white10,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                warden.hostel ?? 'Hostel',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () => FirebaseService().signOut(),
+                              icon: const Icon(
+                                Icons.logout_rounded,
+                                color: Colors.white60,
+                                size: 20,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: () => FirebaseService().signOut(),
-                          icon: const Icon(
-                            Icons.logout_rounded,
-                            color: Colors.white60,
-                            size: 20,
+                        const SizedBox(height: 12),
+                        Text(
+                          '$_greeting, ${warden.name}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '$_greeting, ${warden.name}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
 
           // ─────────── CONTENT ───────────
           Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              switchInCurve: Curves.easeInOutCubic,
-              switchOutCurve: Curves.easeInOutCubic,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.05, 0),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final hPad = constraints.maxWidth > 900
+                    ? (constraints.maxWidth - 900) / 2
+                    : 0.0;
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: hPad),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    switchInCurve: Curves.easeInOutCubic,
+                    switchOutCurve: Curves.easeInOutCubic,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.05, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      key: ValueKey(_selectedIndex),
+                      child: pages[_selectedIndex],
+                    ),
                   ),
                 );
               },
-              child: Container(
-                key: ValueKey(_selectedIndex),
-                child: pages[_selectedIndex],
-              ),
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
@@ -32,6 +33,8 @@ class _LoginScreenState extends State<LoginScreen> {
           : '$emailInput@jklu.edu.in';
 
       await authProvider.signIn(email, _passwordController.text.trim());
+      // Trigger the password-save prompt on Android / iOS / Web
+      TextInput.finishAutofillContext();
     } catch (e) {
       if (mounted) {
         String message = 'Login failed. Please check your credentials.';
@@ -95,34 +98,61 @@ class _LoginScreenState extends State<LoginScreen> {
                             .fadeIn(duration: 800.ms)
                             .slideY(begin: -0.2),
                         const SizedBox(height: 50),
-                        TextField(
-                          controller: _emailController,
-                          decoration: const InputDecoration(
-                            labelText: 'JKLU Email Username',
-                            prefixIcon: Icon(Icons.email_outlined),
-                            suffixText: '@jklu.edu.in',
+                        AutofillGroup(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                    controller: _emailController,
+                                    autofillHints: const [
+                                      AutofillHints.email,
+                                      AutofillHints.username,
+                                    ],
+                                    decoration: const InputDecoration(
+                                      labelText: 'JKLU Email Username',
+                                      prefixIcon: Icon(Icons.email_outlined),
+                                      suffixText: '@jklu.edu.in',
+                                    ),
+                                    keyboardType: TextInputType.emailAddress,
+                                  )
+                                  .animate()
+                                  .fadeIn(delay: 200.ms)
+                                  .slideX(begin: -0.1),
+                              const SizedBox(height: 20),
+                              TextField(
+                                    controller: _passwordController,
+                                    autofillHints: const [
+                                      AutofillHints.password,
+                                    ],
+                                    decoration: InputDecoration(
+                                      labelText: 'Password',
+                                      prefixIcon: const Icon(
+                                        Icons.lock_outline,
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_off
+                                              : Icons.visibility,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
+                                      ),
+                                    ),
+                                    obscureText: _obscurePassword,
+                                    onEditingComplete: () =>
+                                        TextInput.finishAutofillContext(
+                                          shouldSave: false,
+                                        ),
+                                  )
+                                  .animate()
+                                  .fadeIn(delay: 300.ms)
+                                  .slideX(begin: -0.1),
+                            ],
                           ),
-                          keyboardType: TextInputType.emailAddress,
-                        ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: _passwordController,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                            ),
-                          ),
-                          obscureText: _obscurePassword,
-                        ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
+                        ),
                         const SizedBox(height: 40),
                         ElevatedButton(
                           onPressed: _login,

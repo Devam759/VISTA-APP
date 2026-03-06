@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'face_capture_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/attendance_model.dart';
 import '../../models/leave_request_model.dart';
@@ -295,8 +297,8 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
   bool _isWithinGracePeriod() {
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day, 22, 0);
-    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final start = DateTime(now.year, now.month, now.day, 22, 0); // 10:00 PM
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59); // 11:59 PM
     return now.isAfter(start) && now.isBefore(end);
   }
 
@@ -392,7 +394,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                 ),
               ),
               const Text(
-                '10:00 PM - 10:30 PM',
+                '00:00 AM - 11:59 PM (Test Mode)',
                 style: TextStyle(
                   color: _kPrimary,
                   fontSize: 18,
@@ -714,7 +716,24 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
     setState(() => _isMarking = true);
     try {
-      if (!kIsWeb) {
+      // ── Duplicate attendance guard ─────────────────────────────────────────
+      final now = DateTime.now();
+      final dateKey = "${now.year}-${now.month}-${now.day}";
+      final existingSnap = await widget.fs.db
+          .collection('attendance')
+          .where('studentId', isEqualTo: widget.user.uid)
+          .where('date', isEqualTo: dateKey)
+          .limit(1)
+          .get();
+      if (existingSnap.docs.isNotEmpty) {
+        _showError('Attendance already marked for today.');
+        if (mounted) setState(() => _isMarking = false);
+        return;
+      }
+
+      const bool _bypassGeofence = false;
+
+      if (!kIsWeb && !_bypassGeofence) {
         bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!serviceEnabled) {
           _showError('Location services are disabled. Please enable them.');
@@ -743,8 +762,57 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         }
       }
 
+      // ── Face Recognition (with liveness blink check) ──────────────────────
+      if (!kIsWeb) {
+        // Check if face has been registered
+        final userDoc = await widget.fs.db
+            .collection('users')
+            .doc(widget.user.uid)
+            .get();
+        final hasFace = userDoc.data()?['faceEmbedding'] != null;
+
+        if (!hasFace) {
+          // First time: register face
+          if (mounted) setState(() => _isMarking = false);
+          final registerResult = await Navigator.of(context)
+              .push<FaceCaptureResult>(
+                MaterialPageRoute(
+                  builder: (_) => FaceCaptureScreen(
+                    userId: widget.user.uid,
+                    mode: FaceCaptureMode.registration,
+                  ),
+                ),
+              );
+          if (registerResult == null || !registerResult.success) {
+            _showError(
+              registerResult?.message ?? 'Face registration cancelled.',
+            );
+            return;
+          }
+          _showSuccess('Face registered! Marking attendance…');
+          setState(() => _isMarking = true);
+        } else {
+          // Verify identity
+          if (mounted) setState(() => _isMarking = false);
+          final verifyResult = await Navigator.of(context)
+              .push<FaceCaptureResult>(
+                MaterialPageRoute(
+                  builder: (_) => FaceCaptureScreen(
+                    userId: widget.user.uid,
+                    mode: FaceCaptureMode.verification,
+                  ),
+                ),
+              );
+          if (verifyResult == null || !verifyResult.success) {
+            _showError(verifyResult?.message ?? 'Face verification failed.');
+            return;
+          }
+          setState(() => _isMarking = true);
+        }
+      }
+
       final isLateMarker = _isLate();
-      final attendance = Attendance(
+      final attObj = Attendance(
         id: '',
         studentId: widget.user.uid,
         studentName: widget.user.name,
@@ -753,7 +821,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         timestamp: DateTime.now(),
         status: isLateMarker ? 'Late' : 'Present',
       );
-      await widget.fs.markAttendance(attendance);
+      await widget.fs.markAttendance(attObj);
       if (mounted) {
         _showSuccess('Attendance marked successfully!');
       }
@@ -851,12 +919,15 @@ class _LeaveTab extends StatelessWidget {
                                 color: _kPrimary.withOpacity(0.5),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                '${DateFormat('dd MMM').format(l.fromDate)} - ${DateFormat('dd MMM yyyy').format(l.toDate)}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                  color: Color(0xFF1E293B),
+                              Flexible(
+                                child: Text(
+                                  '${DateFormat('dd MMM').format(l.fromDate)} - ${DateFormat('dd MMM yyyy').format(l.toDate)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -1309,12 +1380,15 @@ class _ComplaintsTab extends StatelessWidget {
                                 color: _kPrimary.withOpacity(0.5),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                c.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                  color: Color(0xFF1E293B),
+                              Flexible(
+                                child: Text(
+                                  c.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],

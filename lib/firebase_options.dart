@@ -3,7 +3,6 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -47,16 +46,16 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static FirebaseOptions get android => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY_ANDROID'] ?? '',
+  static FirebaseOptions get android => const FirebaseOptions(
+    apiKey: 'AIzaSyBNgYaAgK5OA0cmbF863xexwlnDETRzkpw',
     appId: '1:453696388011:android:59ab9261a3955099e3f0ee',
     messagingSenderId: '453696388011',
     projectId: 'vista-jklu',
     storageBucket: 'vista-jklu.firebasestorage.app',
   );
 
-  static FirebaseOptions get ios => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY_IOS'] ?? '',
+  static FirebaseOptions get ios => const FirebaseOptions(
+    apiKey: 'AIzaSyA17h8iDBwSvqqptF4mGfOJ5bsosei6qfA',
     appId: '1:453696388011:ios:52e25043e20f7a71e3f0ee',
     messagingSenderId: '453696388011',
     projectId: 'vista-jklu',
@@ -64,8 +63,8 @@ class DefaultFirebaseOptions {
     iosBundleId: 'com.vista.vistaApp',
   );
 
-  static FirebaseOptions get web => FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY_WEB'] ?? '',
+  static FirebaseOptions get web => const FirebaseOptions(
+    apiKey: 'AIzaSyC89dCMuTOETtpjJbGj2ZvVA6tdvGaxzZY',
     appId: '1:453696388011:web:089e90e69035e8cee3f0ee',
     messagingSenderId: '453696388011',
     projectId: 'vista-jklu',

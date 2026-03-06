@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
@@ -51,6 +52,8 @@ class _SignupScreenState extends State<SignupScreen> {
         _selectedHostel!,
         _phoneController.text.trim(),
       );
+      // Trigger the password-save prompt on Android / iOS / Web
+      TextInput.finishAutofillContext();
       debugPrint('[Signup] Signup succeeded, showing dialog. mounted=$mounted');
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -254,54 +257,72 @@ class _SignupScreenState extends State<SignupScreen> {
                     ],
                   ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
                   const SizedBox(height: 40),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name',
-                      prefixIcon: Icon(Icons.person_outline),
+                  AutofillGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _nameController,
+                          autofillHints: const [AutofillHints.name],
+                          decoration: const InputDecoration(
+                            labelText: 'Full Name',
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
+                        ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _emailController,
+                          autofillHints: const [
+                            AutofillHints.email,
+                            AutofillHints.newUsername,
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'JKLU Email Username',
+                            prefixIcon: Icon(Icons.email_outlined),
+                            suffixText: '@jklu.edu.in',
+                            hintText: 'example',
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                        ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _phoneController,
+                          autofillHints: const [AutofillHints.telephoneNumber],
+                          decoration: const InputDecoration(
+                            labelText: 'Phone Number',
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                          keyboardType: TextInputType.phone,
+                        ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
+                        const SizedBox(height: 20),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedHostel,
+                          items: _hostels
+                              .map(
+                                (h) =>
+                                    DropdownMenuItem(value: h, child: Text(h)),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => _selectedHostel = val),
+                          decoration: const InputDecoration(
+                            labelText: 'Select Hostel',
+                            prefixIcon: Icon(Icons.hotel_outlined),
+                          ),
+                        ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _passwordController,
+                          autofillHints: const [AutofillHints.newPassword],
+                          decoration: const InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: Icon(Icons.lock_outline),
+                          ),
+                          obscureText: true,
+                        ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                      ],
                     ),
-                  ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'JKLU Email Username',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      suffixText: '@jklu.edu.in',
-                      hintText: 'example',
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(
-                      labelText: 'Phone Number',
-                      prefixIcon: Icon(Icons.phone_outlined),
-                    ),
-                    keyboardType: TextInputType.phone,
-                  ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
-                  const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedHostel,
-                    items: _hostels
-                        .map((h) => DropdownMenuItem(value: h, child: Text(h)))
-                        .toList(),
-                    onChanged: (val) => setState(() => _selectedHostel = val),
-                    decoration: const InputDecoration(
-                      labelText: 'Select Hostel',
-                      prefixIcon: Icon(Icons.hotel_outlined),
-                    ),
-                  ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    obscureText: true,
-                  ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                  ),
                   const SizedBox(height: 40),
                   ElevatedButton(
                     onPressed: _isSubmitting ? null : _signup,

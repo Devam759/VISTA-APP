@@ -16,7 +16,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  // .env is optional — it may not exist on web (gitignored).
+  // Firebase options fall back to the hardcoded values in firebase_options.dart.
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (_) {
+    debugPrint('.env not found — continuing without it.');
+  }
   // Note: Firebase.initializeApp() requires configuration files (google-services.json / GoogleService-Info.plist)
   // which are usually added manually. I will assume they are present or will be added.
   try {

@@ -14,6 +14,8 @@ class FirebaseService {
     databaseId: 'default',
   );
 
+  FirebaseFirestore get db => _db;
+
   // Auth State Stream
   Stream<User?> get userStream => _auth.authStateChanges();
 
