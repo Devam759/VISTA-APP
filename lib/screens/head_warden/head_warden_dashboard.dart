@@ -1064,10 +1064,14 @@ class _AttendanceRecord {
   final Attendance? attendance;
   final String status;
 
-  _AttendanceRecord(this.student, this.attendance)
-    : status = attendance == null
-          ? 'Absent'
-          : (attendance.timestamp.hour >= 22 ? 'Late' : 'Marked');
+  _AttendanceRecord(this.student, this.attendance, {bool onLeave = false})
+    : status = attendance != null
+          ? ((attendance.timestamp.hour == 22 &&
+                        attendance.timestamp.minute >= 30) ||
+                    attendance.timestamp.hour == 23
+                ? 'Late'
+                : 'Marked')
+          : (onLeave ? 'On Leave' : 'Absent');
 }
 
 class _AttendanceTab extends StatefulWidget {
@@ -1107,6 +1111,25 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         ),
       ),
     );
+  }
+
+  bool _isStudentOnLeave(String studentId, List<LeaveRequest> approvedLeaves) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return approvedLeaves.any((leave) {
+      if (leave.studentId != studentId) return false;
+      final from = DateTime(
+        leave.fromDate.year,
+        leave.fromDate.month,
+        leave.fromDate.day,
+      );
+      final to = DateTime(
+        leave.toDate.year,
+        leave.toDate.month,
+        leave.toDate.day,
+      );
+      return !today.isBefore(from) && !today.isAfter(to);
+    });
   }
 
   void _showDefaultersList(List<_AttendanceRecord> defaulters) {
@@ -1200,274 +1223,296 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final isLateWindow = now.hour >= 22 && now.hour < 24;
+    final isLateWindow = now.hour >= 22;
     final todayStr = '${now.year}-${now.month}-${now.day}';
 
     return StreamBuilder<List<VistaUser>>(
       stream: widget.fs.getHostelStudents(widget.warden.hostel),
       builder: (context, studentSnap) {
-        return StreamBuilder<List<Attendance>>(
-          stream: widget.fs.getHostelAttendance(widget.warden.hostel, todayStr),
-          builder: (context, attendanceSnap) {
-            if (studentSnap.connectionState == ConnectionState.waiting &&
-                attendanceSnap.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: _kPrimary,
-                  strokeWidth: 2,
-                ),
-              );
-            }
-
-            final students = studentSnap.data ?? [];
-            final attendanceLists = attendanceSnap.data ?? [];
-
-            final Map<String, Attendance> attendanceMap = {
-              for (var a in attendanceLists) a.studentId: a,
-            };
-
-            List<_AttendanceRecord> records = students.map((s) {
-              return _AttendanceRecord(s, attendanceMap[s.uid]);
-            }).toList();
-
-            final defaulters = records
-                .where((r) => r.status == 'Absent')
-                .toList();
-
-            if (_statusFilter != 'All') {
-              records = records
-                  .where((r) => r.status == _statusFilter)
-                  .toList();
-            }
-
-            if (_searchQuery.isNotEmpty) {
-              records = records
-                  .where(
-                    (r) =>
-                        r.student.name.toLowerCase().contains(
-                          _searchQuery.toLowerCase(),
-                        ) ||
-                        (r.student.roomNumber ?? '').toLowerCase().contains(
-                          _searchQuery.toLowerCase(),
-                        ) ||
-                        (r.student.hostel ?? '').toLowerCase().contains(
-                          _searchQuery.toLowerCase(),
-                        ),
-                  )
-                  .toList();
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isLateWindow && defaulters.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+        return StreamBuilder<List<LeaveRequest>>(
+          stream: widget.fs.getApprovedLeaves(widget.warden.hostel),
+          builder: (context, leaveSnap) {
+            return StreamBuilder<List<Attendance>>(
+              stream: widget.fs.getHostelAttendance(
+                widget.warden.hostel,
+                todayStr,
+              ),
+              builder: (context, attendanceSnap) {
+                if (studentSnap.connectionState == ConnectionState.waiting ||
+                    leaveSnap.connectionState == ConnectionState.waiting ||
+                    attendanceSnap.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: _kPrimary,
+                      strokeWidth: 2,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      border: Border.all(color: Colors.red.shade200),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.warning_amber,
-                          color: Colors.red.shade700,
-                          size: 20,
+                  );
+                }
+
+                final students = studentSnap.data ?? [];
+                final leaveRequests = leaveSnap.data ?? [];
+                final attendanceLists = attendanceSnap.data ?? [];
+
+                final approvedLeaves = leaveRequests
+                    .where((l) => l.status == 'Approved')
+                    .toList();
+
+                final Map<String, Attendance> attendanceMap = {
+                  for (var a in attendanceLists) a.studentId: a,
+                };
+
+                List<_AttendanceRecord> records = students.map((s) {
+                  final onLeave = _isStudentOnLeave(s.uid, approvedLeaves);
+                  return _AttendanceRecord(
+                    s,
+                    attendanceMap[s.uid],
+                    onLeave: onLeave,
+                  );
+                }).toList();
+
+                final defaulters = records
+                    .where((r) => r.status == 'Absent')
+                    .toList();
+
+                if (_statusFilter != 'All') {
+                  records = records
+                      .where((r) => r.status == _statusFilter)
+                      .toList();
+                }
+
+                if (_searchQuery.isNotEmpty) {
+                  records = records
+                      .where(
+                        (r) =>
+                            r.student.name.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ) ||
+                            (r.student.roomNumber ?? '').toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ),
+                      )
+                      .toList();
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isLateWindow && defaulters.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            '${defaulters.length} students pending attendance',
-                            style: TextStyle(
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          border: Border.all(color: Colors.red.shade200),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber,
                               color: Colors.red.shade700,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13,
+                              size: 20,
                             ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => _showDefaultersList(defaulters),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red.shade700,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'View List',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: TextField(
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                    style: const TextStyle(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Search by name, room, or hostel...',
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        size: 20,
-                        color: Colors.black45,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(color: _kPrimary),
-                      ),
-                    ),
-                  ),
-                ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      _buildFilterChip('All'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Marked'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Late'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Absent'),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Text(
-                    "DAILY LOG (${records.length})",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                      letterSpacing: 0.8,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ),
-
-                Expanded(
-                  child: records.isEmpty
-                      ? Center(
-                          child: Text(
-                            'No records found.',
-                            style: TextStyle(
-                              color: Colors.grey.shade500,
-                              fontSize: 14,
-                            ),
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          itemCount: records.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (context, i) {
-                            final r = records[i];
-                            final isAbsent = r.status == 'Absent';
-                            final isLate = r.status == 'Late';
-
-                            Color statusColor = Colors.green.shade600;
-                            if (isAbsent) {
-                              statusColor = Colors.red.shade600;
-                            } else if (isLate) {
-                              statusColor = Colors.orange.shade700;
-                            }
-
-                            return Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade200),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                '${defaulters.length} students pending attendance',
+                                style: TextStyle(
+                                  color: Colors.red.shade700,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          r.student.name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '(${r.student.hostel ?? 'N/A'}) Room ${r.student.roomNumber ?? 'N/A'}',
-                                          style: const TextStyle(
-                                            color: Colors.black54,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
+                            ),
+                            TextButton(
+                              onPressed: () => _showDefaultersList(defaulters),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red.shade700,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                'View List',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: TextField(
+                        onChanged: (val) => setState(() => _searchQuery = val),
+                        style: const TextStyle(fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Search by name, room...',
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 20,
+                            color: Colors.black45,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          isDense: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: const BorderSide(color: _kPrimary),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          _buildFilterChip('All'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('Marked'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('Late'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('On Leave'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('Absent'),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: Text(
+                        "DAILY LOG (${records.length})",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          letterSpacing: 0.8,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: records.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No records found.',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              itemCount: records.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, i) {
+                                final r = records[i];
+                                final isAbsent = r.status == 'Absent';
+                                final isLate = r.status == 'Late';
+                                final isOnLeave = r.status == 'On Leave';
+
+                                Color statusColor = Colors.green.shade600;
+                                if (isAbsent) {
+                                  statusColor = Colors.red.shade600;
+                                } else if (isLate) {
+                                  statusColor = Colors.orange.shade700;
+                                } else if (isOnLeave) {
+                                  statusColor = Colors.blue.shade600;
+                                }
+
+                                return Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
                                     ),
                                   ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        r.status.toUpperCase(),
-                                        style: TextStyle(
-                                          color: statusColor,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 0.5,
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              r.student.name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '(${r.student.hostel ?? 'N/A'}) Room ${r.student.roomNumber ?? 'N/A'}',
+                                              style: const TextStyle(
+                                                color: Colors.black54,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      if (r.attendance != null) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          DateFormat(
-                                            'HH:mm',
-                                          ).format(r.attendance!.timestamp),
-                                          style: const TextStyle(
-                                            color: Colors.black45,
-                                            fontSize: 12,
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            r.status.toUpperCase(),
+                                            style: TextStyle(
+                                              color: statusColor,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                          if (r.attendance != null) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              DateFormat(
+                                                'HH:mm',
+                                              ).format(r.attendance!.timestamp),
+                                              style: const TextStyle(
+                                                color: Colors.black45,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
             );
           },
         );

@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:image/image.dart' as img;
 import '../../services/face_recognition_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,18 +42,19 @@ class FaceCaptureScreen extends StatefulWidget {
 
 class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
   CameraController? _cam;
+  CameraDescription? _cameraDescription;
   late FaceDetector _detector;
   final FaceRecognitionService _frs = FaceRecognitionService();
 
-  // ── Liveness state ──────────────────────────────────────────────────────────
-  bool _livenessOk = false;
-  int _blinkCount = 0;
-  bool _eyesWereClosed = false;
-  static const _blinkTarget = 1; // one deliberate blink required
-
   String _statusMessage = '';
   bool _processing = false;
-  bool _frameProcessing = false;
+  bool _isProcessingFrame = false;
+
+  // Liveness (Blink)
+  int _blinkCount = 0;
+  bool _eyesWereClosed = false;
+  static const int _blinkTarget = 1;
+  bool _livenessConfirmed = false;
 
   @override
   void initState() {
@@ -66,128 +68,196 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
       options: FaceDetectorOptions(
         enableContours: true, // face oval landmarks
         enableClassification: true, // eye-open probability → blink
-        performanceMode: FaceDetectorMode.fast,
+        performanceMode:
+            FaceDetectorMode.fast, // Fast is better for real-time blink
       ),
     );
 
     // Front camera
     final cameras = await availableCameras();
-    final front = cameras.firstWhere(
+    _cameraDescription = cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => cameras.first,
     );
+    final front = _cameraDescription!;
 
-    _cam = CameraController(front, ResolutionPreset.medium, enableAudio: false);
+    _cam = CameraController(
+      front,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    ); // Medium is best for landmarks
     await _cam!.initialize();
 
     if (mounted) {
       setState(() {
-        _statusMessage = widget.mode == FaceCaptureMode.registration
-            ? 'Centre your face in the oval, then blink once to register.'
-            : 'Centre your face in the oval, then blink once to verify.';
+        _statusMessage =
+            'Align face & blink once to ${widget.mode == FaceCaptureMode.registration ? 'register' : 'verify'}.';
       });
       _cam!.startImageStream(_onFrame);
     }
   }
 
-  // ── Frame handler ────────────────────────────────────────────────────────────
-  Future<void> _onFrame(CameraImage camImg) async {
-    if (_livenessOk || _frameProcessing || _processing) return;
-    _frameProcessing = true;
+  void _onFrame(CameraImage image) async {
+    if (_isProcessingFrame || _processing || _livenessConfirmed) return;
+    _isProcessingFrame = true;
 
     try {
-      final bytes = _concatenatePlanes(camImg.planes);
-      final inputImage = InputImage.fromBytes(
-        bytes: bytes,
-        metadata: InputImageMetadata(
-          size: Size(camImg.width.toDouble(), camImg.height.toDouble()),
-          rotation: InputImageRotation.rotation270deg,
-          format: InputImageFormat.nv21,
-          bytesPerRow: camImg.planes[0].bytesPerRow,
-        ),
-      );
+      final inputImage = _getInputImage(image);
+      if (inputImage == null) return;
 
       final faces = await _detector.processImage(inputImage);
 
       if (faces.isEmpty) {
         if (mounted) {
-          setState(
-            () => _statusMessage = 'No face detected. Centre your face.',
-          );
+          setState(() => _statusMessage = 'Searching for face…');
         }
         return;
       }
 
       final face = faces.first;
-      final leftEye = face.leftEyeOpenProbability ?? 1.0;
-      final rightEye = face.rightEyeOpenProbability ?? 1.0;
-      final eyesClosed = leftEye < 0.25 && rightEye < 0.25;
 
-      // Blink = eyes were closed and are now open again
-      if (!eyesClosed && _eyesWereClosed) {
+      // Blink detection
+      final leftOpen = face.leftEyeOpenProbability ?? 1.0;
+      final rightOpen = face.rightEyeOpenProbability ?? 1.0;
+      final eyesClosed = leftOpen < 0.3 && rightOpen < 0.3;
+
+      if (eyesClosed && !_eyesWereClosed) {
+        _eyesWereClosed = true;
+      } else if (!eyesClosed && _eyesWereClosed) {
         _blinkCount++;
+        _eyesWereClosed = false;
+        debugPrint('Blink detected! Total: $_blinkCount');
       }
-      _eyesWereClosed = eyesClosed;
 
-      if (_blinkCount >= _blinkTarget) {
-        _livenessOk = true;
-        await _cam!.stopImageStream();
-        if (mounted) {
-          setState(
-            () => _statusMessage = 'Liveness confirmed! Processing face…',
-          );
-        }
-
-        // Process the last detected face immediately (landmarks already available)
+      if (_blinkCount >= _blinkTarget && !_livenessConfirmed) {
+        _livenessConfirmed = true;
+        debugPrint('Liveness confirmed. Processing face…');
+        // Hands-free trigger!
         await _processDetectedFace(face);
-        return;
-      }
-
-      if (mounted) {
-        setState(() {
-          _statusMessage = eyesClosed
-              ? 'Eyes closed… open them to complete the blink.'
-              : widget.mode == FaceCaptureMode.registration
-              ? 'Good! Now blink once to register.'
-              : 'Good! Now blink once to verify.';
-        });
-      }
-    } finally {
-      _frameProcessing = false;
-    }
-  }
-
-  Uint8List _concatenatePlanes(List<Plane> planes) {
-    final buf = WriteBuffer();
-    for (final p in planes) {
-      buf.putUint8List(p.bytes);
-    }
-    return buf.done().buffer.asUint8List();
-  }
-
-  // ── Process the confirmed face ───────────────────────────────────────────────
-  Future<void> _processDetectedFace(Face face) async {
-    if (_processing) return;
-    setState(() => _processing = true);
-
-    try {
-      final landmarks = _frs.extractLandmarks(face);
-
-      if (widget.mode == FaceCaptureMode.registration) {
-        await _registerFace(landmarks);
       } else {
-        await _verifyFace(landmarks);
+        if (mounted) {
+          setState(() {
+            _statusMessage = eyesClosed
+                ? 'Eyes Closed…'
+                : 'Blinked: $_blinkCount/$_blinkTarget. Keep steady.';
+          });
+        }
       }
     } catch (e) {
+      debugPrint('Error in _onFrame: $e');
+    } finally {
+      _isProcessingFrame = false;
+    }
+  }
+
+  InputImage? _getInputImage(CameraImage image) {
+    if (_cameraDescription == null) return null;
+
+    final sensorOrientation = _cameraDescription!.sensorOrientation;
+    final InputImageRotation rotation =
+        InputImageRotationValue.fromRawValue(sensorOrientation) ??
+        InputImageRotation.rotation90deg;
+
+    const format = InputImageFormat.nv21;
+
+    if (image.planes.isEmpty) return null;
+
+    // Use NV21 conversion logic for Android compatibility
+    return InputImage.fromBytes(
+      bytes: _convertNV21(image),
+      metadata: InputImageMetadata(
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation: rotation,
+        format: format,
+        bytesPerRow: image.width,
+      ),
+    );
+  }
+
+  Uint8List _convertNV21(CameraImage image) {
+    // For many Android devices, we need to stitch the planes into NV21
+    final yPlane = image.planes[0];
+    final uPlane = image.planes[1];
+    final vPlane = image.planes[2];
+
+    final yBytes = yPlane.bytes;
+    final uBytes = uPlane.bytes;
+    final vBytes = vPlane.bytes;
+
+    final totalLength = yBytes.length + uBytes.length + vBytes.length;
+    final nv21 = Uint8List(totalLength);
+
+    nv21.setRange(0, yBytes.length, yBytes);
+
+    // Stitching UV planes
+    int offset = yBytes.length;
+    for (int i = 0; i < vBytes.length; i++) {
+      nv21[offset++] = vBytes[i];
+      if (i < uBytes.length) nv21[offset++] = uBytes[i];
+    }
+
+    return nv21;
+  }
+
+  Future<void> _processDetectedFace(Face _) async {
+    // We ignore the face from the stream for the final embedding.
+    // Instead, we take a high-res photo for better accuracy.
+    if (_processing) return;
+    setState(() {
+      _processing = true;
+      _statusMessage = 'Capturing High-Res…';
+    });
+
+    try {
+      // 1. Take Photo
+      final XFile photo = await _cam!.takePicture();
+      final bytes = await photo.readAsBytes();
+      final img.Image? fullImage = img.decodeImage(bytes);
+      if (fullImage == null) throw 'Failed to decode photo';
+
+      // 2. Detect face in high-res photo to get precise bounding box
+      final orientedImage = img.bakeOrientation(fullImage);
+
+      final inputImage = InputImage.fromFilePath(photo.path);
+      final faces = await _detector.processImage(inputImage);
+      if (faces.isEmpty) throw 'No face detected in high-res photo. Re-blink.';
+
+      final mainFace = faces.first;
+      final box = mainFace.boundingBox;
+
+      // 3. Crop face with safety bounds
+      final croppedFace = img.copyCrop(
+        orientedImage,
+        x: max(0, box.left.toInt()),
+        y: max(0, box.top.toInt()),
+        width: min(
+          box.width.toInt(),
+          orientedImage.width - max(0, box.left.toInt()),
+        ),
+        height: min(
+          box.height.toInt(),
+          orientedImage.height - max(0, box.top.toInt()),
+        ),
+      );
+
+      // 4. Generate Embedding via MobileFaceNet
+      setState(() => _statusMessage = 'Generating Embedding…');
+      final embedding = await _frs.getEmbedding(croppedFace);
+
+      if (widget.mode == FaceCaptureMode.registration) {
+        await _registerFace(embedding);
+      } else {
+        await _verifyFace(embedding);
+      }
+    } catch (e) {
+      debugPrint('Processing error: $e');
       if (mounted) {
         setState(() {
-          _statusMessage = 'Error: ${e.toString()}. Try again.';
           _processing = false;
-          _livenessOk = false;
+          _livenessConfirmed = false;
           _blinkCount = 0;
-          _eyesWereClosed = false;
+          _statusMessage = 'Error: $e';
         });
-        _cam!.startImageStream(_onFrame);
       }
     }
   }
@@ -234,6 +304,9 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
         .toList();
 
     final match = FaceRecognitionService.isMatch(stored, candidateLandmarks);
+    final score = FaceRecognitionService.similarity(stored, candidateLandmarks);
+
+    debugPrint('Face verification score: $score (Match: $match)');
 
     if (mounted) {
       Navigator.of(context).pop(
@@ -241,7 +314,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
           success: match,
           message: match
               ? 'Identity verified!'
-              : 'Face did not match. Please try again.',
+              : 'Face did not match (Score: ${(score * 100).toStringAsFixed(1)}%).',
         ),
       );
     }
@@ -294,12 +367,12 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Row(
                 children: [
-                  _StepDot(
-                    label: '1. Face',
-                    done: _blinkCount > 0 || _processing,
-                  ),
+                  _StepDot(label: '1. Face', done: _cameraDescription != null),
                   const Expanded(child: Divider(color: Colors.white24)),
-                  _StepDot(label: '2. Blink', done: _livenessOk),
+                  _StepDot(
+                    label: '2. Blink',
+                    done: _blinkCount >= _blinkTarget,
+                  ),
                   const Expanded(child: Divider(color: Colors.white24)),
                   _StepDot(
                     label: isReg ? '3. Save' : '3. Match',
@@ -320,7 +393,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
                         alignment: Alignment.center,
                         children: [
                           CameraPreview(_cam!),
-                          _OvalOverlay(livenessOk: _livenessOk),
+                          _OvalOverlay(active: _blinkCount >= _blinkTarget),
                         ],
                       ),
                     ),
@@ -334,7 +407,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
               child: Column(
                 children: [
                   // Blink progress dots
-                  if (!_livenessOk && !_processing)
+                  if (!_processing)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(_blinkTarget, (i) {
@@ -359,9 +432,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
                       _statusMessage,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: _livenessOk
-                            ? const Color(0xFF10B981)
-                            : Colors.white70,
+                        color: Colors.white70,
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -428,21 +499,21 @@ class _StepDot extends StatelessWidget {
 // Oval overlay
 // ─────────────────────────────────────────────────────────────────────────────
 class _OvalOverlay extends StatelessWidget {
-  final bool livenessOk;
-  const _OvalOverlay({required this.livenessOk});
+  final bool active;
+  const _OvalOverlay({required this.active});
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size.infinite,
-      painter: _OvalPainter(livenessOk: livenessOk),
+      painter: _OvalPainter(active: active),
     );
   }
 }
 
 class _OvalPainter extends CustomPainter {
-  final bool livenessOk;
-  _OvalPainter({required this.livenessOk});
+  final bool active;
+  _OvalPainter({required this.active});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -463,14 +534,14 @@ class _OvalPainter extends CustomPainter {
     canvas.drawOval(
       ovalRect,
       Paint()
-        ..color = livenessOk
-            ? const Color(0xFF10B981) // green ✓
-            : const Color(0xFF2563EB) // blue waiting
+        ..color = active
+            ? const Color(0xFF10B981) // Green success
+            : const Color(0xFF2563EB) // Blue waiting
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
   }
 
   @override
-  bool shouldRepaint(_OvalPainter old) => old.livenessOk != livenessOk;
+  bool shouldRepaint(_OvalPainter old) => old.active != active;
 }

@@ -1,60 +1,87 @@
 import 'dart:math';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'dart:typed_data';
+import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:image/image.dart' as img;
 
-/// Pure-Dart face recognition using ML Kit face-contour landmarks.
-/// No TFLite / FFI required — works on Android, iOS and Web builds.
-///
-/// Strategy:
-///   • Extract the 36 face-oval contour points from a detected [Face].
-///   • Normalise them relative to the face bounding-box so they are
-///     invariant to position and scale.
-///   • Store the resulting vector (72 floats) in Firestore.
-///   • On verification compute RMSE between stored and live vectors;
-///     RMSE < 0.12 → same person.
+/// Face recognition using MobileFaceNet TFLite model.
+/// Accuracy is significantly higher than landmark-based comparison.
 class FaceRecognitionService {
-  static const double _matchThreshold = 0.70; // similarity score 0–1
+  Interpreter? _interpreter;
+  bool _isModelLoaded = false;
 
-  /// Extracts a normalised landmark vector from [face].
-  /// Throws if no face-oval contour is available.
-  List<double> extractLandmarks(Face face) {
-    final contour = face.contours[FaceContourType.face];
-    if (contour == null || contour.points.isEmpty) {
-      throw Exception(
-        'No face contour detected. Ensure the face is fully visible.',
+  FaceRecognitionService() {
+    _loadModel();
+  }
+
+  Future<void> _loadModel() async {
+    try {
+      _interpreter = await Interpreter.fromAsset(
+        'assets/models/facenet.tflite',
       );
+      _isModelLoaded = true;
+      print('MobileFaceNet model loaded successfully.');
+    } catch (e) {
+      print('Failed to load MobileFaceNet model: $e');
     }
-
-    final box = face.boundingBox;
-    final centerX = box.left + box.width / 2;
-    final centerY = box.top + box.height / 2;
-    final scale = (box.width + box.height) / 2; // mean dimension
-
-    final result = <double>[];
-    for (final p in contour.points) {
-      result.add((p.x - centerX) / scale);
-      result.add((p.y - centerY) / scale);
-    }
-    return result;
   }
 
-  /// Cosine-similarity-like score between [a] and [b] based on RMSE.
-  /// Returns 1.0 for identical vectors, 0.0 for completely different.
+  /// Generates a 192-dimensional embedding from a cropped face image.
+  Future<List<double>> getEmbedding(img.Image faceImage) async {
+    if (!_isModelLoaded) await _loadModel();
+    if (_interpreter == null) throw Exception('Model not loaded');
+
+    // 1. Fix orientation (Android photos often rotated)
+    final oriented = img.bakeOrientation(faceImage);
+
+    // 2. Resize to 112x112 (Standard for MobileFaceNet)
+    final resized = img.copyResize(oriented, width: 112, height: 112);
+
+    // 3. Pre-process: Normalise pixels to [-1, 1]
+    final input = Float32List(1 * 112 * 112 * 3);
+    var pixelIndex = 0;
+    for (final pixel in resized) {
+      input[pixelIndex++] = (pixel.r - 127.5) / 127.5;
+      input[pixelIndex++] = (pixel.g - 127.5) / 127.5;
+      input[pixelIndex++] = (pixel.b - 127.5) / 127.5;
+    }
+
+    // 4. Run Inference (Dynamic output shape to support 128, 192, 512, etc.)
+    final outputShape = _interpreter!.getOutputTensor(0).shape;
+    final outputSize = outputShape.reduce((a, b) => a * b);
+    var output = List.filled(outputSize, 0.0).reshape(outputShape);
+
+    _interpreter!.run(input.reshape([1, 112, 112, 3]), output);
+
+    // Flatten to a List<double>
+    if (outputShape.length == 2) {
+      return List<double>.from(output[0]);
+    }
+    return List<double>.from(output);
+  }
+
+  /// Computes cosine similarity between two 192-dim vectors.
+  /// 1.0 = identical, -1.0 = opposite.
   static double similarity(List<double> a, List<double> b) {
-    final len = min(a.length, b.length);
-    if (len == 0) return 0;
-    double sumSq = 0;
-    for (int i = 0; i < len; i++) {
-      final d = a[i] - b[i];
-      sumSq += d * d;
+    if (a.length != b.length) return 0;
+    double dotProduct = 0;
+    double normA = 0;
+    double normB = 0;
+    for (int i = 0; i < a.length; i++) {
+      dotProduct += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
     }
-    final rmse = sqrt(sumSq / len);
-    // Map RMSE to [0,1]: rmse=0 → score=1, rmse≥0.30 → score=0
-    return (1.0 - rmse / 0.30).clamp(0.0, 1.0);
+    if (normA == 0 || normB == 0) return 0;
+    return dotProduct / (sqrt(normA) * sqrt(normB));
   }
 
-  /// Returns true when [candidate] landmarks are similar enough to [stored]
-  /// to be considered the same person.
   static bool isMatch(List<double> stored, List<double> candidate) {
-    return similarity(stored, candidate) >= _matchThreshold;
+    final score = similarity(stored, candidate);
+    // Threshold for MobileFaceNet is typically around 0.6 to 0.7 for cosine
+    return score >= 0.65;
   }
+
+  // Legacy compatibility for code that still expects landmark extraction
+  // (We should update FaceCaptureScreen to use getEmbedding with an image)
+  List<double> extractLandmarks(dynamic _) => [];
 }

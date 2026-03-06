@@ -6,7 +6,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'face_capture_screen.dart';
+import 'face_capture_screen.dart'
+    if (dart.library.html) 'face_capture_screen_stub.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/attendance_model.dart';
 import '../../models/leave_request_model.dart';
@@ -295,18 +296,40 @@ class _AttendanceTab extends StatefulWidget {
 class _AttendanceTabState extends State<_AttendanceTab> {
   bool _isMarking = false;
 
+  bool _isValidTime() {
+    final now = DateTime.now();
+    return now.hour >= 22; // 10:00 PM onwards
+  }
+
   bool _isWithinGracePeriod() {
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day, 22, 0); // 10:00 PM
-    final end = DateTime(now.year, now.month, now.day, 23, 59, 59); // 11:59 PM
-    return now.isAfter(start) && now.isBefore(end);
+    // 10:00 PM to 10:29 PM
+    return now.hour == 22 && now.minute < 30;
   }
 
   bool _isLate() {
     final now = DateTime.now();
-    final lateStart = DateTime(now.year, now.month, now.day, 22, 30);
-    final midnight = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    return now.isAfter(lateStart) && now.isBefore(midnight);
+    // 10:30 PM to 12:00 AM
+    return (now.hour == 22 && now.minute >= 30) || (now.hour == 23);
+  }
+
+  bool _isStudentOnLeave(List<LeaveRequest> approvedLeaves) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return approvedLeaves.any((leave) {
+      if (leave.status != 'Approved') return false;
+      final from = DateTime(
+        leave.fromDate.year,
+        leave.fromDate.month,
+        leave.fromDate.day,
+      );
+      final to = DateTime(
+        leave.toDate.year,
+        leave.toDate.month,
+        leave.toDate.day,
+      );
+      return !today.isBefore(from) && !today.isAfter(to);
+    });
   }
 
   @override
@@ -365,170 +388,222 @@ class _AttendanceTabState extends State<_AttendanceTab> {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        _SectionLabel("Night Attendance"),
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: _kPrimary.withOpacity(0.05)),
-            boxShadow: [
-              BoxShadow(
-                color: _kPrimary.withOpacity(0.03),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+    return StreamBuilder<List<LeaveRequest>>(
+      stream: widget.fs.getStudentLeaves(widget.user.uid),
+      builder: (context, leaveSnap) {
+        final approvedLeaves = (leaveSnap.data ?? [])
+            .where((l) => l.status == 'Approved')
+            .toList();
+        final onLeave = _isStudentOnLeave(approvedLeaves);
+
+        return ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            _SectionLabel("Night Attendance"),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: _kPrimary.withOpacity(0.05)),
+                boxShadow: [
+                  BoxShadow(
+                    color: _kPrimary.withOpacity(0.03),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              const Text(
-                'Reporting Window',
-                style: TextStyle(
-                  color: Colors.black45,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Text(
-                '00:00 AM - 11:59 PM (Test Mode)',
-                style: TextStyle(
-                  color: _kPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 40),
-              GestureDetector(
-                onTap: _isMarking ? null : _handleMarkAttendance,
-                child:
-                    Container(
-                          width: 180,
-                          height: 180,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: _isWithinGracePeriod()
-                                    ? (_isLate() ? _kWarning : _kPrimary)
-                                          .withOpacity(0.1)
-                                    : Colors.black.withOpacity(0.05),
-                                blurRadius: 30,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Container(
-                              width: 150,
-                              height: 150,
+              child: Column(
+                children: [
+                  const Text(
+                    'Reporting Window',
+                    style: TextStyle(
+                      color: Colors.black45,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Text(
+                    '10:00 PM - 10:30 PM',
+                    style: TextStyle(
+                      color: _kPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'Late: 10:30 PM - 11:59 PM',
+                    style: TextStyle(
+                      color: _kPrimary.withOpacity(0.5),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  GestureDetector(
+                    onTap: (onLeave || _isMarking)
+                        ? null
+                        : _handleMarkAttendance,
+                    child:
+                        Container(
+                              width: 180,
+                              height: 180,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: _isWithinGracePeriod()
-                                      ? (_isLate()
-                                            ? [_kWarning, Colors.orange]
-                                            : [_kPrimary, _kAccent])
-                                      : [
-                                          Colors.grey.shade300,
-                                          Colors.grey.shade400,
-                                        ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: onLeave
+                                        ? Colors.green.withOpacity(0.1)
+                                        : _isWithinGracePeriod()
+                                        ? (_isLate() ? _kWarning : _kPrimary)
+                                              .withOpacity(0.1)
+                                        : Colors.black.withOpacity(0.05),
+                                    blurRadius: 30,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
                               ),
                               child: Center(
-                                child: _isMarking
-                                    ? const CircularProgressIndicator(
-                                        color: Colors.white,
-                                      )
-                                    : Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            _isLate()
-                                                ? Icons.history_rounded
-                                                : Icons.touch_app_rounded,
+                                child: Container(
+                                  width: 150,
+                                  height: 150,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: onLeave
+                                          ? [_kSuccess, Colors.green.shade700]
+                                          : _isWithinGracePeriod()
+                                          ? (_isLate()
+                                                ? [_kWarning, Colors.orange]
+                                                : [_kPrimary, _kAccent])
+                                          : [
+                                              Colors.grey.shade300,
+                                              Colors.grey.shade400,
+                                            ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: onLeave
+                                        ? const Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.event_available_rounded,
+                                                color: Colors.white,
+                                                size: 40,
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'ON LEAVE',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: 1.2,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : _isMarking
+                                        ? const CircularProgressIndicator(
                                             color: Colors.white,
-                                            size: 40,
+                                          )
+                                        : Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                _isLate()
+                                                    ? Icons.history_rounded
+                                                    : Icons.touch_app_rounded,
+                                                color: Colors.white,
+                                                size: 40,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                _isWithinGracePeriod()
+                                                    ? (_isLate()
+                                                          ? 'MARK LATE'
+                                                          : 'TAP TO MARK')
+                                                    : 'CLOSED',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: 1.2,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            _isWithinGracePeriod()
-                                                ? (_isLate()
-                                                      ? 'MARK LATE'
-                                                      : 'TAP TO MARK')
-                                                : 'CLOSED',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 1.2,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                  ),
+                                ),
                               ),
+                            )
+                            .animate(
+                              onPlay: (c) =>
+                                  (_isWithinGracePeriod() && !onLeave)
+                                  ? c.repeat(reverse: true)
+                                  : null,
+                            )
+                            .scale(
+                              begin: const Offset(1, 1),
+                              end: const Offset(1.03, 1.03),
+                              duration: 2.seconds,
+                              curve: Curves.easeInOut,
                             ),
-                          ),
-                        )
-                        .animate(
-                          onPlay: (c) => _isWithinGracePeriod()
-                              ? c.repeat(reverse: true)
-                              : null,
-                        )
-                        .scale(
-                          begin: const Offset(1, 1),
-                          end: const Offset(1.03, 1.03),
-                          duration: 2.seconds,
-                          curve: Curves.easeInOut,
-                        ),
-              ),
-              const SizedBox(height: 40),
-              Text(
-                _isWithinGracePeriod()
-                    ? (_isLate()
-                          ? "You are outside the reporting window. Marking now will be flagged as Late."
-                          : "It's time! Please mark your presence.")
-                    : "Attendance window is currently closed.",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _isWithinGracePeriod()
-                      ? (_isLate() ? _kWarning : _kSuccess)
-                      : Colors.black38,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 32),
-              TextButton.icon(
-                onPressed: () => _showAttendanceHistory(context, widget.user),
-                icon: const Icon(Icons.history_rounded, size: 20),
-                label: const Text(
-                  'View My Attendance History',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: _kPrimary,
-                  backgroundColor: _kPrimary.withOpacity(0.05),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 40),
+                  Text(
+                    onLeave
+                        ? "You are officially on leave. Attendance is handled automatically."
+                        : _isWithinGracePeriod()
+                        ? (_isLate()
+                              ? "You are outside the reporting window. Marking now will be flagged as Late."
+                              : "It's time! Please mark your presence.")
+                        : "Attendance window is currently closed.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: onLeave
+                          ? _kSuccess
+                          : _isWithinGracePeriod()
+                          ? (_isLate() ? _kWarning : _kSuccess)
+                          : Colors.black38,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 32),
+                  TextButton.icon(
+                    onPressed: () =>
+                        _showAttendanceHistory(context, widget.user),
+                    icon: const Icon(Icons.history_rounded, size: 20),
+                    label: const Text(
+                      'View My Attendance History',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _kPrimary,
+                      backgroundColor: _kPrimary.withOpacity(0.05),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -709,30 +784,55 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   }
 
   void _handleMarkAttendance() async {
-    if (!_isWithinGracePeriod()) {
-      _showError('Attendance can only be marked between 10:00 PM and Midnight');
-      return;
-    }
-
+    // Access is allowed, but marking will be blocked later if outside window
     setState(() => _isMarking = true);
     try {
-      // ── Duplicate attendance guard ─────────────────────────────────────────
-      final now = DateTime.now();
-      final dateKey = "${now.year}-${now.month}-${now.day}";
-      final existingSnap = await widget.fs.db
-          .collection('attendance')
-          .where('studentId', isEqualTo: widget.user.uid)
-          .where('date', isEqualTo: dateKey)
-          .limit(1)
-          .get();
-      if (existingSnap.docs.isNotEmpty) {
-        _showError('Attendance already marked for today.');
-        if (mounted) setState(() => _isMarking = false);
-        return;
-      }
-
       const bool bypassGeofence = false;
 
+      // ── Face Recognition (with liveness blink check) ──────────────────────
+      FaceCaptureResult? faceResult;
+      if (!kIsWeb) {
+        // Check if face has been registered
+        final userDoc = await widget.fs.db
+            .collection('users')
+            .doc(widget.user.uid)
+            .get();
+        final hasFace = userDoc.data()?['faceEmbedding'] != null;
+
+        if (!hasFace) {
+          // First time: register face
+          if (mounted) setState(() => _isMarking = false);
+          faceResult = await Navigator.of(context).push<FaceCaptureResult>(
+            MaterialPageRoute(
+              builder: (_) => FaceCaptureScreen(
+                userId: widget.user.uid,
+                mode: FaceCaptureMode.registration,
+              ),
+            ),
+          );
+        } else {
+          // Verify identity
+          if (mounted) setState(() => _isMarking = false);
+          faceResult = await Navigator.of(context).push<FaceCaptureResult>(
+            MaterialPageRoute(
+              builder: (_) => FaceCaptureScreen(
+                userId: widget.user.uid,
+                mode: FaceCaptureMode.verification,
+              ),
+            ),
+          );
+        }
+
+        if (faceResult == null || !faceResult.success) {
+          if (faceResult?.message != null) _showError(faceResult!.message!);
+          return;
+        }
+      }
+
+      // ── NOW PERFORM VALIDATIONS AFTER FACE SUCCESS ──────────────────────────
+      if (mounted) setState(() => _isMarking = true);
+
+      // 1. Geofence Check
       if (!kIsWeb && !bypassGeofence) {
         bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!serviceEnabled) {
@@ -751,7 +851,6 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
         );
-
         bool inside = _isPointInGeofence(position.latitude, position.longitude);
         if (!inside) {
           _showError(
@@ -762,54 +861,29 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         }
       }
 
-      // ── Face Recognition (with liveness blink check) ──────────────────────
-      if (!kIsWeb) {
-        // Check if face has been registered
-        final userDoc = await widget.fs.db
-            .collection('users')
-            .doc(widget.user.uid)
-            .get();
-        final hasFace = userDoc.data()?['faceEmbedding'] != null;
-
-        if (!hasFace) {
-          // First time: register face
-          if (mounted) setState(() => _isMarking = false);
-          final registerResult = await Navigator.of(context)
-              .push<FaceCaptureResult>(
-                MaterialPageRoute(
-                  builder: (_) => FaceCaptureScreen(
-                    userId: widget.user.uid,
-                    mode: FaceCaptureMode.registration,
-                  ),
-                ),
-              );
-          if (registerResult == null || !registerResult.success) {
-            _showError(
-              registerResult?.message ?? 'Face registration cancelled.',
-            );
-            return;
-          }
-          _showSuccess('Face registered! Marking attendance…');
-          setState(() => _isMarking = true);
-        } else {
-          // Verify identity
-          if (mounted) setState(() => _isMarking = false);
-          final verifyResult = await Navigator.of(context)
-              .push<FaceCaptureResult>(
-                MaterialPageRoute(
-                  builder: (_) => FaceCaptureScreen(
-                    userId: widget.user.uid,
-                    mode: FaceCaptureMode.verification,
-                  ),
-                ),
-              );
-          if (verifyResult == null || !verifyResult.success) {
-            _showError(verifyResult?.message ?? 'Face verification failed.');
-            return;
-          }
-          setState(() => _isMarking = true);
-        }
+      // 2. Time Check
+      if (!_isValidTime()) {
+        _showError('Attendance not marked, try after 10:00 PM');
+        if (mounted) setState(() => _isMarking = false);
+        return;
       }
+
+      // 3. Duplicate Check
+      final now = DateTime.now();
+      final dateKey = "${now.year}-${now.month}-${now.day}";
+      final existingSnap = await widget.fs.db
+          .collection('attendance')
+          .where('studentId', isEqualTo: widget.user.uid)
+          .where('date', isEqualTo: dateKey)
+          .limit(1)
+          .get();
+      if (existingSnap.docs.isNotEmpty) {
+        _showError('Attendance already marked for today.');
+        if (mounted) setState(() => _isMarking = false);
+        return;
+      }
+
+      setState(() => _isMarking = true);
 
       final isLateMarker = _isLate();
       final attObj = Attendance(
@@ -819,7 +893,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         hostel: widget.user.hostel!,
         roomNumber: widget.user.roomNumber ?? 'N/A',
         timestamp: DateTime.now(),
-        status: isLateMarker ? 'Late' : 'Present',
+        status: isLateMarker ? 'Late' : 'Marked',
       );
       await widget.fs.markAttendance(attObj);
       if (mounted) {
@@ -1153,14 +1227,16 @@ class _LeaveTab extends StatelessWidget {
                       final contact = parentContactController.text.trim();
                       if (contact.length != 10 ||
                           double.tryParse(contact) == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Please enter a valid 10-digit mobile number',
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please enter a valid 10-digit number',
+                              ),
+                              backgroundColor: Colors.redAccent,
                             ),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
+                          );
+                        }
                         return;
                       }
 
