@@ -9,29 +9,9 @@ project 'Runner', {
   'Release' => :release,
 }
 
-def flutter_root
-  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
-  
-  # 1. Try environment variable first (Best for CI)
-  return ENV['FLUTTER_ROOT'] if ENV['FLUTTER_ROOT']
-
-  # 2. Try Generated.xcconfig
-  if File.exist?(generated_xcode_build_settings_path)
-    File.foreach(generated_xcode_build_settings_path) do |line|
-      matches = line.match(/\AFLUTTER_ROOT=(.*)\z/)
-      return matches[1].strip if matches
-    end
-  end
-  
-  # Fail if not found
-  raise "FLUTTER_ROOT not found. Ensure Flutter is installed and FLUTTER_ROOT is set."
-end
-
-f_root = flutter_root
-
-# CRITICAL: Use podhelper.rb for the Podfile, NOT xcode_backend.rb
-podhelper_path = File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'), f_root)
-require podhelper_path
+# Load the podhelper script. In CI, we manually copy this to ios/Flutter/podhelper.rb
+# In local development, it will use the relative path created by Flutter.
+require_relative '../Flutter/podhelper'
 
 target 'Runner' do
   use_frameworks!
