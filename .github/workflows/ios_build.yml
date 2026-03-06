@@ -22,24 +22,20 @@ jobs:
           flutter pub get
           flutter precache --ios
           
-      - name: Prepare iOS build
+      - name: Build iOS
         run: |
-          # Manually generate Generated.xcconfig to ensure it matches the runner environment
-          # This prevents the Podfile from searching for Windows paths or failing due to missing files
-          mkdir -p ios/Flutter
-          echo "FLUTTER_ROOT=$FLUTTER_ROOT" > ios/Flutter/Generated.xcconfig
-          echo "FLUTTER_APPLICATION_PATH=$GITHUB_WORKSPACE" >> ios/Flutter/Generated.xcconfig
-          echo "PACKAGE_CONFIG=.dart_tool/package_config.json" >> ios/Flutter/Generated.xcconfig
-          
-          # Create a dummy GoogleService-Info.plist if missing
+          # Create a dummy GoogleService-Info.plist ONLY if the user hasn't provided one
+          # Since you pushed one, this will usually be skipped
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
             echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
           fi
-
-      - name: Build iOS
-        run: |
-          # Running with --verbose to help debug if it fails again
-          flutter build ios --release --no-codesign --verbose
+          
+          # Clean build to ensure fresh config files are generated for the Mac environment
+          flutter clean
+          flutter pub get
+          
+          # Use standard build command
+          flutter build ios --release --no-codesign
           
       - name: Create IPA
         run: |
