@@ -1,4 +1,4 @@
-# Standard Flutter Podfile for VISTA-APP
+# Podfile for VISTA-APP
 platform :ios, '15.0'
 
 ENV['COCOAPODS_DISABLE_STATS'] = '1'
@@ -14,10 +14,9 @@ def flutter_root
   if File.exist?(generated_xcode_build_settings_path)
     File.foreach(generated_xcode_build_settings_path) do |line|
       matches = line.match(/\AFLUTTER_ROOT=(.*)\z/)
-      return matches[1] if matches
+      return matches[1].strip if matches
     end
   end
-  # Fallback to environment variable for CI (GitHub Actions sets this)
   ENV['FLUTTER_ROOT']
 end
 
