@@ -57,8 +57,8 @@ async function runWatcher() {
                 const isMissed = minutes >= 20;
                 await messaging.sendEachForMulticast({
                     notification: {
-                        title: isMissed ? 'Attendance Reminder!' : 'Time for Night Attendance!',
-                        body: isMissed ? "You haven't marked your attendance yet. Do it now!" : 'It is 10:00 PM. Please mark your attendance.'
+                        title: isMissed ? 'Reminder: Attendance' : 'Night Attendance!',
+                        body: isMissed ? "You missed the first call! Mark attendance now." : 'Please mark your night attendance.'
                     },
                     tokens: tokens
                 });
@@ -66,7 +66,7 @@ async function runWatcher() {
             }
         }
 
-        // 2. New Registrations (Warden Alert)
+        // 2. New Registrations
         const newRegs = await db.collection('users')
             .where('role', '==', 'student')
             .where('isApproved', '==', false)
@@ -75,32 +75,43 @@ async function runWatcher() {
 
         for (const doc of newRegs.docs) {
             const user = doc.data();
-            console.log(`[Warden] Notify new registration: ${user.name}`);
-            const wardens = await db.collection('users').where('role', '==', 'warden').where('hostel', '==', user.hostel).get();
+            const wardens = await db.collection('users')
+                .where('role', '==', 'warden')
+                .where('hostel', '==', user.hostel)
+                .get();
             const tokens = wardens.docs.map(w => w.data().fcmToken).filter(t => !!t);
+
             if (tokens.length > 0) {
                 await messaging.sendEachForMulticast({
-                    notification: { title: 'New Registration', body: `${user.name} registered for ${user.hostel}.` },
+                    notification: { title: 'New Student', body: `${user.name} applied for ${user.hostel}.` },
                     tokens: tokens
                 });
             }
             await doc.ref.update({ registrationNotified: true });
         }
 
-        // 3. New Leave/Complaint (Warden Alert)
-        const collections = ['leave_requests', 'complaints'];
-        for (const col of collections) {
+        // 3. New Leave/Complaint
+        const cols = ['leave_requests', 'complaints'];
+        for (const col of cols) {
             const pendings = await db.collection(col).where('isNotified', '==', false).get();
             for (const doc of pendings.docs) {
                 const item = doc.data();
-                const wardens = await db.collection('users').where('role', '==', 'warden').where('hostel', '==', item.hostel).get();
+                const wardens = await db.collection('users')
+                    .where('role', '==', 'warden')
+                    .where('hostel', '==', item.hostel)
+                    .get();
                 const tokens = wardens.docs.map(w => w.data().fcmToken).filter(t => !!t);
+
+                if (col === 'complaints' && (item.targetRole === 'Head Warden' || item.targetRole === 'headWarden')) {
+                    const hw = await db.collection('users').where('role', '==', 'headWarden').get();
+                    hw.forEach(h => { if (h.data().fcmToken) tokens.push(h.data().fcmToken); });
+                }
 
                 if (tokens.length > 0) {
                     await messaging.sendEachForMulticast({
                         notification: {
-                            title: col === 'leave_requests' ? 'New Leave Request' : 'New Complaint',
-                            body: col === 'leave_requests' ? `${item.studentName} is requesting leave.` : `New complaint: ${item.title}`
+                            title: col === 'leave_requests' ? 'New Leave' : 'New Complaint',
+                            body: col === 'leave_requests' ? `${item.studentName} is requesting leave.` : `Title: ${item.title}`
                         },
                         tokens: [...new Set(tokens)]
                     });
@@ -109,20 +120,17 @@ async function runWatcher() {
             }
         }
 
-        // 4. Status Updates (Student Alert)
-        for (const col of collections) {
+        // 4. Status Updates
+        for (const col of cols) {
             const requests = await db.collection(col).get();
             for (const doc of requests.docs) {
                 const item = doc.data();
                 if (item.status !== item.lastStatusNotified) {
-                    const studentDoc = await db.collection('users').doc(item.studentId).get();
-                    const token = studentDoc.data()?.fcmToken;
+                    const student = await db.collection('users').doc(item.studentId).get();
+                    const token = student.data()?.fcmToken;
                     if (token) {
                         await messaging.send({
-                            notification: {
-                                title: col === 'leave_requests' ? 'Leave Update' : 'Complaint Update',
-                                body: `Status: ${item.status}`
-                            },
+                            notification: { title: 'Update Received', body: `Your ${col.replace('_', ' ')} is now ${item.status}` },
                             token: token
                         });
                     }
@@ -131,14 +139,18 @@ async function runWatcher() {
             }
         }
 
-        // 5. Account Approved (Student Alert)
-        const approvals = await db.collection('users').where('role', '==', 'student').where('isApproved', '==', true).where('approvalNotified', '==', false).get();
+        // 5. Approvals
+        const approvals = await db.collection('users')
+            .where('role', '==', 'student')
+            .where('isApproved', '==', true)
+            .where('approvalNotified', '==', false)
+            .get();
         for (const doc of approvals.docs) {
-            const student = doc.data();
-            if (student.fcmToken) {
+            const s = doc.data();
+            if (s.fcmToken) {
                 await messaging.send({
-                    notification: { title: 'Account Approved!', body: `Welcome! Your account for ${student.hostel} is active.` },
-                    token: student.fcmToken
+                    notification: { title: 'Approved!', body: `Your account for ${s.hostel} is ready.` },
+                    token: s.fcmToken
                 });
             }
             await doc.ref.update({ approvalNotified: true });
