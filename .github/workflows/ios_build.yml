@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14 # Use macOS 14 for latest Xcode tools
     steps:
       - uses: actions/checkout@v4
       
@@ -17,25 +17,23 @@ jobs:
           flutter-version: '3.38.3'
           channel: 'stable'
           
-      - name: Debug Environment
-        run: |
-          echo "FLUTTER_ROOT: $FLUTTER_ROOT"
-          ls -R "$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.rb" || echo "File not found at standard path"
-          find "$FLUTTER_ROOT" -name "xcode_backend.rb" | head -n 1
-          
       - name: Install dependencies
         run: |
           flutter pub get
           flutter precache --ios
           
-      - name: Build iOS
+      - name: Generate iOS Config
         run: |
           if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
             echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>dummy</key><string>true</string></dict></plist>' > ios/Runner/GoogleService-Info.plist
           fi
+          # This step explicitly populates the ios/ project before Cocoapods runs
+          flutter build ios --config-only --no-codesign
           
-          # Force generation of config files
-          flutter build ios --release --no-codesign --verbose
+      - name: Build iOS
+        run: |
+          # Use standard build command
+          flutter build ios --release --no-codesign
           
       - name: Create IPA
         run: |

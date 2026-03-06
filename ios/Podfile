@@ -1,4 +1,4 @@
-# Podfile for VISTA-APP
+# CI-Resilient Podfile for VISTA-APP
 platform :ios, '15.0'
 
 ENV['COCOAPODS_DISABLE_STATS'] = '1'
@@ -11,19 +11,28 @@ project 'Runner', {
 
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  
+  # 1. Try environment variable first (Best for CI)
+  return ENV['FLUTTER_ROOT'] if ENV['FLUTTER_ROOT']
+
+  # 2. Fallback to local config (Best for development)
   if File.exist?(generated_xcode_build_settings_path)
     File.foreach(generated_xcode_build_settings_path) do |line|
       matches = line.match(/\AFLUTTER_ROOT=(.*)\z/)
       return matches[1].strip if matches
     end
   end
-  ENV['FLUTTER_ROOT']
+  nil
 end
 
 f_root = flutter_root
 
-if f_root
+if f_root && File.exist?(File.join(f_root, 'packages', 'flutter_tools', 'bin', 'xcode_backend.rb'))
   require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'xcode_backend.rb'), f_root)
+else
+  # On some CI runners, the backend script might be in a different location or handled by the tool
+  # We don't want to crash here, so the build tool can try to recover
+  puts "Warning: Flutter xcode_backend.rb not found."
 end
 
 target 'Runner' do
@@ -41,6 +50,7 @@ post_install do |installer|
       flutter_additional_ios_build_settings(target)
     end
     target.build_configurations.each do |config|
+      # Enforce iOS 15.0 for all pods (required by modern Firestore)
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end
   end
