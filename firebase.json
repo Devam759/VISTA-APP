@@ -19,6 +19,11 @@
             }
         }
     },
+    "firestore": {
+        "database": "default",
+        "rules": "firestore.rules",
+        "indexes": "firestore.indexes.json"
+    },
     "hosting": {
         "public": "build/web",
         "ignore": [
@@ -34,16 +39,16 @@
         ]
     },
     "functions": [
-      {
-        "source": "functions",
-        "codebase": "default",
-        "ignore": [
-          "node_modules",
-          ".git",
-          "firebase-debug.log",
-          "firebase-debug.*.log",
-          "*.local"
-        ]
-      }
+        {
+            "source": "functions",
+            "codebase": "default",
+            "ignore": [
+                "node_modules",
+                ".git",
+                "firebase-debug.log",
+                "firebase-debug.*.log",
+                "*.local"
+            ]
+        }
     ]
 }

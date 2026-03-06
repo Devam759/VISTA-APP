@@ -49,7 +49,7 @@ app.*.map.json
 
 # Firebase secrets
 *-firebase-adminsdk-*.json
-firebase.json
+# firebase.json - Don't ignore this, it's public config needed for CI/CD
 
 # Local JDK
 /jdk-17/
@@ -62,4 +62,10 @@ firebase.json
 .env
 *.local
 coordinates.csv
+# Android signing secrets
+**/android/key.properties
+**/*.jks
+**/*.keystore
+# Node modules in the scripts dir
+**/scripts/node_modules/
 

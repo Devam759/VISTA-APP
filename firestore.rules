@@ -1,0 +1,77 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // ── USERS COLLECTION ─────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId || 
+        getUserRole() == 'warden' || 
+        getUserRole() == 'headWarden'
+      );
+      
+      allow create: if isSignedIn();
+      
+      allow update: if isSignedIn() && (
+        // Student can update their own profile basic info
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isApproved', 'roomNumber'])) ||
+        // Warden can approve students
+        (getUserRole() == 'warden' && request.resource.data.diff(resource.data).affectedKeys().hasAny(['isApproved', 'roomNumber'])) ||
+        // Head Warden admin
+        (getUserRole() == 'headWarden')
+      );
+      
+      // Face embeddings: only owner or warden can access
+      allow get: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'warden');
+    }
+
+    // ── ATTENDANCE ───────────────────────────────────────────────────────────
+    match /attendance/{id} {
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        getUserRole() == 'warden' || 
+        getUserRole() == 'headWarden'
+      );
+    }
+
+    // ── LEAVE REQUESTS ───────────────────────────────────────────────────────
+    match /leave_requests/{id} {
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        getUserRole() == 'warden' || 
+        getUserRole() == 'headWarden'
+      );
+      allow update: if isSignedIn() && (
+        getUserRole() == 'warden' || 
+        getUserRole() == 'headWarden' ||
+        (resource.data.studentId == request.auth.uid && request.resource.data.status == 'Cancelled')
+      );
+    }
+
+    // ── COMPLAINTS ───────────────────────────────────────────────────────────
+    match /complaints/{id} {
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        getUserRole() == 'warden' || 
+        getUserRole() == 'headWarden'
+      );
+      allow update: if isSignedIn() && (
+        getUserRole() == 'warden' || 
+        getUserRole() == 'headWarden'
+      );
+    }
+  }
+}
