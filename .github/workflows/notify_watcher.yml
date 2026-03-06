@@ -2,7 +2,7 @@ name: Real-time Notifications Watcher
 
 on:
   schedule:
-    - cron: '*/10 * * * *' # Run every 10 minutes
+    - cron: '*/2 * * * *' # Run every 2 minutes (approx)
   workflow_dispatch: # Allow manual trigger
 
 jobs:
