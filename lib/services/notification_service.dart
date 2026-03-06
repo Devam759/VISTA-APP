@@ -19,6 +19,14 @@ class NotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       debugPrint('User granted permission');
+
+      // For iOS/macOS, set the foreground notification presentation options
+      await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
       // Get the token
       String? token = await _firebaseMessaging.getToken();
       if (token != null) {
@@ -45,7 +53,9 @@ class NotificationService {
             iOS: initializationSettingsIOS,
           );
 
-      await _localNotificationsPlugin.initialize(initializationSettings);
+      await _localNotificationsPlugin.initialize(
+        settings: initializationSettings,
+      );
 
       // Handle foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -73,10 +83,10 @@ class NotificationService {
     );
 
     await _localNotificationsPlugin.show(
-      0,
-      notification.title,
-      notification.body,
-      platformChannelSpecifics,
+      id: 0,
+      title: notification.title,
+      body: notification.body,
+      notificationDetails: platformChannelSpecifics,
     );
   }
 }
