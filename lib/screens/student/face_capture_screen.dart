@@ -362,7 +362,6 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
 
   @override
   void dispose() {
-    _cam?.stopImageStream();
     _cam?.dispose();
     _detector.close();
     super.dispose();

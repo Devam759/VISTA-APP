@@ -225,7 +225,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   child: IndexedStack(
                     index: _selectedIndex,
                     children: [
-                      _AttendanceTab(user: user, fs: _firebaseService),
+                      _AttendanceTab(
+                        user: user,
+                        fs: _firebaseService,
+                        isActive: _selectedIndex == 0,
+                      ),
                       _LeaveTab(user: user, fs: _firebaseService),
                       _ComplaintsTab(user: user, fs: _firebaseService),
                     ],
@@ -355,7 +359,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
 class _AttendanceTab extends StatefulWidget {
   final VistaUser user;
   final FirebaseService fs;
-  const _AttendanceTab({required this.user, required this.fs});
+  final bool isActive;
+  const _AttendanceTab({
+    required this.user,
+    required this.fs,
+    required this.isActive,
+  });
 
   @override
   State<_AttendanceTab> createState() => _AttendanceTabState();
@@ -366,7 +375,8 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
   bool _isValidTime() {
     final now = DateTime.now();
-    return now.hour >= 22; // 10:00 PM onwards
+    // 10:00 PM to 12:00 AM (midnight)
+    return now.hour >= 22;
   }
 
   bool _isWithinGracePeriod() {
@@ -377,7 +387,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
   bool _isLate() {
     final now = DateTime.now();
-    // 10:30 PM to 12:00 AM
+    // 10:30 PM to 12:00 AM (midnight)
     return (now.hour == 22 && now.minute >= 30) || (now.hour == 23);
   }
 
@@ -524,7 +534,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                   BoxShadow(
                                     color: onLeave
                                         ? Colors.green.withValues(alpha: 0.1)
-                                        : _isWithinGracePeriod()
+                                        : _isValidTime()
                                         ? (_isLate() ? _kWarning : _kPrimary)
                                               .withValues(alpha: 0.1)
                                         : Colors.black.withValues(alpha: 0.05),
@@ -542,7 +552,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                     gradient: LinearGradient(
                                       colors: onLeave
                                           ? [_kSuccess, Colors.green.shade700]
-                                          : _isWithinGracePeriod()
+                                          : _isValidTime()
                                           ? (_isLate()
                                                 ? [_kWarning, Colors.orange]
                                                 : [_kPrimary, _kAccent])
@@ -586,17 +596,15 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                                 MainAxisAlignment.center,
                                             children: [
                                               Icon(
-                                                _isLate()
-                                                    ? Icons.history_rounded
-                                                    : Icons.touch_app_rounded,
+                                                Icons.touch_app_rounded,
                                                 color: Colors.white,
                                                 size: 40,
                                               ),
                                               const SizedBox(height: 8),
                                               Text(
-                                                _isWithinGracePeriod()
+                                                _isValidTime()
                                                     ? (_isLate()
-                                                          ? 'MARK LATE'
+                                                          ? 'LATE'
                                                           : 'TAP TO MARK')
                                                     : 'CLOSED',
                                                 style: const TextStyle(
@@ -614,9 +622,11 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                             )
                             .animate(
                               onPlay: (c) =>
-                                  (_isWithinGracePeriod() && !onLeave)
+                                  (widget.isActive &&
+                                      _isValidTime() &&
+                                      !onLeave)
                                   ? c.repeat(reverse: true)
-                                  : null,
+                                  : c.stop(),
                             )
                             .scale(
                               begin: const Offset(1, 1),
@@ -1012,6 +1022,7 @@ class _LeaveTab extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
+        heroTag: 'leaveFAB',
         onPressed: () => _showLeaveDialog(context, user, fs),
         backgroundColor: _kPrimary,
         elevation: 4,
@@ -1256,6 +1267,7 @@ class _LeaveTab extends StatelessWidget {
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: DropdownButtonFormField<String>(
+                            isExpanded: true,
                             initialValue: selectedRelation,
                             decoration: InputDecoration(
                               labelText: 'Relation',
@@ -1482,6 +1494,7 @@ class _ComplaintsTab extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
+        heroTag: 'complaintFAB',
         onPressed: () => _showComplaintDialog(context, user, fs),
         backgroundColor: _kPrimary,
         elevation: 4,

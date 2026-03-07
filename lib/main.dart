@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,7 @@ import 'screens/head_warden/head_warden_dashboard.dart';
 import 'screens/auth/pending_approval_screen.dart';
 import 'utils/theme.dart';
 import 'models/vista_user.dart';
+import 'package:safe_device/safe_device.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -32,18 +34,46 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // ─────────────────────────────────────────────────────────────────────────
+    // APP CHECK INITIALIZATION
+    // Play Integrity is required for Production to prevent unauthorized access.
+    // ─────────────────────────────────────────────────────────────────────────
+    await FirebaseAppCheck.instance.activate(
+      providerAndroid: const AndroidPlayIntegrityProvider(),
+      providerApple: const AppleDeviceCheckProvider(),
+    );
+
     debugPrint("Firebase initialized successfully!");
   } catch (e) {
     debugPrint("Firebase initialization failed: \$e");
   }
-  runApp(const VistaApp());
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SECURITY CHECK: BLOCK EMULATORS, ROOT, VPN, & MOCK LOCATION
+  // ─────────────────────────────────────────────────────────────────────────
+  bool isRealDevice = await SafeDevice.isRealDevice;
+  bool isJailBroken = await SafeDevice.isJailBroken;
+  bool isProxy = await SafeDevice.isDevelopmentModeEnable;
+  bool isMock = await SafeDevice.isMockLocation;
+
+  bool isSecure = isRealDevice && !isJailBroken && !isProxy && !isMock;
+
+  runApp(VistaApp(isSecure: isSecure));
 }
 
 class VistaApp extends StatelessWidget {
-  const VistaApp({super.key});
+  final bool isSecure;
+  const VistaApp({super.key, required this.isSecure});
 
   @override
   Widget build(BuildContext context) {
+    if (!isSecure) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: _BlockedScreen(),
+      );
+    }
     return MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => AuthProvider())],
       child: MaterialApp(
@@ -93,5 +123,53 @@ class AuthWrapper extends StatelessWidget {
       case UserRole.headWarden:
         return const HeadWardenDashboard();
     }
+  }
+}
+
+class _BlockedScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F4FF),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.no_sim_rounded,
+                size: 80,
+                color: Color(0xFFEF4444),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Security Violation',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E3A8A),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'VISTA is not allowed to run on Emulators, Rooted devices, or with Mock Locations enabled for security and attendance integrity.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black54, height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                'Please disable Mock Locations/Developer Options and use a physical Android phone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E3A8A),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
