@@ -1,0 +1,45 @@
+name: Attendance Reminders
+
+on:
+  schedule:
+    # 10:00 PM IST is 16:30 UTC
+    - cron: '30 16 * * *'
+    # 10:20 PM IST is 16:50 UTC
+    - cron: '50 16 * * *'
+  workflow_dispatch: # Allows manual trigger for testing
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './scripts/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd scripts
+          npm install
+
+      - name: Send Reminders
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TZ: 'Asia/Kolkata'
+        run: |
+          cd scripts
+          # Get current UTC hour/minute to decide which argument to pass
+          CURRENT_TIME=$(date -u +%H%M)
+          if [ "$CURRENT_TIME" == "1630" ]; then
+            node send_reminders.js 10pm
+          elif [ "$CURRENT_TIME" == "1650" ]; then
+            node send_reminders.js 1020pm
+          else
+            # If triggered manually or via dispatch, you might want a default or check
+            echo "Manual trigger or non-scheduled time ($CURRENT_TIME). Running 10pm check by default."
+            node send_reminders.js 10pm
+          fi

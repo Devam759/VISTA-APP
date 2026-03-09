@@ -1,0 +1,8 @@
+-keep class org.tensorflow.lite.** { *; }
+-keep class com.google.mlkit.** { *; }
+-keep class io.github.7afe.tflite_flutter.** { *; }
+-dontwarn org.tensorflow.lite.**
+-dontwarn com.google.mlkit.**
+-dontwarn io.github.7afe.tflite_flutter.**
+-keep class org.tensorflow.lite.gpu.GpuDelegate { *; }
+-keep class org.tensorflow.lite.gpu.GpuDelegateFactory$Options { *; }

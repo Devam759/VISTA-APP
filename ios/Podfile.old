@@ -1,0 +1,64 @@
+# CI-Resilient Podfile for VISTA-APP
+platform :ios, '15.5'
+
+ENV['COCOAPODS_DISABLE_STATS'] = '1'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  # Prioritize environment variable (sets by flutter-action)
+  return ENV['FLUTTER_ROOT'] if ENV['FLUTTER_ROOT']
+
+  # Fallback to Generated.xcconfig (local dev)
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  if File.exist?(generated_xcode_build_settings_path)
+    File.foreach(generated_xcode_build_settings_path) do |line|
+      matches = line.match(/\AFLUTTER_ROOT=(.*)\z/)
+      return matches[1].strip if matches
+    end
+  end
+  nil
+end
+
+f_root = flutter_root
+
+if f_root
+  podhelper_path = File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'), f_root)
+  if File.exist?(podhelper_path)
+    require podhelper_path
+  else
+    puts "Warning: podhelper.rb not found at #{podhelper_path}"
+  end
+else
+  puts "Warning: FLUTTER_ROOT not found."
+end
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    if defined?(flutter_additional_ios_build_settings)
+      flutter_additional_ios_build_settings(target)
+    end
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+      
+      # Fix for Xcode 15+ library search paths
+      if config.build_settings['LIBRARY_SEARCH_PATHS']
+        config.build_settings['LIBRARY_SEARCH_PATHS'] = config.build_settings['LIBRARY_SEARCH_PATHS'].map do |path|
+          path.gsub('$(DT_TOOLCHAIN_DIR)', '$(TOOLCHAIN_DIR)')
+        end
+      end
+    end
+  end
+end
