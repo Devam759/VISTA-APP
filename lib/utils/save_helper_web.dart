@@ -1,4 +1,5 @@
 import 'dart:convert';
+// ignore: deprecated_member_use
 import 'dart:html' as html;
 import 'package:csv/csv.dart';
 

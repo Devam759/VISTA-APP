@@ -12,10 +12,8 @@ import 'screens/head_warden/head_warden_dashboard.dart';
 import 'screens/auth/pending_approval_screen.dart';
 import 'utils/theme.dart';
 import 'models/vista_user.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform, debugPrint;
-// safe_device is mobile-only — stub it out on web to avoid plugin registration errors.
-import 'safe_device_stub.dart'
-    if (dart.library.io) 'package:safe_device/safe_device.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'services/security_service.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -50,32 +48,20 @@ void main() async {
 
     debugPrint("Firebase initialized successfully!");
   } catch (e) {
-    debugPrint("Firebase initialization failed: $e");
+    // ignore: prefer_interpolation_to_compose_strings
+    debugPrint("Firebase initialization failed: " + e.toString());
+    // On web, if Firebase fails once, subsequent calls usually fail. 
+    // We try to catch it early.
   }
 
   bool isSecure = true;
 
   // ─────────────────────────────────────────────────────────────────────────
   // SECURITY CHECK: BLOCK EMULATORS, ROOT, VPN, & MOCK LOCATION
-  // Only runs on mobile platforms (Android/iOS).
+  // Only runs on mobile platforms (via SecurityService platform abstraction).
   // ─────────────────────────────────────────────────────────────────────────
   if (!kIsWeb) {
-    try {
-      // We check for mobile platform explicitly as well to be extra safe
-      if (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS) {
-        bool isRealDevice = await SafeDevice.isRealDevice;
-        bool isJailBroken = await SafeDevice.isJailBroken;
-        // bool isProxy = await SafeDevice.isDevelopmentModeEnable; // Temporarily disabled
-        bool isProxy = false;
-        bool isMock = await SafeDevice.isMockLocation;
-
-        isSecure = isRealDevice && !isJailBroken && !isProxy && !isMock;
-      }
-    } catch (e) {
-      debugPrint("Security check failed or platform not supported: $e");
-      isSecure = true;
-    }
+    isSecure = await SecurityService.checkSecurity();
   }
 
   runApp(VistaApp(isSecure: isSecure));

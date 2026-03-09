@@ -7,7 +7,8 @@ import '../models/leave_request_model.dart';
 import '../models/complaint_model.dart';
 
 class FirebaseService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // Using lazy getters for all Firebase instances.
+  FirebaseAuth get _auth => FirebaseAuth.instance;
   // The Firestore database was created with ID 'default' (not the standard '(default)').
   // Using a lazy getter so Firebase.app() is only called after initializeApp() is done.
   FirebaseFirestore get _db => FirebaseFirestore.instanceFor(
