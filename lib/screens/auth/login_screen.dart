@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
 
+import '../../utils/sanitizer.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,7 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     try {
-      String emailInput = _emailController.text.trim();
+      String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
       if (emailInput.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please enter your username')),

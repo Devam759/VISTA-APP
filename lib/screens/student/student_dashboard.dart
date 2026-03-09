@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../../utils/sanitizer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -1328,9 +1329,9 @@ class _LeaveTab extends StatelessWidget {
                                 toDate: DateFormat(
                                   'dd/MM/yyyy hh:mm a',
                                 ).parse(toController.text),
-                                reason: reasonController.text,
-                                address: addressController.text,
-                                parentName: parentNameController.text,
+                                reason: InputSanitizer.sanitize(reasonController.text),
+                                address: InputSanitizer.sanitize(addressController.text),
+                                parentName: InputSanitizer.sanitize(parentNameController.text),
                                 parentRelation: selectedRelation ?? 'Guardian',
                                 parentContact: contact,
                                 studentContact: user.phoneNumber ?? '',
@@ -1790,8 +1791,8 @@ class _ComplaintsTab extends StatelessWidget {
                                 id: '',
                                 studentId: user.uid,
                                 studentName: user.name,
-                                title: titleController.text.trim(),
-                                description: descController.text.trim(),
+                                title: InputSanitizer.sanitize(titleController.text.trim()),
+                                description: InputSanitizer.sanitize(descController.text.trim()),
                                 hostel: user.hostel!,
                                 targetRoles: selectedTargets,
                                 status: 'Pending',

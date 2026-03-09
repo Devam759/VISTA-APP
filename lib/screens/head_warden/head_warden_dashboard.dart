@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../utils/sanitizer.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -506,7 +507,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                   : () async {
                       setDialogState(() => isSubmitting = true);
                       try {
-                        await widget.fs.approveStudent(s.uid, ctrl.text);
+                        String sanitizedRoom = InputSanitizer.sanitize(ctrl.text);
+                        await widget.fs.approveStudent(s.uid, sanitizedRoom);
                         if (context.mounted) Navigator.pop(context);
                       } catch (e) {
                         if (context.mounted) {
@@ -2111,7 +2113,7 @@ class _LeavesTabState extends State<_LeavesTab> {
                     ],
                   ),
                   child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = v),
+                    onChanged: (v) => setState(() => _searchQuery = InputSanitizer.sanitize(v)),
                     decoration: InputDecoration(
                       hintText: 'Search student name...',
                       hintStyle: const TextStyle(
@@ -2700,7 +2702,7 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
                     ],
                   ),
                   child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = v),
+                    onChanged: (v) => setState(() => _searchQuery = InputSanitizer.sanitize(v)),
                     decoration: InputDecoration(
                       hintText: 'Search complaint...',
                       hintStyle: const TextStyle(

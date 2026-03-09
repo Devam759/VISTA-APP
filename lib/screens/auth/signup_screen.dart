@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/sanitizer.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -21,7 +22,10 @@ class _SignupScreenState extends State<SignupScreen> {
   final List<String> _hostels = ['BH1', 'BH2', 'GH1', 'GH2'];
 
   void _signup() async {
-    String emailInput = _emailController.text.trim();
+    String nameInput = InputSanitizer.sanitize(_nameController.text.trim());
+    String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
+    String phoneInput = InputSanitizer.sanitize(_phoneController.text.trim());
+
     if (emailInput.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your email username')),
@@ -46,11 +50,11 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       debugPrint('[Signup] Attempting signup for $email...');
       await authProvider.signUp(
-        _nameController.text.trim(),
+        nameInput,
         email,
         _passwordController.text.trim(),
         _selectedHostel!,
-        _phoneController.text.trim(),
+        phoneInput,
       );
       // Trigger the password-save prompt on Android / iOS / Web
       TextInput.finishAutofillContext();

@@ -5,6 +5,7 @@ import '../models/vista_user.dart';
 import '../models/attendance_model.dart';
 import '../models/leave_request_model.dart';
 import '../models/complaint_model.dart';
+import '../utils/rate_limiter.dart';
 
 class FirebaseService {
   // Using lazy getters for all Firebase instances.
@@ -87,7 +88,9 @@ class FirebaseService {
 
   // Attendance Methods
   Future<void> markAttendance(Attendance attendance) {
-    return _db.collection('attendance').add(attendance.toMap());
+    return RateLimiter.run('markAttendance_${attendance.studentId}', () {
+      return _db.collection('attendance').add(attendance.toMap());
+    });
   }
 
   Stream<List<Attendance>> getHostelAttendance(String? hostel, String date) {
@@ -141,7 +144,8 @@ class FirebaseService {
 
   // Leave Methods
   Future<void> submitLeaveRequest(LeaveRequest request) async {
-    final seqId = await _getNextSequence('LA');
+    return RateLimiter.run('submitLeave_${request.studentId}', () async {
+      final seqId = await _getNextSequence('LA');
     final updatedRequest = LeaveRequest(
       id: request.id,
       studentId: request.studentId,
@@ -161,6 +165,7 @@ class FirebaseService {
       seqId: seqId,
     );
     await _db.collection('leave_requests').add(updatedRequest.toMap());
+    });
   }
 
   Stream<List<LeaveRequest>> getPendingLeaves(String? hostel) {
@@ -233,7 +238,8 @@ class FirebaseService {
 
   // Complaint Methods
   Future<void> submitComplaint(Complaint complaint) async {
-    final seqId = await _getNextSequence('CA');
+    return RateLimiter.run('submitComplaint_${complaint.studentId}', () async {
+      final seqId = await _getNextSequence('CA');
     final updatedComplaint = Complaint(
       id: complaint.id,
       studentId: complaint.studentId,
@@ -251,6 +257,7 @@ class FirebaseService {
       seqId: seqId,
     );
     await _db.collection('complaints').add(updatedComplaint.toMap());
+    });
   }
 
   Stream<List<Complaint>> getComplaintsForRole(String role, [String? hostel]) {
