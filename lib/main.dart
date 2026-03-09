@@ -12,8 +12,10 @@ import 'screens/head_warden/head_warden_dashboard.dart';
 import 'screens/auth/pending_approval_screen.dart';
 import 'utils/theme.dart';
 import 'models/vista_user.dart';
-import 'package:safe_device/safe_device.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform, debugPrint;
+// safe_device is mobile-only — stub it out on web to avoid plugin registration errors.
+import 'safe_device_stub.dart'
+    if (dart.library.io) 'package:safe_device/safe_device.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 

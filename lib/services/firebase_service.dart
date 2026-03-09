@@ -8,8 +8,9 @@ import '../models/complaint_model.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  // The Firestore database was created with ID 'default' (not the standard '(default)')
-  final FirebaseFirestore _db = FirebaseFirestore.instanceFor(
+  // The Firestore database was created with ID 'default' (not the standard '(default)').
+  // Using a lazy getter so Firebase.app() is only called after initializeApp() is done.
+  FirebaseFirestore get _db => FirebaseFirestore.instanceFor(
     app: Firebase.app(),
     databaseId: 'default',
   );
