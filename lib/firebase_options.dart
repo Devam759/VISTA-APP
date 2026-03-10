@@ -60,7 +60,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '453696388011',
     projectId: 'vista-jklu',
     storageBucket: 'vista-jklu.firebasestorage.app',
-    iosBundleId: 'com.vista.vistaApp',
+    iosBundleId: 'com.ashish.vista.jklu',
   );
 
   static FirebaseOptions get web => const FirebaseOptions(

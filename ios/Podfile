@@ -51,13 +51,11 @@ post_install do |installer|
     end
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
-      
-      # Fix for Xcode 15+ library search paths
-      if config.build_settings['LIBRARY_SEARCH_PATHS']
-        config.build_settings['LIBRARY_SEARCH_PATHS'] = config.build_settings['LIBRARY_SEARCH_PATHS'].map do |path|
-          path.gsub('$(DT_TOOLCHAIN_DIR)', '$(TOOLCHAIN_DIR)')
-        end
-      end
     end
   end
+
+  # Aggressive shell-based fix for Xcode 15+ incompatibility (DT_TOOLCHAIN_DIR)
+  # This fixes files that CocoaPods 1.12.1 generates incorrectly.
+  puts "Applying Xcode 15+ DT_TOOLCHAIN_DIR fix..."
+  `find . -type f \\( -name "*.xcconfig" -o -name "*.sh" \\) -exec sed -i '' 's/DT_TOOLCHAIN_DIR/TOOLCHAIN_DIR/g' {} +`
 end

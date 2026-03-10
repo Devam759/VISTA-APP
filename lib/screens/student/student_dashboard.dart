@@ -16,6 +16,7 @@ import '../../models/complaint_model.dart';
 import '../../services/firebase_service.dart';
 import '../../models/vista_user.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME CONSTANTS (Consistent with Warden portal for unified feel)
@@ -447,54 +448,86 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.05),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.phonelink_lock_rounded,
-                  size: 64,
-                  color: Colors.redAccent,
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Mobile Only Feature',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: _kPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Attendance marking is restricted to the VISTA Mobile App for security and location verification purposes.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.black54,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildDownloadButton(Icons.apple, 'App Store'),
-                  _buildDownloadButton(Icons.android_rounded, 'Play Store'),
-                ],
-              ),
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              _kPrimary.withValues(alpha: 0.02),
             ],
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.mobile_friendly_rounded,
+                    size: 80,
+                    color: _kPrimary,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  'Mobile Only Feature',
+                  style: GoogleFonts.outfit(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: _kPrimary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Text(
+                    'For security and accurate location verification, attendance marking is exclusively available on the VISTA mobile app.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.black54,
+                      fontSize: 16,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 48),
+                Text(
+                  'Download the App',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black38,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _buildDownloadButton(Icons.apple, 'App Store'),
+                    _buildDownloadButton(Icons.android_rounded, 'Play Store'),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       );

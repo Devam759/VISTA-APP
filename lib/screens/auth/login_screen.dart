@@ -69,8 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     minHeight: constraints.maxHeight,
                     maxWidth: 400,
                   ),
-                  child: IntrinsicHeight(
-                    child: Column(
+                  child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const SizedBox(height: 40),
@@ -178,8 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-              ),
-            );
+              );
           },
         ),
       ),
