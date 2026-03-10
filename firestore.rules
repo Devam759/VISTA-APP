@@ -77,5 +77,10 @@ service cloud.firestore {
         resource.data.studentId == request.auth.uid
       );
     }
+
+    // ── COUNTERS ─────────────────────────────────────────────────────────────
+    match /counters/{id} {
+      allow read, write: if isSignedIn();
+    }
   }
 }

@@ -50,6 +50,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
   String _statusMessage = '';
   bool _processing = false;
   bool _isProcessingFrame = false;
+  List<double>? _lastEmbedding; // Store for retry
 
   // Liveness (Blink)
   int _blinkCount = 0;
@@ -252,15 +253,26 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
       // 1. Take Photo
       final XFile photo = await _cam!.takePicture();
       final bytes = await photo.readAsBytes();
+      debugPrint('Captured photo size: ${bytes.length} bytes');
       final img.Image? fullImage = img.decodeImage(bytes);
-      if (fullImage == null) throw 'Failed to decode photo';
+      if (fullImage == null) throw 'Failed to decode captured photo';
+      debugPrint('Decoded image size: ${fullImage.width}x${fullImage.height}');
 
       // 2. Detect face in high-res photo to get precise bounding box
       final orientedImage = img.bakeOrientation(fullImage);
 
       final inputImage = InputImage.fromFilePath(photo.path);
-      final faces = await _detector.processImage(inputImage);
-      if (faces.isEmpty) throw 'No face detected in high-res photo. Re-blink.';
+      List<Face> faces = await _detector.processImage(inputImage);
+      
+      // Fallback: If high-res detection fails, try using the orientation-baked image
+      if (faces.isEmpty) {
+        debugPrint('ML Kit failed on high-res file. Retrying with baked file...');
+        final bakedPath = '${photo.path}_baked.jpg';
+        await File(bakedPath).writeAsBytes(img.encodeJpg(orientedImage));
+        faces = await _detector.processImage(InputImage.fromFilePath(bakedPath));
+      }
+
+      if (faces.isEmpty) throw 'No face detected in high-res photo. Please hold steady and try again.';
 
       final mainFace = faces.first;
       final box = mainFace.boundingBox;
@@ -283,20 +295,29 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
       // 4. Generate Embedding via MobileFaceNet
       setState(() => _statusMessage = 'Generating Embedding…');
       final embedding = await _frs.getEmbedding(croppedFace);
+      _lastEmbedding = embedding;
 
       if (widget.mode == FaceCaptureMode.registration) {
-        await _registerFace(embedding);
+        debugPrint('Proceeding to registration...');
+        await _registerFace(_lastEmbedding!);
       } else {
-        await _verifyFace(embedding);
+        debugPrint('Proceeding to verification...');
+        await _verifyFace(_lastEmbedding!);
       }
     } catch (e) {
-      debugPrint('Processing error: $e');
+      debugPrint('!!! Face Processing Error: $e');
+      final isNetworkError = e.toString().contains('firestore') || e.toString().contains('host');
       if (mounted) {
         setState(() {
           _processing = false;
-          _livenessConfirmed = false;
-          _blinkCount = 0;
-          _statusMessage = 'Error: $e';
+          // Only reset liveness if it wasn't a network error (so they don't have to blink again)
+          if (!isNetworkError) {
+            _livenessConfirmed = false;
+            _blinkCount = 0;
+          }
+          _statusMessage = isNetworkError 
+              ? 'Registration Failed: Check Internet Connection' 
+              : 'Capture Failed: $e';
         });
       }
     }
@@ -304,18 +325,25 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
 
   // ── Registration ─────────────────────────────────────────────────────────────
   Future<void> _registerFace(List<double> landmarks) async {
-    await FirebaseFirestore.instanceFor(
-      app: Firebase.app(),
-      databaseId: 'default',
-    ).collection('users').doc(widget.userId).update({
-      'faceEmbedding': jsonEncode(landmarks),
-      'faceRegisteredAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      debugPrint('Updating Firestore document for user: ${widget.userId}');
+      await FirebaseFirestore.instanceFor(
+        app: Firebase.app(),
+        databaseId: 'default',
+      ).collection('users').doc(widget.userId).update({
+        'faceEmbedding': jsonEncode(landmarks),
+        'faceRegisteredAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint('Firestore update successful.');
 
-    if (mounted) {
-      Navigator.of(context).pop(
-        const FaceCaptureResult(success: true, message: 'Face registered!'),
-      );
+      if (mounted) {
+        Navigator.of(context).pop(
+          const FaceCaptureResult(success: true, message: 'Face registered!'),
+        );
+      }
+    } catch (e) {
+      debugPrint('!!! Firestore Registration Error: $e');
+      throw 'Failed to save registration: $e';
     }
   }
 
@@ -466,16 +494,46 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
                   const SizedBox(height: 12),
                   if (_processing)
                     const CircularProgressIndicator(color: Color(0xFF10B981))
-                  else
+                  else ...[
                     Text(
                       _statusMessage,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 15,
                         height: 1.5,
                       ),
                     ),
+                    if (_statusMessage.contains('Registration Failed')) ...[
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (_lastEmbedding != null && !_processing) {
+                             setState(() {
+                               _processing = true;
+                               _statusMessage = 'Retrying Upload…';
+                             });
+                             try {
+                               await _registerFace(_lastEmbedding!);
+                             } catch (e) {
+                               debugPrint('Retry failed: $e');
+                               if (mounted) {
+                                 setState(() {
+                                   _processing = false;
+                                   _statusMessage = 'Registration Failed: Retry again';
+                                 });
+                               }
+                             }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('RETRY UPLOAD'),
+                      ),
+                    ],
+                  ],
                   const SizedBox(height: 8),
                   Text(
                     isReg ? 'REGISTRATION MODE' : 'VERIFICATION MODE',

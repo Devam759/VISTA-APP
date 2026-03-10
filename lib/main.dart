@@ -16,6 +16,9 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'services/security_service.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/services.dart';
+
+const platform = MethodChannel('com.ashish.vista.jklu/debug_token');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +45,7 @@ void main() async {
     if (!kIsWeb) {
       await FirebaseAppCheck.instance.activate(
         providerAndroid: const AndroidPlayIntegrityProvider(),
-        providerApple: const AppleDeviceCheckProvider(),
+        appleProvider: AppleProvider.debug,
       );
     }
 
@@ -55,6 +58,18 @@ void main() async {
   }
 
   bool isSecure = true;
+
+  try {
+    if (!kIsWeb) {
+      final String debugToken = await platform.invokeMethod('getDebugToken');
+      debugPrint("\n\n=======================================================");
+      debugPrint("YOUR FIREBASE APP CHECK DEBUG TOKEN IS:");
+      debugPrint(debugToken);
+      debugPrint("=======================================================\n\n");
+    }
+  } on PlatformException catch (e) {
+    debugPrint("Failed to get debug token: '${e.message}'.");
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // SECURITY CHECK: BLOCK EMULATORS, ROOT, VPN, & MOCK LOCATION

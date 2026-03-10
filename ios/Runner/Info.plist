@@ -32,6 +32,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>VISTA uses your camera to capture your face for attendance registration and verification.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VISTA uses your microphone for audio recording during face verification if needed.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>VISTA uses your location to verify you are within the hostel premises before marking attendance.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
@@ -59,5 +61,26 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 </dict>
 </plist>

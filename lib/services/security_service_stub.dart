@@ -4,4 +4,8 @@ class SecurityImplementation {
     // Web is always considered secure for our purposes as safe_device check doesn't apply.
     return true;
   }
+
+  static Future<bool> isRealDevice() async {
+    return true;
+  }
 }

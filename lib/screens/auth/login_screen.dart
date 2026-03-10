@@ -159,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: _login,
                           child: const Text('Login'),
                         ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
-                        const Spacer(),
+                        const SizedBox(height: 40),
                         const SizedBox(height: 40),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,

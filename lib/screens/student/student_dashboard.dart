@@ -17,6 +17,7 @@ import '../../services/firebase_service.dart';
 import '../../models/vista_user.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../services/security_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME CONSTANTS (Consistent with Warden portal for unified feel)
@@ -376,6 +377,22 @@ class _AttendanceTab extends StatefulWidget {
 class _AttendanceTabState extends State<_AttendanceTab> {
   bool _isMarking = false;
   bool _isCheckingIn = false;
+  bool _isRealDevice = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDevice();
+  }
+
+  Future<void> _checkDevice() async {
+    final isReal = await SecurityService.isRealDevice();
+    if (mounted) {
+      setState(() {
+        _isRealDevice = isReal;
+      });
+    }
+  }
 
   void _handleLeaveCheckIn(String leaveId) async {
     setState(() => _isCheckingIn = true);
@@ -447,7 +464,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
+    if (kIsWeb || !_isRealDevice) {
       return Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1351,18 +1368,29 @@ class _LeaveTab extends StatelessWidget {
 
                             setDialogState(() => isSubmitting = true);
                             try {
+                              final fromText = fromController.text.trim();
+                              final toText = toController.text.trim();
+                              final reasonText = reasonController.text.trim();
+                              
+                              if (fromText.isEmpty || toText.isEmpty) {
+                                throw 'Please select both From and To dates';
+                              }
+                              if (reasonText.isEmpty) {
+                                throw 'Please enter a reason';
+                              }
+
                               final request = LeaveRequest(
                                 id: '',
                                 studentId: user.uid,
                                 studentName: user.name,
-                                hostel: user.hostel!,
+                                hostel: user.hostel ?? 'N/A',
                                 fromDate: DateFormat(
                                   'dd/MM/yyyy hh:mm a',
-                                ).parse(fromController.text),
+                                ).parse(fromText),
                                 toDate: DateFormat(
                                   'dd/MM/yyyy hh:mm a',
-                                ).parse(toController.text),
-                                reason: InputSanitizer.sanitize(reasonController.text),
+                                ).parse(toText),
+                                reason: InputSanitizer.sanitize(reasonText),
                                 address: InputSanitizer.sanitize(addressController.text),
                                 parentName: InputSanitizer.sanitize(parentNameController.text),
                                 parentRelation: selectedRelation ?? 'Guardian',
@@ -1385,11 +1413,12 @@ class _LeaveTab extends StatelessWidget {
                                 );
                               }
                             } catch (e) {
+                              debugPrint('Error submitting leave: $e');
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Verification failed: Check fields',
+                                    'Submission failed: $e',
                                   ),
                                 ),
                               );

@@ -6,9 +6,8 @@ class SecurityService {
   static Future<bool> checkSecurity() async {
     return await SecurityImplementation.isSecure();
   }
-}
 
-// Internal implementation that will be swapped by the compiler.
-abstract class SecurityImplementation {
-  static Future<bool> isSecure() async => true;
+  static Future<bool> isRealDevice() async {
+    return await SecurityImplementation.isRealDevice();
+  }
 }

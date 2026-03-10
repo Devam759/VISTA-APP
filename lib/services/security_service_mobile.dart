@@ -18,4 +18,16 @@ class SecurityImplementation {
     }
     return true; // Default to secure if check fails
   }
+
+  static Future<bool> isRealDevice() async {
+    try {
+      if (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS) {
+        return await SafeDevice.isRealDevice;
+      }
+    } catch (e) {
+      debugPrint("Real device check failed: $e");
+    }
+    return true; // Default to true if check fails
+  }
 }

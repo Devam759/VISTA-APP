@@ -1,0 +1,5 @@
+package com.ashish.vista.vista_app
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
