@@ -95,4 +95,13 @@ class InputSanitizer {
     // If it's a 10-digit number, return as is
     return normalized;
   }
+
+  /// Capitalizes the first letter of each word in a string.
+  static String capitalize(String input) {
+    if (input.isEmpty) return "";
+    return input.split(' ').map((word) {
+      if (word.isEmpty) return "";
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
 }

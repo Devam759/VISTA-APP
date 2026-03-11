@@ -1,8 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../utils/sanitizer.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/vista_user.dart';
@@ -12,6 +12,7 @@ import '../../models/complaint_model.dart';
 import '../../services/firebase_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/export_helper.dart';
+import '../../models/short_stay_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME CONSTANTS
@@ -30,6 +31,127 @@ class HeadWardenDashboard extends StatefulWidget {
 class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
   final FirebaseService _fs = FirebaseService();
   int _selectedIndex = 0;
+  final List<StreamSubscription> _subscriptions = [];
+
+  // Activity Markers
+  bool _hasNewRegistrations = false;
+  bool _hasNewLeaves = false;
+  bool _hasNewComplaints = false;
+  bool _hasNewShortStays = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupHeadWardenListeners();
+  }
+
+  @override
+  void dispose() {
+    for (var s in _subscriptions) {
+      s.cancel();
+    }
+    super.dispose();
+  }
+
+  void _setupHeadWardenListeners() {
+    // final warden = Provider.of<AuthProvider>(context, listen: false).userProfile!;
+
+    // 1. Listen for New Student Registrations
+    _subscriptions.add(
+      _fs.getPendingRegistrations('All').listen((list) {
+        if (list.isNotEmpty) {
+          if (_selectedIndex != 0) {
+            setState(() => _hasNewRegistrations = true);
+          }
+          _showInAppAlert('New Registration Request', '${list.length} students pending', 0);
+        } else {
+          setState(() => _hasNewRegistrations = false);
+        }
+      }),
+    );
+
+    // 2. Listen for New Leaves
+    _subscriptions.add(
+      _fs.getPendingLeaves('All').listen((list) {
+        if (list.isNotEmpty) {
+          if (_selectedIndex != 2) {
+            setState(() => _hasNewLeaves = true);
+          }
+          _showInAppAlert('New Leave Request', '${list.length} requests pending', 2);
+        } else {
+          setState(() => _hasNewLeaves = false);
+        }
+      }),
+    );
+
+    // 3. Listen for New Complaints
+    _subscriptions.add(
+      _fs.getComplaintsForRole('Head Warden', 'All').listen((list) {
+        final pending = list.where((c) => c.status == 'Pending').toList();
+        if (pending.isNotEmpty) {
+          if (_selectedIndex != 3) {
+            setState(() => _hasNewComplaints = true);
+          }
+          _showInAppAlert('New Complaint Received', pending.first.title, 3);
+        } else {
+          setState(() => _hasNewComplaints = false);
+        }
+      }),
+    );
+
+    // 4. Listen for Short Stay Requests
+    _subscriptions.add(
+      _fs.getPendingShortStays('All').listen((list) {
+        if (list.isNotEmpty) {
+          if (_selectedIndex != 4) {
+            setState(() => _hasNewShortStays = true);
+          }
+          _showInAppAlert('Short Stay Request', '${list.length} pending requests', 4);
+        } else {
+          setState(() => _hasNewShortStays = false);
+        }
+      }),
+    );
+  }
+
+  void _showInAppAlert(String title, String message, int targetIndex) {
+    if (!mounted) return;
+    if (_selectedIndex == targetIndex) return;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(message, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: _kPrimary,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'View',
+          textColor: Colors.white,
+          onPressed: () {
+            _onTabTapped(targetIndex);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+      if (index == 0) _hasNewRegistrations = false;
+      if (index == 2) _hasNewLeaves = false;
+      if (index == 3) _hasNewComplaints = false;
+      if (index == 4) _hasNewShortStays = false;
+    });
+  }
 
   String get _greeting {
     final h = DateTime.now().hour;
@@ -47,14 +169,16 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
       _AttendanceTab(warden: warden, fs: _fs),
       _LeavesTab(warden: warden, fs: _fs),
       _ComplaintsTab(warden: warden, fs: _fs),
+      _ShortStaysTab(warden: warden, fs: _fs),
     ];
 
-    const labels = ['Students', 'Attendance', 'Leaves', 'Complaints'];
+    const labels = ['Students', 'Attendance', 'Leaves', 'Complaints', 'Short Stay'];
     const icons = [
       (off: Icons.groups_outlined, on: Icons.groups),
       (off: Icons.assignment_ind_outlined, on: Icons.assignment_ind),
       (off: Icons.event_note_outlined, on: Icons.event_note),
       (off: Icons.assignment_late_outlined, on: Icons.assignment_late),
+      (off: Icons.hotel_outlined, on: Icons.hotel),
     ];
 
     return Scaffold(
@@ -77,15 +201,18 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(4, (i) {
+              children: List.generate(5, (i) {
                 final selected = _selectedIndex == i;
+                final showMarker = (i == 0 && _hasNewRegistrations) ||
+                    (i == 2 && _hasNewLeaves) ||
+                    (i == 3 && _hasNewComplaints) ||
+                    (i == 4 && _hasNewShortStays);
+
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedIndex = i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
+                  onTap: () => _onTabTapped(i),
+                  child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                      horizontal: 12,
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
@@ -97,10 +224,28 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          selected ? icons[i].on : icons[i].off,
-                          size: 22,
-                          color: selected ? _kPrimary : Colors.black38,
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(
+                              selected ? icons[i].on : icons[i].off,
+                              size: 22,
+                              color: selected ? _kPrimary : Colors.black38,
+                            ),
+                            if (showMarker)
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         if (selected) ...[
                           const SizedBox(width: 8),
@@ -220,21 +365,7 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
                 return Padding(
                   padding: EdgeInsets.symmetric(horizontal: hPad),
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    switchInCurve: Curves.easeInOutCubic,
-                    switchOutCurve: Curves.easeInOutCubic,
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.05, 0),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      );
-                    },
+                    duration: const Duration(milliseconds: 300),
                     child: Container(
                       key: ValueKey(_selectedIndex),
                       child: pages[_selectedIndex],
@@ -417,19 +548,21 @@ class _StudentsTabState extends State<_StudentsTab> {
   final TextEditingController _searchCtrl = TextEditingController();
   bool _showRequests = false;
   String _searchQuery = '';
-  String _statusFilter = 'All'; // 'All', 'In Campus', 'On Leave'
+  String _statusFilter = 'All'; // 'All', 'In Campus', 'On Leave', 'Short Stay'
   String _hostelFilter = 'All'; // 'All', 'BH1', 'BH2', 'GH1', 'GH2'
 
   late Stream<List<VistaUser>> _pendingStream;
   late Stream<List<VistaUser>> _memberStream;
   late Stream<List<LeaveRequest>> _leaveStream;
+  late Stream<List<ShortStayRequest>> _shortStayStream;
 
   @override
   void initState() {
     super.initState();
     _pendingStream = widget.fs.getPendingRegistrations(widget.warden.hostel);
-    _memberStream = widget.fs.getHostelStudents(widget.warden.hostel);
-    _leaveStream = widget.fs.getApprovedLeaves(widget.warden.hostel);
+    _memberStream = widget.fs.getHostelStudents('All');
+    _leaveStream = widget.fs.getApprovedLeaves('All');
+    _shortStayStream = widget.fs.getApprovedShortStays('All');
 
     _searchCtrl.addListener(() {
       setState(() => _searchQuery = _searchCtrl.text);
@@ -473,10 +606,10 @@ class _StudentsTabState extends State<_StudentsTab> {
           ),
           content: TextField(
             controller: ctrl,
-            keyboardType: TextInputType.number,
+            keyboardType: TextInputType.text,
             decoration: InputDecoration(
               labelText: 'Room Number',
-              hintText: 'e.g. 101',
+              hintText: 'e.g. 101 or 104-D',
               prefixIcon: const Icon(
                 Icons.meeting_room_outlined,
                 color: _kPrimary,
@@ -604,6 +737,17 @@ class _StudentsTabState extends State<_StudentsTab> {
     );
   }
 
+  bool _isStudentOnShortStay(String uid, List<ShortStayRequest> approvedShortStays) {
+    final now = DateTime.now();
+    return approvedShortStays.any(
+      (ss) =>
+          ss.studentId == uid &&
+          ss.status == 'Approved' &&
+          ss.checkInDate.isBefore(now) &&
+          ss.checkOutDate.isAfter(now),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -700,6 +844,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                     _buildFilterChip('In Campus'),
                     const SizedBox(width: 8),
                     _buildFilterChip('On Leave'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Short Stay'),
                   ],
                 ),
               ),
@@ -724,60 +870,85 @@ class _StudentsTabState extends State<_StudentsTab> {
                   return StreamBuilder<List<LeaveRequest>>(
                     stream: _leaveStream,
                     builder: (context, leaveSnap) {
-                      if (memberSnap.connectionState ==
-                              ConnectionState.waiting &&
-                          pendingSnap.connectionState ==
-                              ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(color: _kPrimary),
-                        );
-                      }
-
-                      final allMembers = memberSnap.data ?? [];
-                      final approvedLeaves = leaveSnap.data ?? [];
-
-                      // Filtering logic
-                      var filtered = allMembers.where((m) {
-                        final matchesSearch =
-                            m.name.toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
-                            ) ||
-                            (m.roomNumber ?? '').toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
+                      return StreamBuilder<List<ShortStayRequest>>(
+                        stream: _shortStayStream,
+                        builder: (context, ssSnap) {
+                          if (memberSnap.connectionState ==
+                                  ConnectionState.waiting &&
+                              pendingSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                            return const Center(
+                              child:
+                                  CircularProgressIndicator(color: _kPrimary),
                             );
-                        bool matchesFilter = true;
-                        if (_statusFilter == 'On Leave') {
-                          matchesFilter = _isStudentOnLeave(
-                            m.uid,
-                            approvedLeaves,
-                          );
-                        } else if (_statusFilter == 'In Campus') {
-                          matchesFilter = !_isStudentOnLeave(
-                            m.uid,
-                            approvedLeaves,
-                          );
-                        }
+                          }
 
-                        final matchesHostel =
-                            _hostelFilter == 'All' || m.hostel == _hostelFilter;
+                          final allMembers = memberSnap.data ?? [];
+                          final approvedLeaves = leaveSnap.data ?? [];
+                          final approvedShortStays = ssSnap.data ?? [];
 
-                        return matchesSearch && matchesFilter && matchesHostel;
-                      }).toList();
+                          // Filtering logic
+                          var filtered = allMembers.where((m) {
+                            // Check for inactive short stay students
+                            if (m.hasUsedShortStay) {
+                              final hasActiveStay = approvedShortStays.any(
+                                (ss) =>
+                                    ss.studentId == m.uid &&
+                                    ss.status == 'Approved',
+                              );
+                              if (!hasActiveStay) return false;
+                            }
+
+                            final matchesSearch =
+                                m.name.toLowerCase().contains(
+                                      _searchQuery.toLowerCase(),
+                                    ) ||
+                                (m.roomNumber ?? '').toLowerCase().contains(
+                                      _searchQuery.toLowerCase(),
+                                    );
+                            bool matchesFilter = true;
+                            if (_statusFilter == 'On Leave') {
+                              matchesFilter = _isStudentOnLeave(
+                                m.uid,
+                                approvedLeaves,
+                              );
+                            } else if (_statusFilter == 'Short Stay') {
+                              matchesFilter = _isStudentOnShortStay(
+                                m.uid,
+                                approvedShortStays,
+                              );
+                            } else if (_statusFilter == 'In Campus') {
+                              matchesFilter = !_isStudentOnLeave(
+                                m.uid,
+                                approvedLeaves,
+                              ) &&
+                              !_isStudentOnShortStay(
+                                m.uid,
+                                approvedShortStays,
+                              );
+                            }
+
+                            final matchesHostel =
+                                _hostelFilter == 'All' ||
+                                m.hostel == _hostelFilter;
+
+                            return matchesSearch &&
+                                matchesFilter &&
+                                matchesHostel;
+                          }).toList();
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // ── Pending Alert Banner ──
                           if (pending.isNotEmpty)
-                            AnimatedSize(
-                              duration: const Duration(milliseconds: 300),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  12,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                0,
+                                16,
+                                12,
+                              ),
                                 child: Column(
                                   children: [
                                     GestureDetector(
@@ -1058,7 +1229,6 @@ class _StudentsTabState extends State<_StudentsTab> {
                                   ],
                                 ),
                               ),
-                            ),
 
                           // ── Hostel Students List ──
                           Row(
@@ -1118,6 +1288,10 @@ class _StudentsTabState extends State<_StudentsTab> {
                                     m.uid,
                                     approvedLeaves,
                                   );
+                                  final onShortStay = _isStudentOnShortStay(
+                                    m.uid,
+                                    approvedShortStays,
+                                  );
                                   return _Card(
                                         child: Row(
                                           children: [
@@ -1149,7 +1323,9 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                     decoration: BoxDecoration(
                                                       color: onLeave
                                                           ? Colors.orange
-                                                          : Colors.green,
+                                                          : (onShortStay
+                                                              ? Colors.blue
+                                                              : Colors.green),
                                                       shape: BoxShape.circle,
                                                       border: Border.all(
                                                         color: Colors.white,
@@ -1258,11 +1434,15 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                 Text(
                                                   onLeave
                                                       ? 'ON LEAVE'
-                                                      : 'IN CAMPUS',
+                                                      : (onShortStay
+                                                          ? 'SHORT STAY'
+                                                          : 'IN CAMPUS'),
                                                   style: TextStyle(
                                                     color: onLeave
                                                         ? Colors.orange
-                                                        : Colors.green,
+                                                        : (onShortStay
+                                                            ? Colors.blue
+                                                            : Colors.green),
                                                     fontWeight: FontWeight.w800,
                                                     fontSize: 10,
                                                     letterSpacing: 0.5,
@@ -1272,14 +1452,13 @@ class _StudentsTabState extends State<_StudentsTab> {
                                             ),
                                           ],
                                         ),
-                                      )
-                                      .animate()
-                                      .fadeIn(delay: (i * 50).ms)
-                                      .slideX(begin: 0.1);
+                                      );
                                 },
                               ),
                             ),
                         ],
+                      );
+                        },
                       );
                     },
                   );
@@ -2530,7 +2709,7 @@ class _LeavesTabState extends State<_LeavesTab> {
                               ),
                             ],
                           ),
-                        ).animate().fadeIn(delay: (i * 50).ms).slideX(begin: 0.1);
+                        );
                       },
                     ),
                   ),
@@ -3044,10 +3223,7 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
                                   ),
                                 ],
                               ),
-                            )
-                            .animate()
-                            .fadeIn(delay: (i * 50).ms)
-                            .slideX(begin: 0.1);
+                                      );
                       },
                     ),
                   ),
@@ -3430,6 +3606,470 @@ class _StudentAttendanceCalendarState
           style: const TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
+    );
+  }
+}
+
+class _ShortStaysTab extends StatefulWidget {
+  final VistaUser warden;
+  final FirebaseService fs;
+  const _ShortStaysTab({required this.warden, required this.fs});
+
+  @override
+  State<_ShortStaysTab> createState() => _ShortStaysTabState();
+}
+
+class _ShortStaysTabState extends State<_ShortStaysTab> {
+  String _statusFilter = 'Pending';
+  String _searchQuery = '';
+  final _searchCtrl = TextEditingController();
+
+  Widget _buildFilterChip(String label) {
+    final isSelected = _statusFilter == label;
+    return InkWell(
+      onTap: () => setState(() => _statusFilter = label),
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? _kPrimary : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isSelected ? _kPrimary : Colors.grey.shade300,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showApproveDialog(ShortStayRequest request) {
+    final roomCtrl = TextEditingController();
+    String? selectedHostel = 'BH1'; // Default
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Approve Short Stay'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select Hostel and Room'),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: selectedHostel,
+                decoration: const InputDecoration(
+                  labelText: 'Allot Hostel',
+                  border: OutlineInputBorder(),
+                ),
+                items: ['BH1', 'BH2', 'GH1', 'GH2']
+                    .map((h) => DropdownMenuItem(value: h, child: Text(h)))
+                    .toList(),
+                onChanged: (val) => setDialogState(() => selectedHostel = val),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: roomCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Room Number',
+                  hintText: 'e.g. 101 or 104-D',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.text,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (roomCtrl.text.trim().isEmpty || selectedHostel == null) return;
+                widget.fs.updateShortStayStatus(
+                  request.id,
+                  'Approved',
+                  roomNumber: roomCtrl.text.trim(),
+                  allotmentHostel: selectedHostel,
+                );
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('APPROVE'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRangeExport() async {
+    final DateTimeRange? range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2025),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(
+        start: DateTime.now().subtract(const Duration(days: 7)),
+        end: DateTime.now(),
+      ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1E3A8A), // _kPrimary
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (range != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preparing Export...')),
+      );
+
+      final stays = await widget.fs
+          .getHostelShortStaysRange(
+            widget.warden.hostel ?? 'All', // Head Warden can export 'All'
+            range.start,
+            range.end,
+          )
+          .first;
+
+      await ExportHelper.exportShortStays(
+        stays,
+        widget.warden.hostel ?? 'All',
+      );
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Column(
+            children: [
+              TextField(
+                controller: _searchCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Search by Student Name...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  filled: true,
+                  fillColor: _kBg,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                ),
+                onChanged: (v) => setState(() => _searchQuery = v),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildFilterChip('Pending'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Approved'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Completed'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Rejected'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('All'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _showRangeExport,
+                  icon: const Icon(Icons.download, size: 16),
+                  label: const Text('Export', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF1E3A8A), // _kPrimary
+                    side: const BorderSide(color: Color(0xFF1E3A8A)), // _kPrimary
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder<List<ShortStayRequest>>(
+            stream: widget.fs.getHostelShortStays('All'),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              var list = snap.data ?? [];
+
+              // Apply filters
+              if (_statusFilter != 'All') {
+                list = list.where((r) => r.status == _statusFilter).toList();
+              }
+              if (_searchQuery.isNotEmpty) {
+                list = list
+                    .where((r) => r.studentName.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ))
+                    .toList();
+              }
+
+              if (list.isEmpty) {
+                return const _EmptyState(
+                  icon: Icons.hotel_outlined,
+                  title: 'No Requests Found',
+                  subtitle: 'Pending short stay requests will appear here.',
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                itemCount: list.length,
+                itemBuilder: (context, i) {
+                  final r = list[i];
+                  final isPending = r.status == 'Pending';
+                  final isExtending = r.pendingToDate != null;
+
+                  return _Card(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.person, color: _kPrimary, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${r.seqId} - ${r.studentName}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.download_rounded, color: Color(0xFF1E3A8A), size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => ExportHelper.exportShortStays([r], r.appliedHostel),
+                              tooltip: 'Export Annexure-F',
+                            ),
+                            const SizedBox(width: 8),
+                            if (isExtending)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'EXTENSION PENDING',
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (r.status == 'Approved'
+                                          ? Colors.green
+                                          : (r.status == 'Rejected'
+                                              ? Colors.red
+                                              : Colors.orange))
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  r.status.toUpperCase(),
+                                  style: TextStyle(
+                                    color: r.status == 'Approved'
+                                        ? Colors.green
+                                        : (r.status == 'Rejected'
+                                            ? Colors.red
+                                            : Colors.orange),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildReadOnlyInput(
+                          'Student Details',
+                          '${r.programme} · ${r.rollNo} · ${r.gender}\nEmail: ${r.email}\nPhone: ${r.contactNo}',
+                          icon: Icons.info_outline,
+                        ),
+                        _buildReadOnlyInput(
+                          'Reason for Stay',
+                          r.reason,
+                          icon: Icons.description_outlined,
+                        ),
+                        _buildReadOnlyInput(
+                          'Duration',
+                          '${DateFormat('dd MMM yyyy hh:mm a').format(r.checkInDate)} to \n${DateFormat('dd MMM yyyy hh:mm a').format(r.checkOutDate)}',
+                          icon: Icons.date_range,
+                        ),
+                        if (isExtending)
+                          _buildReadOnlyInput(
+                            'Requested Extension',
+                            DateFormat('dd MMM yyyy hh:mm a').format(r.pendingToDate!),
+                            icon: Icons.more_time,
+                          ),
+                        _buildReadOnlyInput(
+                          'Parent',
+                          '${r.parentName} (${r.parentContact})',
+                          icon: Icons.family_restroom,
+                        ),
+                        if (r.roomNumber != null)
+                          _buildReadOnlyInput(
+                            'Room',
+                            r.roomNumber!,
+                            icon: Icons.room,
+                          ),
+                        if (isPending) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => widget.fs.updateShortStayStatus(r.id, 'Rejected'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    side: const BorderSide(color: Colors.red),
+                                  ),
+                                  child: const Text('REJECT'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _showApproveDialog(r),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('APPROVE'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else if (isExtending) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => widget.fs.approveShortStayExtension(r.id, r.pendingToDate!),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _kPrimary,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('APPROVE EXTENSION'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReadOnlyInput(
+    String label,
+    String value, {
+    IconData? icon,
+    Widget? trailing,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: _kBg.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _kPrimary.withValues(alpha: 0.05)),
+        ),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 20, color: _kPrimary.withValues(alpha: 0.5)),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: _kPrimary.withValues(alpha: 0.4),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            trailing ?? const SizedBox.shrink(),
+          ],
+        ),
+      ),
     );
   }
 }

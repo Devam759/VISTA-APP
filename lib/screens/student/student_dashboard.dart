@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../utils/sanitizer.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'face_capture_screen.dart'
@@ -236,9 +235,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         fs: _firebaseService,
                         isActive: _selectedIndex == 0,
                       ),
-                      _LeaveTab(user: user, fs: _firebaseService),
-                      _ComplaintsTab(user: user, fs: _firebaseService),
-                      if (user.hostel == 'Short Stay')
+                      if (user.hostel != 'Short Stay')
+                        _LeaveTab(user: user, fs: _firebaseService),
+                      if (user.hostel != 'Short Stay')
+                        _ComplaintsTab(user: user, fs: _firebaseService),
+                      if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
                         _ShortStayTab(user: user, fs: _firebaseService),
                     ],
                   ),
@@ -282,17 +283,19 @@ class _StudentDashboardState extends State<StudentDashboard> {
               activeIcon: Icon(Icons.assignment_ind_rounded),
               label: 'Attendance',
             ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.event_note_outlined),
-              activeIcon: Icon(Icons.event_note_rounded),
-              label: 'Leaves',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.assignment_late_outlined),
-              activeIcon: Icon(Icons.assignment_late_rounded),
-              label: 'Complaints',
-            ),
-            if (user.hostel == 'Short Stay')
+            if (user.hostel != 'Short Stay')
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.event_note_outlined),
+                activeIcon: Icon(Icons.event_note_rounded),
+                label: 'Leaves',
+              ),
+            if (user.hostel != 'Short Stay')
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.assignment_late_outlined),
+                activeIcon: Icon(Icons.assignment_late_rounded),
+                label: 'Complaints',
+              ),
+            if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
               const BottomNavigationBarItem(
                 icon: Icon(Icons.hotel_outlined),
                 activeIcon: Icon(Icons.hotel_rounded),
@@ -563,10 +566,34 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     return StreamBuilder<List<LeaveRequest>>(
       stream: widget.fs.getStudentLeaves(widget.user.uid),
       builder: (context, leaveSnap) {
-        final approvedLeaves = (leaveSnap.data ?? [])
-            .where((l) => l.status == 'Approved')
-            .toList();
-        final onLeave = _isStudentOnLeave(approvedLeaves);
+        return StreamBuilder<List<ShortStayRequest>>(
+          stream: widget.fs.getStudentShortStays(widget.user.uid),
+          builder: (context, staySnap) {
+            // Early exit if snapshots are still loading to avoid build flutters
+            if (leaveSnap.connectionState == ConnectionState.waiting || 
+                staySnap.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final approvedLeaves = (leaveSnap.data ?? [])
+                .where((l) => l.status == 'Approved')
+                .toList();
+            final onLeave = _isStudentOnLeave(approvedLeaves);
+
+            final approvedStays = (staySnap.data ?? [])
+                .where((s) => s.status == 'Approved')
+                .toList();
+            
+            bool hasValidStay = true;
+            if (widget.user.hostel == 'Short Stay') {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              hasValidStay = approvedStays.any((stay) {
+                final from = DateTime(stay.checkInDate.year, stay.checkInDate.month, stay.checkInDate.day);
+                final to = DateTime(stay.checkOutDate.year, stay.checkOutDate.month, stay.checkOutDate.day);
+                return !today.isBefore(from) && !today.isAfter(to);
+              });
+            }
 
         return ListView(
           padding: const EdgeInsets.all(24),
@@ -614,7 +641,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                   ),
                   const SizedBox(height: 40),
                   GestureDetector(
-                    onTap: (onLeave || _isMarking)
+                    onTap: (onLeave || !hasValidStay || _isMarking)
                         ? null
                         : _handleMarkAttendance,
                     child:
@@ -646,7 +673,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                     gradient: LinearGradient(
                                       colors: onLeave
                                           ? [_kSuccess, Colors.green.shade700]
-                                          : _isValidTime()
+                                          : (hasValidStay && _isValidTime())
                                           ? (_isLate()
                                                 ? [_kWarning, Colors.orange]
                                                 : [_kPrimary, _kAccent])
@@ -713,20 +740,6 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                   ),
                                 ),
                               ),
-                            )
-                            .animate(
-                              onPlay: (c) =>
-                                  (widget.isActive &&
-                                      _isValidTime() &&
-                                      !onLeave)
-                                  ? c.repeat(reverse: true)
-                                  : c.stop(),
-                            )
-                            .scale(
-                              begin: const Offset(1, 1),
-                              end: const Offset(1.03, 1.03),
-                              duration: 2.seconds,
-                              curve: Curves.easeInOut,
                             ),
                   ),
                   if (onLeave) ...[
@@ -787,6 +800,8 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                   Text(
                     onLeave
                         ? "You are officially on leave. Attendance is handled automatically."
+                        : !hasValidStay
+                        ? "Attendance is blocked. You must have an approved Short Stay for today."
                         : _isWithinGracePeriod()
                         ? (_isLate()
                               ? "You are outside the reporting window. Marking now will be flagged as Late."
@@ -828,6 +843,8 @@ class _AttendanceTabState extends State<_AttendanceTab> {
               ),
             ),
           ],
+        );
+          },
         );
       },
     );
@@ -1216,6 +1233,8 @@ class _LeaveTab extends StatelessWidget {
 
     bool isSubmitting = false;
 
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1516,98 +1535,103 @@ class _LeaveTab extends StatelessWidget {
   );
 }
 
-  Future<DateTime?> _selectDate(
-    BuildContext context,
-    DateTime initialDate,
-    DateTime firstDate,
-  ) async {
-    DateTime tempDate = initialDate;
-    return showDialog<DateTime>(
-      context: context,
-      builder: (context) => AlertDialog(
-        contentPadding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 24),
-              child: Text(
-                'Select Date',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                  color: _kPrimary,
-                ),
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED UI HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+Future<DateTime?> _selectDate(
+  BuildContext context,
+  DateTime initialDate,
+  DateTime firstDate,
+) async {
+  DateTime tempDate = initialDate;
+  return showDialog<DateTime>(
+    context: context,
+    builder: (context) => AlertDialog(
+      contentPadding: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 24),
+            child: Text(
+              'Select Date',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: _kPrimary,
               ),
-            ),
-            SizedBox(
-              height: 320,
-              width: 320,
-              child: CalendarDatePicker(
-                initialDate: initialDate,
-                firstDate: firstDate,
-                lastDate: DateTime.now().add(const Duration(days: 90)),
-                onDateChanged: (date) => tempDate = date,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.black38),
             ),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, tempDate),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kPrimary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+          SizedBox(
+            height: 320,
+            width: 320,
+            child: CalendarDatePicker(
+              initialDate: initialDate,
+              firstDate: firstDate,
+              lastDate: DateTime.now().add(const Duration(days: 90)),
+              onDateChanged: (date) => tempDate = date,
             ),
-            child: const Text('Confirm'),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildInput(
-    String label,
-    TextEditingController ctrl, {
-    IconData? icon,
-    bool readOnly = false,
-    VoidCallback? onTap,
-    TextInputType? keyboardType,
-    int? maxLength,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
-        controller: ctrl,
-        readOnly: readOnly,
-        onTap: onTap,
-        keyboardType: keyboardType,
-        maxLength: maxLength,
-        decoration: InputDecoration(
-          labelText: label,
-          counterText: "",
-          prefixIcon: icon != null ? Icon(icon, size: 20) : null,
-          filled: true,
-          fillColor: _kBg.withValues(alpha: 0.5),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(color: Colors.black38),
           ),
         ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, tempDate),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kPrimary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text('Confirm'),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildInput(
+  String label,
+  TextEditingController ctrl, {
+  IconData? icon,
+  bool readOnly = false,
+  VoidCallback? onTap,
+  TextInputType? keyboardType,
+  int? maxLength,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: TextField(
+      controller: ctrl,
+      readOnly: readOnly,
+      onTap: onTap,
+      keyboardType: keyboardType,
+      maxLength: maxLength,
+      decoration: InputDecoration(
+        labelText: label,
+        counterText: "",
+        prefixIcon: icon != null ? Icon(icon, size: 20) : null,
+        filled: true,
+        fillColor: _kBg.withValues(alpha: 0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2230,16 +2254,25 @@ class _StudentAttendanceCalendarState
                 return StreamBuilder<List<LeaveRequest>>(
                   stream: widget.fs.getStudentLeaves(widget.student.uid),
                   builder: (context, leaveSnap) {
-                    if (attendanceSnap.connectionState ==
-                            ConnectionState.waiting ||
-                        leaveSnap.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(color: _kPrimary),
-                      );
-                    }
+                    return StreamBuilder<List<ShortStayRequest>>(
+                      stream: widget.student.hostel == 'Short Stay'
+                          ? widget.fs.getStudentShortStays(widget.student.uid)
+                          : Stream.value([]),
+                      builder: (context, staySnap) {
+                        if (attendanceSnap.connectionState ==
+                                ConnectionState.waiting ||
+                            leaveSnap.connectionState ==
+                                ConnectionState.waiting ||
+                            staySnap.connectionState ==
+                                ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(color: _kPrimary),
+                          );
+                        }
 
-                    final attendanceList = attendanceSnap.data ?? [];
-                    final leaves = leaveSnap.data ?? [];
+                        final attendanceList = attendanceSnap.data ?? [];
+                        final leaves = leaveSnap.data ?? [];
+                        final stays = staySnap.data ?? [];
 
                     return SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -2323,6 +2356,7 @@ class _StudentAttendanceCalendarState
                                   day,
                                   attendanceList,
                                   leaves,
+                                  stays,
                                 );
                                 if (status == null) return null;
                                 return _buildCalendarDay(day, status);
@@ -2332,6 +2366,7 @@ class _StudentAttendanceCalendarState
                                   day,
                                   attendanceList,
                                   leaves,
+                                  stays,
                                 );
                                 if (status == null) return null;
                                 return Opacity(
@@ -2345,10 +2380,16 @@ class _StudentAttendanceCalendarState
                           _buildLegend(),
                           const SizedBox(height: 24),
                           if (_selectedDay != null)
-                            _buildSelectedDayDetails(attendanceList, leaves),
+                            _buildSelectedDayDetails(
+                              attendanceList,
+                              leaves,
+                              stays,
+                            ),
                           const SizedBox(height: 32),
                         ],
                       ),
+                        );
+                      },
                     );
                   },
                 );
@@ -2363,8 +2404,9 @@ class _StudentAttendanceCalendarState
   Widget _buildSelectedDayDetails(
     List<Attendance> attendance,
     List<LeaveRequest> leaves,
+    List<ShortStayRequest> stays,
   ) {
-    final status = _getDayStatus(_selectedDay!, attendance, leaves);
+    final status = _getDayStatus(_selectedDay!, attendance, leaves, stays);
     if (status == null) return const SizedBox.shrink();
 
     final att = attendance.firstWhereOrNull(
@@ -2389,6 +2431,10 @@ class _StudentAttendanceCalendarState
       case 'On Leave':
         statusColor = Colors.orangeAccent;
         statusIcon = Icons.beach_access_rounded;
+        break;
+      case 'Not in Stay':
+        statusColor = Colors.grey;
+        statusIcon = Icons.bed_rounded;
         break;
       default:
         statusColor = Colors.grey;
@@ -2469,21 +2515,44 @@ class _StudentAttendanceCalendarState
     DateTime day,
     List<Attendance> attendance,
     List<LeaveRequest> leaves,
+    List<ShortStayRequest> stays,
   ) {
     if (day.isAfter(DateTime.now())) return null;
 
     final att = attendance.firstWhereOrNull((a) => isSameDay(a.timestamp, day));
     if (att != null) return att.status;
 
-    final onLeave = leaves.any(
-      (l) =>
-          l.status == 'Approved' &&
-          !day.isBefore(
-            DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day),
-          ) &&
-          !day.isAfter(DateTime(l.toDate.year, l.toDate.month, l.toDate.day)),
-    );
-    if (onLeave) return 'On Leave';
+    if (widget.student.hostel == 'Short Stay') {
+      final hasApprovedStay = stays.any(
+        (s) =>
+            s.status == 'Approved' &&
+            !day.isBefore(
+              DateTime(
+                s.checkInDate.year,
+                s.checkInDate.month,
+                s.checkInDate.day,
+              ),
+            ) &&
+            !day.isAfter(
+              DateTime(
+                s.checkOutDate.year,
+                s.checkOutDate.month,
+                s.checkOutDate.day,
+              ),
+            ),
+      );
+      if (!hasApprovedStay) return 'Not in Stay';
+    } else {
+      final onLeave = leaves.any(
+        (l) =>
+            l.status == 'Approved' &&
+            !day.isBefore(
+              DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day),
+            ) &&
+            !day.isAfter(DateTime(l.toDate.year, l.toDate.month, l.toDate.day)),
+      );
+      if (onLeave) return 'On Leave';
+    }
 
     if (day.isBefore(DateTime.now())) {
       if (isSameDay(day, DateTime.now())) {
@@ -2510,6 +2579,9 @@ class _StudentAttendanceCalendarState
         break;
       case 'On Leave':
         color = Colors.orangeAccent;
+        break;
+      case 'Not in Stay':
+        color = Colors.grey;
         break;
       default:
         color = Colors.transparent;
@@ -2555,7 +2627,10 @@ class _StudentAttendanceCalendarState
             Row(
               children: [
                 Expanded(child: _legendItem('Absent', Colors.redAccent)),
-                Expanded(child: _legendItem('On Leave', Colors.orangeAccent)),
+                if (widget.student.hostel != 'Short Stay')
+                  Expanded(child: _legendItem('On Leave', Colors.orangeAccent))
+                else
+                  Expanded(child: _legendItem('Not in Stay', Colors.grey)),
               ],
             ),
           ],
@@ -2636,9 +2711,9 @@ class _ShortStayTab extends StatelessWidget {
     final checkInCtrl = TextEditingController();
     final checkOutCtrl = TextEditingController();
     final addressCtrl = TextEditingController(text: user.address ?? '');
-    final parentNameCtrl = TextEditingController();
-    final parentContactCtrl = TextEditingController();
-    String? selectedHostel;
+    final parentNameCtrl = TextEditingController(text: user.parentName ?? '');
+    final parentContactCtrl = TextEditingController(text: user.parentContact ?? '');
+    final reasonCtrl = TextEditingController();
     bool isSubmitting = false;
 
     showDialog(
@@ -2664,25 +2739,54 @@ class _ShortStayTab extends StatelessWidget {
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.redAccent, letterSpacing: 1),
                   ),
                   const SizedBox(height: 24),
-                  DropdownButtonFormField<String>(
-                    decoration: _inputDecoration('Target Hostel', Icons.hotel_outlined),
-                    items: ['BH1', 'BH2', 'GH1', 'GH2']
-                        .map((h) => DropdownMenuItem(value: h, child: Text(h)))
-                        .toList(),
-                    onChanged: (v) => selectedHostel = v,
+                  _buildInput(
+                    'Check-in Date & Time',
+                    checkInCtrl,
+                    icon: Icons.login_rounded,
+                    readOnly: true,
+                    onTap: () async {
+                      final date = await _selectDate(context, DateTime.now(), DateTime.now());
+                      if (date != null && context.mounted) {
+                        final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                        if (time != null) {
+                          checkInCtrl.text = DateFormat('dd/MM/yyyy hh:mm a').format(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+                        }
+                      }
+                    },
                   ),
-                  const SizedBox(height: 16),
-                  _buildDateTimeField(context, 'Check-in Date & Time', checkInCtrl, Icons.login_rounded),
-                  _buildDateTimeField(context, 'Check-out Date & Time', checkOutCtrl, Icons.logout_rounded),
-                  _buildTextField('Address', addressCtrl, Icons.home_outlined),
-                  _buildTextField('Parent Name', parentNameCtrl, Icons.person_outline),
-                  _buildTextField('Parent Contact', parentContactCtrl, Icons.phone_android_rounded, keyboardType: TextInputType.phone, maxLength: 10),
+                  _buildInput(
+                    'Check-out Date & Time',
+                    checkOutCtrl,
+                    icon: Icons.logout_rounded,
+                    readOnly: true,
+                    onTap: () async {
+                      final fromStr = checkInCtrl.text;
+                      DateTime initialDate = DateTime.now();
+                      if (fromStr.isNotEmpty) {
+                        try {
+                          initialDate = DateFormat('dd/MM/yyyy hh:mm a').parse(fromStr);
+                        } catch (_) {}
+                      }
+                      
+                      final date = await _selectDate(context, initialDate, initialDate);
+                      if (date != null && context.mounted) {
+                        final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                        if (time != null) {
+                          checkOutCtrl.text = DateFormat('dd/MM/yyyy hh:mm a').format(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+                        }
+                      }
+                    },
+                  ),
+                  _buildInput('Address', addressCtrl, icon: Icons.home_outlined),
+                  _buildInput('Parent Name', parentNameCtrl, icon: Icons.person_outline),
+                  _buildInput('Parent Contact', parentContactCtrl, icon: Icons.phone_android_rounded, keyboardType: TextInputType.phone, maxLength: 10),
+                  _buildInput('Reason for Stay', reasonCtrl, icon: Icons.description_outlined),
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: isSubmitting
                         ? null
                         : () async {
-                            if (checkInCtrl.text.isEmpty || checkOutCtrl.text.isEmpty || selectedHostel == null) {
+                            if (checkInCtrl.text.isEmpty || checkOutCtrl.text.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
                               return;
                             }
@@ -2699,12 +2803,13 @@ class _ShortStayTab extends StatelessWidget {
                                 email: user.email,
                                 contactNo: user.phoneNumber ?? '',
                                 address: addressCtrl.text,
+                                reason: reasonCtrl.text,
                                 parentName: parentNameCtrl.text,
                                 parentContact: parentContactCtrl.text,
                                 checkInDate: DateFormat('dd/MM/yyyy hh:mm a').parse(checkInCtrl.text),
                                 checkOutDate: DateFormat('dd/MM/yyyy hh:mm a').parse(checkOutCtrl.text),
                                 status: 'Pending',
-                                appliedHostel: selectedHostel!,
+                                appliedHostel: 'Pending',
                                 createdAt: DateTime.now(),
                               );
                               await fs.submitShortStayRequest(req);
@@ -2725,48 +2830,6 @@ class _ShortStayTab extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: _kBg.withValues(alpha: 0.5),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController ctrl, IconData icon, {TextInputType? keyboardType, int? maxLength}) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: TextField(
-        controller: ctrl,
-        keyboardType: keyboardType,
-        maxLength: maxLength,
-        decoration: _inputDecoration(label, icon).copyWith(counterText: ""),
-      ),
-    );
-  }
-
-  Widget _buildDateTimeField(BuildContext context, String label, TextEditingController ctrl, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: TextField(
-        controller: ctrl,
-        readOnly: true,
-        decoration: _inputDecoration(label, icon),
-        onTap: () async {
-          final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 30)));
-          if (date != null && context.mounted) {
-            final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-            if (time != null) {
-              ctrl.text = DateFormat('dd/MM/yyyy hh:mm a').format(DateTime(date.year, date.month, date.day, time.hour, time.minute));
-            }
-          }
-        },
       ),
     );
   }

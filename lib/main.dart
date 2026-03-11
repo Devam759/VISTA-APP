@@ -44,8 +44,8 @@ void main() async {
     // ─────────────────────────────────────────────────────────────────────────
     if (!kIsWeb) {
       await FirebaseAppCheck.instance.activate(
-        androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-        appleProvider: AppleProvider.debug,
+        providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
+        providerApple: const AppleDebugProvider(),
       );
     }
 

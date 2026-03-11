@@ -566,8 +566,7 @@ class _StepDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
+        Container(
           width: 28,
           height: 28,
           decoration: BoxDecoration(

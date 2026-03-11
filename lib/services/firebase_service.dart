@@ -40,9 +40,33 @@ class FirebaseService {
     return _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
+  // Phone Verification
+  Future<void> verifyPhoneNumber({
+    required String phoneNumber,
+    required Function(String, int?) onCodeSent,
+    required Function(FirebaseAuthException) onVerificationFailed,
+    required Function(PhoneAuthCredential) onVerificationCompleted,
+    Object? webVerifier, // RecaptchaVerifier for web
+  }) async {
+    await _auth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      verificationCompleted: onVerificationCompleted,
+      verificationFailed: onVerificationFailed,
+      codeSent: onCodeSent,
+      codeAutoRetrievalTimeout: (String verificationId) {},
+      timeout: const Duration(seconds: 60),
+    );
+  }
+
   // Sign Out
   Future<void> signOut() {
     return _auth.signOut();
+  }
+
+  // Password Reset
+  Future<void> sendPasswordResetEmail(String email) {
+    debugPrint('FirebaseService: Sending password reset email to $email');
+    return _auth.sendPasswordResetEmail(email: email);
   }
 
   // User Profile Methods
@@ -286,12 +310,13 @@ class FirebaseService {
         email: request.email,
         contactNo: request.contactNo,
         address: request.address,
+        reason: request.reason,
         parentName: request.parentName,
         parentContact: request.parentContact,
         checkInDate: request.checkInDate,
         checkOutDate: request.checkOutDate,
         status: 'Pending',
-        appliedHostel: request.appliedHostel,
+        appliedHostel: request.gender == 'Male' ? 'Boys' : 'Girls',
         roomNumber: request.roomNumber,
         createdAt: DateTime.now(),
       );
@@ -304,7 +329,13 @@ class FirebaseService {
         .collection('short_stay_requests')
         .where('status', isEqualTo: 'Pending');
     if (hostel != null && hostel != 'All') {
-      query = query.where('appliedHostel', isEqualTo: hostel);
+      if (hostel == 'BH1' || hostel == 'BH2') {
+        query = query.where('appliedHostel', whereIn: ['Boys', 'BH1', 'BH2']);
+      } else if (hostel == 'GH1' || hostel == 'GH2') {
+        query = query.where('appliedHostel', whereIn: ['Girls', 'GH1', 'GH2']);
+      } else {
+        query = query.where('appliedHostel', isEqualTo: hostel);
+      }
     }
     return query.snapshots().map((snapshot) {
       final list = snapshot.docs
@@ -312,6 +343,26 @@ class FirebaseService {
           .toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
+    });
+  }
+
+  Stream<List<ShortStayRequest>> getApprovedShortStays(String? hostel) {
+    Query<Map<String, dynamic>> query = _db
+        .collection('short_stay_requests')
+        .where('status', isEqualTo: 'Approved');
+    if (hostel != null && hostel != 'All') {
+      if (hostel == 'BH1' || hostel == 'BH2') {
+        query = query.where('appliedHostel', whereIn: ['Boys', 'BH1', 'BH2']);
+      } else if (hostel == 'GH1' || hostel == 'GH2') {
+        query = query.where('appliedHostel', whereIn: ['Girls', 'GH1', 'GH2']);
+      } else {
+        query = query.where('appliedHostel', isEqualTo: hostel);
+      }
+    }
+    return query.snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
+          .toList();
     });
   }
 
@@ -329,10 +380,31 @@ class FirebaseService {
     });
   }
 
-  Future<void> updateShortStayStatus(String id, String status, {String? roomNumber}) {
+  Future<void> updateShortStayStatus(String id, String status, {String? roomNumber, String? allotmentHostel}) async {
     final updates = <String, dynamic>{'status': status};
     if (roomNumber != null) updates['roomNumber'] = roomNumber;
-    return _db.collection('short_stay_requests').doc(id).update(updates);
+    if (allotmentHostel != null) updates['appliedHostel'] = allotmentHostel;
+    await _db.collection('short_stay_requests').doc(id).update(updates);
+
+    if (status == 'Approved') {
+      final snap = await _db.collection('short_stay_requests').doc(id).get();
+      if (snap.exists) {
+        final studentId = snap.data()?['studentId'];
+        if (studentId != null) {
+          final userSnap = await _db.collection('users').doc(studentId).get();
+          if (userSnap.exists) {
+            final userData = userSnap.data()!;
+            final userUpdates = <String, dynamic>{'hasUsedShortStay': true};
+            // If the student is still in 'Short Stay' category, move them to the actual hostel
+            if (userData['hostel'] == 'Short Stay' && allotmentHostel != null) {
+              userUpdates['hostel'] = allotmentHostel;
+              if (roomNumber != null) userUpdates['roomNumber'] = roomNumber;
+            }
+            await _db.collection('users').doc(studentId).update(userUpdates);
+          }
+        }
+      }
+    }
   }
 
   Future<void> checkOutFromShortStay(String id) {
@@ -433,7 +505,8 @@ class FirebaseService {
     Query<Map<String, dynamic>> query = _db
         .collection('users')
         .where('isApproved', isEqualTo: false)
-        .where('role', isEqualTo: 'student');
+        .where('role', isEqualTo: 'student')
+        .where('hostel', isNotEqualTo: 'Short Stay');
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
@@ -514,6 +587,53 @@ class FirebaseService {
           })
           .toList(),
     );
+  }
+
+  Stream<List<ShortStayRequest>> getHostelShortStaysRange(
+    String? hostel,
+    DateTime start,
+    DateTime end,
+  ) {
+    Query<Map<String, dynamic>> query = _db.collection('short_stay_requests');
+
+    if (hostel != null && hostel != 'All') {
+      if (hostel == 'BH1' || hostel == 'BH2') {
+        query = query.where('appliedHostel', whereIn: ['Boys', 'BH1', 'BH2']);
+      } else if (hostel == 'GH1' || hostel == 'GH2') {
+        query = query.where('appliedHostel', whereIn: ['Girls', 'GH1', 'GH2']);
+      } else {
+        query = query.where('appliedHostel', isEqualTo: hostel);
+      }
+    }
+
+    return query.snapshots().map(
+      (snapshot) => snapshot.docs
+          .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
+          .where((s) {
+            return !s.checkInDate.isAfter(end) && !s.checkOutDate.isBefore(start);
+          })
+          .toList(),
+    );
+  }
+
+  Stream<List<ShortStayRequest>> getHostelShortStays(String? hostel) {
+    Query<Map<String, dynamic>> query = _db.collection('short_stay_requests');
+    if (hostel != null && hostel != 'All') {
+      if (hostel == 'BH1' || hostel == 'BH2') {
+        query = query.where('appliedHostel', whereIn: ['Boys', 'BH1', 'BH2']);
+      } else if (hostel == 'GH1' || hostel == 'GH2') {
+        query = query.where('appliedHostel', whereIn: ['Girls', 'GH1', 'GH2']);
+      } else {
+        query = query.where('appliedHostel', isEqualTo: hostel);
+      }
+    }
+    return query.snapshots().map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   Stream<List<Complaint>> getHostelComplaintsRange(

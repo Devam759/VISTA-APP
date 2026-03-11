@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart' as vista;
 import '../../utils/sanitizer.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -13,9 +11,12 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _parentNameController = TextEditingController();
+  final _parentContactController = TextEditingController();
   final _passwordController = TextEditingController();
   String _userType = 'Permanent';
   String? _selectedHostel;
@@ -28,63 +29,103 @@ class _SignupScreenState extends State<SignupScreen> {
   final List<String> _programmes = ['BTECH', 'BBA', 'BDES', 'MDES', 'MBA'];
 
   void _signup() async {
-    String nameInput = InputSanitizer.sanitize(_nameController.text.trim());
+    String firstNameInput = InputSanitizer.capitalize(_firstNameController.text.trim());
+    String lastNameInput = InputSanitizer.capitalize(_lastNameController.text.trim());
     String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
     String phoneInput = InputSanitizer.normalizePhone(_phoneController.text.trim());
 
-    if (emailInput.isEmpty) {
+    if (firstNameInput.isEmpty || lastNameInput.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email username')),
+        const SnackBar(content: Text('Please enter your first and last name')),
       );
       return;
     }
 
-    final email = emailInput.contains('@')
-        ? emailInput
-        : '$emailInput@jklu.edu.in';
-
-    if (_selectedProgramme == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select your programme')),
-      );
-      return;
+    if (phoneInput.length != 10 && !phoneInput.startsWith('+')) {
+       // Assuming 10 digits if no country code, or just enforce 10 for local
+       if (phoneInput.length != 10) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Mobile number must be exactly 10 digits')),
+          );
+          return;
+       }
     }
 
-    if (_selectedGender == null) {
+    if (emailInput.isEmpty && phoneInput.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select your gender')),
-      );
-      return;
-    }
-
-    if (_rollNoController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your roll number')),
+        const SnackBar(content: Text('Please enter either an email or a phone number')),
       );
       return;
     }
 
     setState(() => _isSubmitting = true);
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _finalizeSignup();
+  }
+
+  void _finalizeSignup() async {
+    String firstNameInput = InputSanitizer.capitalize(_firstNameController.text.trim());
+    String lastNameInput = InputSanitizer.capitalize(_lastNameController.text.trim());
+    String nameInput = "$firstNameInput $lastNameInput";
+    String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
+    String phoneInput = InputSanitizer.normalizePhone(_phoneController.text.trim());
+    
+    String finalEmail;
+    if (emailInput.isNotEmpty) {
+      finalEmail = emailInput.contains('@') ? emailInput : '$emailInput@jklu.edu.in';
+    } else {
+      finalEmail = '$phoneInput@vista.local';
+    }
+
+    if (_firstNameController.text.trim().isEmpty ||
+        _lastNameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty ||
+        _phoneController.text.trim().isEmpty ||
+        _parentNameController.text.trim().isEmpty ||
+        _parentContactController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty ||
+        _rollNoController.text.trim().isEmpty ||
+        _selectedProgramme == null ||
+        _selectedGender == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All fields are required')),
+      );
+      setState(() => _isSubmitting = false);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    final authProvider = Provider.of<vista.AuthProvider>(context, listen: false);
+    
     try {
-      debugPrint('[Signup] Attempting signup for $email...');
+      debugPrint('[Signup] Attempting signup for $finalEmail...');
       await authProvider.signUp(
         nameInput,
-        email,
+        finalEmail,
         _passwordController.text.trim(),
         _userType == 'Short Stay' ? 'Short Stay' : _selectedHostel!,
         phoneInput,
         _rollNoController.text.trim().toUpperCase(),
         _selectedProgramme!,
         _selectedGender!,
+        parentName: _parentNameController.text.trim(),
+        parentContact: _parentContactController.text.trim(),
+        isApproved: _userType == 'Short Stay',
+        staySignedIn: _userType == 'Short Stay', // Auto-login for Short Stay
       );
-      // Trigger the password-save prompt on Android / iOS / Web
-      TextInput.finishAutofillContext();
-      debugPrint('[Signup] Signup succeeded, showing dialog. mounted=$mounted');
+      
+      debugPrint('[Signup] Signup succeeded. Finalizing flow...');
+      
       if (mounted) {
         setState(() => _isSubmitting = false);
-        _showSuccessDialog();
+        if (_userType == 'Short Stay') {
+          // Short Stay students are auto-approved and stay signed in.
+          // Navigation is handled by AuthWrapper.
+        } else {
+          // Permanent students need approval and should be signed out
+          await authProvider.signOut();
+          _showSuccessDialog();
+        }
       }
     } catch (e, s) {
       debugPrint('[Signup] Error: $e');
@@ -95,6 +136,7 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     }
   }
+
 
   void _showSuccessDialog() {
     showDialog(
@@ -282,7 +324,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                       ),
                     ],
-                  ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
+                  ),
                   const SizedBox(height: 40),
                   AutofillGroup(
                     child: Column(
@@ -316,16 +358,32 @@ class _SignupScreenState extends State<SignupScreen> {
                               ],
                             ),
                           ),
-                        ).animate().fadeIn(delay: 50.ms).slideY(begin: -0.2),
+                        ),
 
-                        TextField(
-                          controller: _nameController,
-                          autofillHints: const [AutofillHints.name],
-                          decoration: const InputDecoration(
-                            labelText: 'Full Name',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                        ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _firstNameController,
+                                textCapitalization: TextCapitalization.words,
+                                decoration: const InputDecoration(
+                                  labelText: 'First Name',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextField(
+                                controller: _lastNameController,
+                                textCapitalization: TextCapitalization.words,
+                                decoration: const InputDecoration(
+                                  labelText: 'Last Name',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 20),
                         TextField(
                           controller: _emailController,
@@ -333,14 +391,21 @@ class _SignupScreenState extends State<SignupScreen> {
                             AutofillHints.email,
                             AutofillHints.newUsername,
                           ],
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'JKLU Email Username',
-                            prefixIcon: Icon(Icons.email_outlined),
-                            suffixText: '@jklu.edu.in',
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            suffix: (_emailController.text.isEmpty ||
+                                    _emailController.text.contains('@') ||
+                                    RegExp(r'^[0-9+\s-]+$')
+                                        .hasMatch(_emailController.text))
+                                ? null
+                                : const Text('@jklu.edu.in',
+                                    style: TextStyle(color: Colors.grey)),
                             hintText: 'example',
                           ),
+                          onChanged: (val) => setState(() {}),
                           keyboardType: TextInputType.emailAddress,
-                        ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
+                        ),
                         const SizedBox(height: 20),
                         TextField(
                           controller: _phoneController,
@@ -350,11 +415,29 @@ class _SignupScreenState extends State<SignupScreen> {
                             prefixIcon: Icon(Icons.phone_outlined),
                           ),
                           keyboardType: TextInputType.phone,
-                        ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _parentNameController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Parent/Guardian Name',
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _parentContactController,
+                          decoration: const InputDecoration(
+                            labelText: 'Parent/Guardian Contact',
+                            prefixIcon: Icon(Icons.contact_phone_outlined),
+                          ),
+                          keyboardType: TextInputType.phone,
+                        ),
                         if (_userType == 'Permanent') ...[
                           const SizedBox(height: 20),
                           DropdownButtonFormField<String>(
-                            value: _selectedHostel,
+                            initialValue: _selectedHostel,
                             items: _permanentHostels
                                 .map(
                                   (h) => DropdownMenuItem(value: h, child: Text(h)),
@@ -365,7 +448,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               labelText: 'Select Hostel',
                               prefixIcon: Icon(Icons.hotel_outlined),
                             ),
-                          ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+                          ),
                         ],
                         const SizedBox(height: 20),
                         TextField(
@@ -376,7 +459,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             prefixIcon: Icon(Icons.lock_outline),
                           ),
                           obscureText: true,
-                        ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                        ),
                         const SizedBox(height: 20),
                         TextField(
                           controller: _rollNoController,
@@ -386,10 +469,10 @@ class _SignupScreenState extends State<SignupScreen> {
                             hintText: 'e.g. 2025BTECH195',
                           ),
                           textCapitalization: TextCapitalization.characters,
-                        ).animate().fadeIn(delay: 550.ms).slideX(begin: -0.1),
+                        ),
                         const SizedBox(height: 20),
                         DropdownButtonFormField<String>(
-                          value: _selectedProgramme,
+                          initialValue: _selectedProgramme,
                           items: _programmes
                               .map(
                                 (p) =>
@@ -402,7 +485,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             labelText: 'Select Programme',
                             prefixIcon: Icon(Icons.school_outlined),
                           ),
-                        ).animate().fadeIn(delay: 600.ms).slideX(begin: -0.1),
+                        ),
                         const SizedBox(height: 20),
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 4),
@@ -422,7 +505,9 @@ class _SignupScreenState extends State<SignupScreen> {
                               child: RadioListTile<String>(
                                 title: const Text('Male', style: TextStyle(fontSize: 14)),
                                 value: 'Male',
+                                // ignore: deprecated_member_use
                                 groupValue: _selectedGender,
+                                // ignore: deprecated_member_use
                                 onChanged: (val) =>
                                     setState(() => _selectedGender = val),
                                 contentPadding: EdgeInsets.zero,
@@ -433,7 +518,9 @@ class _SignupScreenState extends State<SignupScreen> {
                               child: RadioListTile<String>(
                                 title: const Text('Female', style: TextStyle(fontSize: 14)),
                                 value: 'Female',
+                                // ignore: deprecated_member_use
                                 groupValue: _selectedGender,
+                                // ignore: deprecated_member_use
                                 onChanged: (val) =>
                                     setState(() => _selectedGender = val),
                                 contentPadding: EdgeInsets.zero,
@@ -441,7 +528,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                             ),
                           ],
-                        ).animate().fadeIn(delay: 650.ms).slideX(begin: -0.1),
+                        ),
                       ],
                     ),
                   ),
@@ -465,7 +552,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ],
                           )
                         : const Text('Submit Registration'),
-                  ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2),
+                  ),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -476,7 +563,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: const Text('Login'),
                       ),
                     ],
-                  ).animate().fadeIn(delay: 700.ms),
+                  ),
                 ],
               ),
             ),
@@ -497,8 +584,7 @@ class _SignupScreenState extends State<SignupScreen> {
           }
         });
       },
-      child: AnimatedContainer(
-        duration: 300.ms,
+      child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,

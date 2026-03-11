@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../utils/sanitizer.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/vista_user.dart';
@@ -34,6 +33,12 @@ class _WardenDashboardState extends State<WardenDashboard> {
   int _selectedIndex = 0;
   final List<StreamSubscription> _subscriptions = [];
 
+  // Activity Markers
+  bool _hasNewRegistrations = false;
+  bool _hasNewLeaves = false;
+  bool _hasNewComplaints = false;
+  bool _hasNewShortStays = false;
+
   @override
   void initState() {
     super.initState();
@@ -61,11 +66,16 @@ class _WardenDashboardState extends State<WardenDashboard> {
     _subscriptions.add(
       _fs.getPendingRegistrations(warden.hostel).listen((list) {
         if (list.isNotEmpty) {
+          if (_selectedIndex != 0) {
+            setState(() => _hasNewRegistrations = true);
+          }
           _showInAppAlert(
             'New Registration Request',
             '${list.length} pending',
             0,
           );
+        } else {
+          setState(() => _hasNewRegistrations = false);
         }
       }),
     );
@@ -74,11 +84,16 @@ class _WardenDashboardState extends State<WardenDashboard> {
     _subscriptions.add(
       _fs.getPendingLeaves(warden.hostel).listen((list) {
         if (list.isNotEmpty) {
+          if (_selectedIndex != 2) {
+            setState(() => _hasNewLeaves = true);
+          }
           _showInAppAlert(
             'New Leave Request',
             '${list.first.studentName} is requesting leave',
             2,
           );
+        } else {
+          setState(() => _hasNewLeaves = false);
         }
       }),
     );
@@ -88,7 +103,12 @@ class _WardenDashboardState extends State<WardenDashboard> {
       _fs.getComplaintsForRole('Warden', warden.hostel).listen((list) {
         final pending = list.where((c) => c.status == 'Pending').toList();
         if (pending.isNotEmpty) {
+          if (_selectedIndex != 3) {
+            setState(() => _hasNewComplaints = true);
+          }
           _showInAppAlert('New Complaint Received', pending.first.title, 3);
+        } else {
+          setState(() => _hasNewComplaints = false);
         }
       }),
     );
@@ -97,11 +117,16 @@ class _WardenDashboardState extends State<WardenDashboard> {
     _subscriptions.add(
       _fs.getPendingShortStays(warden.hostel).listen((list) {
         if (list.isNotEmpty) {
+          if (_selectedIndex != 4) {
+            setState(() => _hasNewShortStays = true);
+          }
           _showInAppAlert(
             'Short Stay Request',
             '${list.length} pending requests',
             4,
           );
+        } else {
+          setState(() => _hasNewShortStays = false);
         }
       }),
     );
@@ -131,11 +156,21 @@ class _WardenDashboardState extends State<WardenDashboard> {
           label: 'View',
           textColor: Colors.white,
           onPressed: () {
-            setState(() => _selectedIndex = targetIndex);
+            _onTabTapped(targetIndex);
           },
         ),
       ),
     );
+  }
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+      if (index == 0) _hasNewRegistrations = false;
+      if (index == 2) _hasNewLeaves = false;
+      if (index == 3) _hasNewComplaints = false;
+      if (index == 4) _hasNewShortStays = false;
+    });
   }
 
   String get _greeting {
@@ -194,11 +229,14 @@ class _WardenDashboardState extends State<WardenDashboard> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(5, (i) {
                 final selected = _selectedIndex == i;
+                final showMarker = (i == 0 && _hasNewRegistrations) ||
+                    (i == 2 && _hasNewLeaves) ||
+                    (i == 3 && _hasNewComplaints) ||
+                    (i == 4 && _hasNewShortStays);
+
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedIndex = i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
+                  onTap: () => _onTabTapped(i),
+                  child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 10,
@@ -212,10 +250,28 @@ class _WardenDashboardState extends State<WardenDashboard> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          selected ? icons[i].on : icons[i].off,
-                          size: 22,
-                          color: selected ? _kPrimary : Colors.black38,
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(
+                              selected ? icons[i].on : icons[i].off,
+                              size: 22,
+                              color: selected ? _kPrimary : Colors.black38,
+                            ),
+                            if (showMarker)
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         if (selected) ...[
                           const SizedBox(width: 8),
@@ -335,21 +391,7 @@ class _WardenDashboardState extends State<WardenDashboard> {
                 return Padding(
                   padding: EdgeInsets.symmetric(horizontal: hPad),
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    switchInCurve: Curves.easeInOutCubic,
-                    switchOutCurve: Curves.easeInOutCubic,
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.05, 0),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      );
-                    },
+                    duration: const Duration(milliseconds: 300),
                     child: Container(
                       key: ValueKey(_selectedIndex),
                       child: pages[_selectedIndex],
@@ -532,11 +574,12 @@ class _StudentsTabState extends State<_StudentsTab> {
   final TextEditingController _searchCtrl = TextEditingController();
   bool _showRequests = false;
   String _searchQuery = '';
-  String _statusFilter = 'All'; // 'All', 'In Campus', 'On Leave'
+  String _statusFilter = 'All'; // 'All', 'In Campus', 'On Leave', 'Short Stay'
 
   late Stream<List<VistaUser>> _pendingStream;
   late Stream<List<VistaUser>> _memberStream;
   late Stream<List<LeaveRequest>> _leaveStream;
+  late Stream<List<ShortStayRequest>> _shortStayStream;
 
   @override
   void initState() {
@@ -544,6 +587,7 @@ class _StudentsTabState extends State<_StudentsTab> {
     _pendingStream = widget.fs.getPendingRegistrations(widget.warden.hostel!);
     _memberStream = widget.fs.getHostelStudents(widget.warden.hostel!);
     _leaveStream = widget.fs.getApprovedLeaves(widget.warden.hostel!);
+    _shortStayStream = widget.fs.getApprovedShortStays(widget.warden.hostel!);
 
     _searchCtrl.addListener(() {
       setState(() => _searchQuery = _searchCtrl.text);
@@ -587,10 +631,10 @@ class _StudentsTabState extends State<_StudentsTab> {
           ),
           content: TextField(
             controller: ctrl,
-            keyboardType: TextInputType.number,
+            keyboardType: TextInputType.text,
             decoration: InputDecoration(
               labelText: 'Room Number',
-              hintText: 'e.g. 101',
+              hintText: 'e.g. 101 or 104-D',
               prefixIcon: const Icon(
                 Icons.meeting_room_outlined,
                 color: _kPrimary,
@@ -714,6 +758,17 @@ class _StudentsTabState extends State<_StudentsTab> {
     );
   }
 
+  bool _isStudentOnShortStay(String uid, List<ShortStayRequest> approvedShortStays) {
+    final now = DateTime.now();
+    return approvedShortStays.any(
+      (ss) =>
+          ss.studentId == uid &&
+          ss.status == 'Approved' &&
+          ss.checkInDate.isBefore(now) &&
+          ss.checkOutDate.isAfter(now),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -764,6 +819,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                     _buildFilterChip('In Campus'),
                     const SizedBox(width: 8),
                     _buildFilterChip('On Leave'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Short Stay'),
                   ],
                 ),
               ),
@@ -783,56 +840,78 @@ class _StudentsTabState extends State<_StudentsTab> {
                   return StreamBuilder<List<LeaveRequest>>(
                     stream: _leaveStream,
                     builder: (context, leaveSnap) {
-                      if (memberSnap.connectionState ==
-                              ConnectionState.waiting &&
-                          pendingSnap.connectionState ==
-                              ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(color: _kPrimary),
-                        );
-                      }
-
-                      final allMembers = memberSnap.data ?? [];
-                      final approvedLeaves = leaveSnap.data ?? [];
-
-                      // Filtering logic
-                      var filtered = allMembers.where((m) {
-                        final matchesSearch =
-                            m.name.toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
-                            ) ||
-                            (m.roomNumber ?? '').toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
+                      return StreamBuilder<List<ShortStayRequest>>(
+                        stream: _shortStayStream,
+                        builder: (context, ssSnap) {
+                          if (memberSnap.connectionState ==
+                                  ConnectionState.waiting &&
+                              pendingSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                            return const Center(
+                              child:
+                                  CircularProgressIndicator(color: _kPrimary),
                             );
-                        bool matchesFilter = true;
-                        if (_statusFilter == 'On Leave') {
-                          matchesFilter = _isStudentOnLeave(
-                            m.uid,
-                            approvedLeaves,
-                          );
-                        } else if (_statusFilter == 'In Campus') {
-                          matchesFilter = !_isStudentOnLeave(
-                            m.uid,
-                            approvedLeaves,
-                          );
-                        }
-                        return matchesSearch && matchesFilter;
-                      }).toList();
+                          }
+
+                          final allMembers = memberSnap.data ?? [];
+                          final approvedLeaves = leaveSnap.data ?? [];
+                          final approvedShortStays = ssSnap.data ?? [];
+
+                          // Filtering logic
+                          var filtered = allMembers.where((m) {
+                            // Check for inactive short stay students
+                            if (m.hasUsedShortStay) {
+                              final hasActiveStay = approvedShortStays.any(
+                                (ss) =>
+                                    ss.studentId == m.uid &&
+                                    ss.status == 'Approved',
+                              );
+                              if (!hasActiveStay) return false;
+                            }
+
+                            final matchesSearch =
+                                m.name.toLowerCase().contains(
+                                      _searchQuery.toLowerCase(),
+                                    ) ||
+                                (m.roomNumber ?? '').toLowerCase().contains(
+                                      _searchQuery.toLowerCase(),
+                                    );
+                            bool matchesFilter = true;
+                            if (_statusFilter == 'On Leave') {
+                              matchesFilter = _isStudentOnLeave(
+                                m.uid,
+                                approvedLeaves,
+                              );
+                            } else if (_statusFilter == 'Short Stay') {
+                              matchesFilter = _isStudentOnShortStay(
+                                m.uid,
+                                approvedShortStays,
+                              );
+                            } else if (_statusFilter == 'In Campus') {
+                              matchesFilter = !_isStudentOnLeave(
+                                m.uid,
+                                approvedLeaves,
+                              ) &&
+                              !_isStudentOnShortStay(
+                                m.uid,
+                                approvedShortStays,
+                              );
+                            }
+                            return matchesSearch && matchesFilter;
+                          }).toList();
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // ── Pending Alert Banner ──
                           if (pending.isNotEmpty)
-                            AnimatedSize(
-                              duration: const Duration(milliseconds: 300),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  12,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                0,
+                                16,
+                                12,
+                              ),
                                 child: Column(
                                   children: [
                                     GestureDetector(
@@ -1113,7 +1192,6 @@ class _StudentsTabState extends State<_StudentsTab> {
                                   ],
                                 ),
                               ),
-                            ),
 
                           // ── Hostel Students List ──
                           _SectionLabel(
@@ -1146,6 +1224,10 @@ class _StudentsTabState extends State<_StudentsTab> {
                                     m.uid,
                                     approvedLeaves,
                                   );
+                                  final onShortStay = _isStudentOnShortStay(
+                                    m.uid,
+                                    approvedShortStays,
+                                  );
                                   return _Card(
                                         child: Row(
                                           children: [
@@ -1177,7 +1259,9 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                     decoration: BoxDecoration(
                                                       color: onLeave
                                                           ? Colors.orange
-                                                          : Colors.green,
+                                                          : (onShortStay
+                                                              ? Colors.blue
+                                                              : Colors.green),
                                                       shape: BoxShape.circle,
                                                       border: Border.all(
                                                         color: Colors.white,
@@ -1286,11 +1370,15 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                 Text(
                                                   onLeave
                                                       ? 'ON LEAVE'
-                                                      : 'IN CAMPUS',
+                                                      : (onShortStay
+                                                          ? 'SHORT STAY'
+                                                          : 'IN CAMPUS'),
                                                   style: TextStyle(
                                                     color: onLeave
                                                         ? Colors.orange
-                                                        : Colors.green,
+                                                        : (onShortStay
+                                                            ? Colors.blue
+                                                            : Colors.green),
                                                     fontWeight: FontWeight.w800,
                                                     fontSize: 10,
                                                     letterSpacing: 0.5,
@@ -1300,14 +1388,13 @@ class _StudentsTabState extends State<_StudentsTab> {
                                             ),
                                           ],
                                         ),
-                                      )
-                                      .animate()
-                                      .fadeIn(delay: (i * 50).ms)
-                                      .slideX(begin: 0.1);
+                                      );
                                 },
                               ),
                             ),
                         ],
+                      );
+                        },
                       );
                     },
                   );
@@ -2512,7 +2599,7 @@ class _LeavesTabState extends State<_LeavesTab> {
                               ],
                             ],
                           ),
-                        ).animate().fadeIn(delay: (i * 50).ms).slideX(begin: 0.1);
+                        );
                       },
                     ),
                   ),
@@ -2571,7 +2658,7 @@ class _LeavesTabState extends State<_LeavesTab> {
                 ],
               ),
             ),
-            if (trailing != null) trailing,
+            trailing ?? const SizedBox.shrink(),
           ],
         ),
       ),
@@ -3061,46 +3148,108 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
 
   void _showApproveDialog(ShortStayRequest request) {
     final roomCtrl = TextEditingController();
+    String? selectedHostel = widget.warden.hostel ?? 'BH1';
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Approve Short Stay'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Assigning room for ${request.studentName}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: roomCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Room Number',
-                border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Approve Short Stay'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Assigning room for ${request.studentName}'),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: selectedHostel,
+                decoration: const InputDecoration(
+                  labelText: 'Allot Hostel',
+                  border: OutlineInputBorder(),
+                ),
+                items: ['BH1', 'BH2', 'GH1', 'GH2']
+                    .map((h) => DropdownMenuItem(value: h, child: Text(h)))
+                    .toList(),
+                onChanged: (val) => setDialogState(() => selectedHostel = val),
               ),
-              keyboardType: TextInputType.text,
+              const SizedBox(height: 16),
+              TextField(
+                controller: roomCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Room Number',
+                  hintText: 'e.g. 101 or 104-D',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.text,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (roomCtrl.text.trim().isEmpty || selectedHostel == null) return;
+                widget.fs.updateShortStayStatus(
+                  request.id,
+                  'Approved',
+                  roomNumber: roomCtrl.text.trim(),
+                  allotmentHostel: selectedHostel,
+                );
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('APPROVE'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (roomCtrl.text.trim().isEmpty) return;
-              widget.fs.updateShortStayStatus(
-                request.id,
-                'Approved',
-                roomNumber: roomCtrl.text.trim(),
-              );
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('APPROVE'),
-          ),
-        ],
       ),
     );
+  }
+
+  Future<void> _showRangeExport() async {
+    final DateTimeRange? range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2025),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(
+        start: DateTime.now().subtract(const Duration(days: 7)),
+        end: DateTime.now(),
+      ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1E3A8A), // _kPrimary
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (range != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preparing Export...')),
+      );
+
+      final stays = await widget.fs
+          .getHostelShortStaysRange(
+            widget.warden.hostel,
+            range.start,
+            range.end,
+          )
+          .first;
+
+      await ExportHelper.exportShortStays(
+        stays,
+        widget.warden.hostel ?? 'All',
+      );
+    }
   }
 
   @override
@@ -3140,16 +3289,35 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                     const SizedBox(width: 8),
                     _buildFilterChip('Rejected'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('All'),
-                  ],
+                      _buildFilterChip('All'),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _showRangeExport,
+                    icon: const Icon(Icons.download, size: 16),
+                    label: const Text('Export', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _kPrimary,
+                      side: const BorderSide(color: _kPrimary),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ),
+              ],
+            ),
         ),
         Expanded(
           child: StreamBuilder<List<ShortStayRequest>>(
-            stream: widget.fs.getPendingShortStays(widget.warden.hostel),
+            stream: widget.fs.getHostelShortStays(widget.warden.hostel),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -3201,6 +3369,14 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                                 ),
                               ),
                             ),
+                            IconButton(
+                              icon: const Icon(Icons.download_rounded, color: _kPrimary, size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => ExportHelper.exportShortStays([r], r.appliedHostel),
+                              tooltip: 'Export Annexure-F',
+                            ),
+                            const SizedBox(width: 8),
                             if (isExtending)
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -3252,9 +3428,14 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                         ),
                         const SizedBox(height: 12),
                         _buildReadOnlyInput(
-                          'Stay Details',
-                          '${r.programme} · ${r.rollNo} · ${r.gender}',
+                          'Student Details',
+                          '${r.programme} · ${r.rollNo} · ${r.gender}\nEmail: ${r.email}\nPhone: ${r.contactNo}',
                           icon: Icons.info_outline,
+                        ),
+                        _buildReadOnlyInput(
+                          'Reason for Stay',
+                          r.reason,
+                          icon: Icons.description_outlined,
                         ),
                         _buildReadOnlyInput(
                           'Duration',
@@ -3324,7 +3505,7 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                         ],
                       ],
                     ),
-                  ).animate().fadeIn(delay: (i * 50).ms).slideX(begin: 0.1);
+                  );
                 },
               );
             },
@@ -3380,7 +3561,7 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                 ],
               ),
             ),
-            if (trailing != null) trailing,
+            trailing ?? const SizedBox.shrink(),
           ],
         ),
       ),

@@ -11,6 +11,7 @@ class ShortStayRequest {
   final String email;
   final String contactNo;
   final String address;
+  final String reason;
   final String parentName;
   final String parentContact;
   final DateTime checkInDate;
@@ -33,6 +34,7 @@ class ShortStayRequest {
     required this.email,
     required this.contactNo,
     required this.address,
+    required this.reason,
     required this.parentName,
     required this.parentContact,
     required this.checkInDate,
@@ -56,6 +58,7 @@ class ShortStayRequest {
       'email': email,
       'contactNo': contactNo,
       'address': address,
+      'reason': reason,
       'parentName': parentName,
       'parentContact': parentContact,
       'checkInDate': Timestamp.fromDate(checkInDate),
@@ -85,6 +88,7 @@ class ShortStayRequest {
       email: map['email'] ?? '',
       contactNo: map['contactNo'] ?? '',
       address: map['address'] ?? '',
+      reason: map['reason'] ?? '',
       parentName: map['parentName'] ?? '',
       parentContact: map['parentContact'] ?? '',
       checkInDate: (map['checkInDate'] as Timestamp).toDate(),

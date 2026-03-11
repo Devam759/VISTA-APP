@@ -3,6 +3,7 @@ import '../models/vista_user.dart';
 import '../models/attendance_model.dart';
 import '../models/leave_request_model.dart';
 import '../models/complaint_model.dart';
+import '../models/short_stay_model.dart';
 
 // Conditional imports for platform-specific saving
 import 'save_helper_stub.dart'
@@ -219,6 +220,60 @@ class ExportHelper {
     await _saveAndShare(
       rows,
       'Complaints_Report_${hostel}_${DateTime.now().millisecondsSinceEpoch}.csv',
+    );
+  }
+
+  static Future<void> exportShortStays(
+    List<ShortStayRequest> data,
+    String hostel,
+  ) async {
+    List<List<dynamic>> rows = [
+      [
+        'SEQ ID',
+        'Student Name',
+        'Roll No',
+        'Programme',
+        'Gender',
+        'Email',
+        'Contact No',
+        'Address',
+        'Reason',
+        'Parent Name',
+        'Parent Contact',
+        'Check-in',
+        'Check-out',
+        'Status',
+        'Hostel',
+        'Room',
+        'Applied At',
+      ],
+    ];
+
+    for (var r in data) {
+      rows.add([
+        r.seqId,
+        r.studentName,
+        r.rollNo,
+        r.programme,
+        r.gender,
+        r.email,
+        r.contactNo,
+        r.address,
+        r.reason,
+        r.parentName,
+        r.parentContact,
+        DateFormat('dd/MM/yyyy HH:mm').format(r.checkInDate),
+        DateFormat('dd/MM/yyyy HH:mm').format(r.checkOutDate),
+        r.status,
+        r.appliedHostel,
+        r.roomNumber ?? '',
+        DateFormat('dd/MM/yyyy HH:mm').format(r.createdAt),
+      ]);
+    }
+
+    await _saveAndShare(
+      rows,
+      'ShortStay_Report_${hostel}_${DateTime.now().millisecondsSinceEpoch}.csv',
     );
   }
 

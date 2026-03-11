@@ -18,6 +18,9 @@ class VistaUser {
   final String? programme;
   final String? gender;
   final String? address;
+  final bool hasUsedShortStay;
+  final String? parentName;
+  final String? parentContact;
 
   VistaUser({
     required this.uid,
@@ -35,6 +38,9 @@ class VistaUser {
     this.programme,
     this.gender,
     this.address,
+    this.hasUsedShortStay = false,
+    this.parentName,
+    this.parentContact,
   });
 
   Map<String, dynamic> toMap() {
@@ -54,6 +60,9 @@ class VistaUser {
       'programme': programme,
       'gender': gender,
       'address': address,
+      'parentName': parentName,
+      'parentContact': parentContact,
+      'hasUsedShortStay': hasUsedShortStay,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -78,6 +87,9 @@ class VistaUser {
       programme: map['programme'],
       gender: map['gender'],
       address: map['address'],
+      parentName: map['parentName'],
+      parentContact: map['parentContact'],
+      hasUsedShortStay: map['hasUsedShortStay'] ?? false,
     );
   }
 }

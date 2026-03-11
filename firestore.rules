@@ -85,12 +85,24 @@ service cloud.firestore {
 
     // ── PHONE MAPPINGS (Secure Lookup) ───────────────────────────────────────
     match /phone_mappings/{phone} {
-      // Allow unauthenticated lookup of exactly one phone number
       allow get: if true;
-      // Prevent listing all phone numbers
       allow list: if false;
-      // Only authenticated users can update their mapping (via FirebaseService)
       allow write: if isSignedIn();
+    }
+
+    // ── SHORT STAY REQUESTS ──────────────────────────────────────────────────
+    match /short_stay_requests/{id} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        getUserRole() == 'warden' || 
+        getUserRole() == 'headWarden'
+      );
+      allow update: if isSignedIn() && (
+        getUserRole() == 'warden' || 
+        getUserRole() == 'headWarden' ||
+        resource.data.studentId == request.auth.uid
+      );
     }
   }
 }

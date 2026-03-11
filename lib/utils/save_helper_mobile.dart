@@ -10,6 +10,7 @@ Future<void> saveAndShare(List<List<dynamic>> rows, String fileName) async {
   final file = File(path);
   await file.writeAsString(csvData);
 
+  // ignore: deprecated_member_use
   await Share.shareXFiles(
     [XFile(path)],
     text: 'Exported Report',

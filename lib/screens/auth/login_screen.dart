@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
 
 import '../../utils/sanitizer.dart';
@@ -74,30 +73,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         const SizedBox(height: 40),
                         Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    'assets/images/jklu_logo.jpg',
-                                    height: 60,
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Text(
-                                    'VISTA',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF1E3A8A),
-                                        ),
-                                  ),
-                                ],
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/jklu_logo.jpg',
+                                      height: 60,
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Text(
+                                      'VISTA',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF1E3A8A),
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            )
-                            .animate()
-                            .fadeIn(duration: 800.ms)
-                            .slideY(begin: -0.2),
                         const SizedBox(height: 50),
                         AutofillGroup(
                           child: Column(
@@ -123,10 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                     onChanged: (val) => setState(() {}),
                                     keyboardType: TextInputType.emailAddress,
-                                  )
-                                  .animate()
-                                  .fadeIn(delay: 200.ms)
-                                  .slideX(begin: -0.1),
+                                  ),
                               const SizedBox(height: 20),
                               TextField(
                                     controller: _passwordController,
@@ -155,10 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         TextInput.finishAutofillContext(
                                           shouldSave: false,
                                         ),
-                                  )
-                                  .animate()
-                                  .fadeIn(delay: 300.ms)
-                                  .slideX(begin: -0.1),
+                                  ),
                             ],
                           ),
                         ),
@@ -171,10 +161,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: Colors.red.withOpacity(0.3),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                 ),
                               ),
                               child: Row(
@@ -196,10 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ],
                               ),
-                            ).animate().shake(
-                                  duration: 400.ms,
-                                  offset: const Offset(4, 0),
-                                ),
+                            ),
                           ),
                         const SizedBox(height: 40),
                         ElevatedButton(
@@ -214,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                               : const Text('Login'),
-                        ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
+                        ),
                         const SizedBox(height: 40),
                         const SizedBox(height: 40),
                         Row(
@@ -227,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: const Text('Sign Up'),
                             ),
                           ],
-                        ).animate().fadeIn(delay: 600.ms),
+                        ),
                         const SizedBox(height: 24),
                       ],
                     ),

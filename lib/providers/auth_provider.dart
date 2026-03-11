@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/vista_user.dart';
 import '../services/firebase_service.dart';
 import '../services/notification_service.dart';
@@ -56,9 +57,15 @@ class AuthProvider with ChangeNotifier {
     String rollNo,
     String programme,
     String gender,
+    {
+      String? parentName,
+      String? parentContact,
+      bool isApproved = false,
+      bool staySignedIn = false,
+    }
   ) async {
     _isLoading = true;
-    _suppressAuthChanges = true; // Block AuthWrapper navigation
+    _suppressAuthChanges = !staySignedIn;
     notifyListeners();
     try {
       final credential = await _firebaseService.signUp(email, password);
@@ -69,10 +76,12 @@ class AuthProvider with ChangeNotifier {
         role: UserRole.student,
         hostel: hostel,
         phoneNumber: phoneNumber,
-        isApproved: false,
+        isApproved: isApproved,
         rollNo: rollNo,
         programme: programme,
         gender: gender,
+        parentName: parentName,
+        parentContact: parentContact,
       );
       // Write Firestore profile with a timeout — if Firestore is slow/unavailable
       // on web, we still consider signup successful since the Auth account exists.
@@ -85,13 +94,70 @@ class AuthProvider with ChangeNotifier {
           '[Auth] Firestore profile write failed (non-fatal): $firestoreError',
         );
       }
-      // Sign out silently — the listener is suppressed so AuthWrapper won't navigate.
-      await _firebaseService.signOut();
+      
+      if (staySignedIn) {
+        _userProfile = newUser;
+      }
     } catch (e) {
       rethrow;
     } finally {
       _isLoading = false;
       _suppressAuthChanges = false; // Re-enable auth listener
+      notifyListeners();
+    }
+  }
+
+  // OTP Verification
+  String? _verificationId;
+  
+  Future<void> sendOTP(String phoneNumber, {
+    required Function(String, int?) onCodeSent,
+    required Function(String) onError,
+    Object? webVerifier,
+  }) async {
+    try {
+      await _firebaseService.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        webVerifier: webVerifier,
+        onCodeSent: (verId, forceResend) {
+          _verificationId = verId;
+          onCodeSent(verId, forceResend);
+        },
+        onVerificationFailed: (e) => onError(e.message ?? 'Verification failed'),
+        onVerificationCompleted: (credential) async {
+          // If auto-retrieval works, we might need a way to pass this back.
+          // For now, focus on manual code entry.
+        },
+      );
+    } catch (e) {
+      onError(e.toString());
+    }
+  }
+
+  Future<void> verifyOTP(String smsCode) async {
+    if (_verificationId == null) throw Exception('No verification ID found');
+    final credential = PhoneAuthProvider.credential(
+      verificationId: _verificationId!,
+      smsCode: smsCode,
+    );
+    
+    final currentUser = _firebaseService.currentUser;
+    if (currentUser != null) {
+      // Link the phone number to the existing email account
+      await currentUser.linkWithCredential(credential);
+    } else {
+      // Fallback: If no user (should not happen in our flow), sign in with phone
+      await FirebaseAuth.instance.signInWithCredential(credential);
+    }
+  }
+
+  Future<void> sendPasswordReset(String email) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _firebaseService.sendPasswordResetEmail(email);
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
