@@ -121,7 +121,7 @@ exports.nightAttendanceMissedReminder = functions.region('asia-south1').pubsub.s
  * Real-time Triggers
  */
 
-exports.notifyWardenNewRegistration = functions.region('asia-south1').firestore.document('users/{uid}').onCreate(async (snapshot, context) => {
+exports.notifyWardenNewRegistration = functions.region('asia-south1').firestore.database('default').document('users/{uid}').onCreate(async (snapshot, context) => {
     const newUser = snapshot.data();
     if (newUser.role !== 'student' || newUser.isApproved === true) return;
 
@@ -150,7 +150,7 @@ exports.notifyWardenNewRegistration = functions.region('asia-south1').firestore.
     }
 });
 
-exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.document('leave_requests/{id}').onCreate(async (snapshot, context) => {
+exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.database('default').document('leave_requests/{id}').onCreate(async (snapshot, context) => {
     const leave = snapshot.data();
     try {
         const wardens = await db.collection('users')
@@ -177,7 +177,7 @@ exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.documen
     }
 });
 
-exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.document('complaints/{id}').onCreate(async (snapshot, context) => {
+exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.database('default').document('complaints/{id}').onCreate(async (snapshot, context) => {
     const complaint = snapshot.data();
     try {
         const wardens = await db.collection('users')
@@ -211,7 +211,7 @@ exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.doc
     }
 });
 
-exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.document('{col}/{id}').onUpdate(async (change, context) => {
+exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.database('default').document('{col}/{id}').onUpdate(async (change, context) => {
     const col = context.params.col;
     if (!['users', 'leave_requests', 'complaints'].includes(col)) return;
 
