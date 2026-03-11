@@ -12,7 +12,7 @@ import 'screens/head_warden/head_warden_dashboard.dart';
 import 'screens/auth/pending_approval_screen.dart';
 import 'utils/theme.dart';
 import 'models/vista_user.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, debugPrint;
 import 'services/security_service.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -44,7 +44,7 @@ void main() async {
     // ─────────────────────────────────────────────────────────────────────────
     if (!kIsWeb) {
       await FirebaseAppCheck.instance.activate(
-        providerAndroid: const AndroidPlayIntegrityProvider(),
+        androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
         appleProvider: AppleProvider.debug,
       );
     }
@@ -69,6 +69,8 @@ void main() async {
     }
   } on PlatformException catch (e) {
     debugPrint("Failed to get debug token: '${e.message}'.");
+  } catch (e) {
+    debugPrint("Debug token not available: $e");
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -121,10 +123,6 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-
-    if (authProvider.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
 
     if (authProvider.userProfile == null) {
       return const LoginScreen();

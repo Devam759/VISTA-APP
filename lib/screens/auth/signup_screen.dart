@@ -17,9 +17,15 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  String _userType = 'Permanent';
   String? _selectedHostel;
+  String? _selectedProgramme;
+  String? _selectedGender;
+  final _rollNoController = TextEditingController();
   bool _isSubmitting = false;
-  final List<String> _hostels = ['BH1', 'BH2', 'GH1', 'GH2'];
+
+  final List<String> _permanentHostels = ['BH1', 'BH2', 'GH1', 'GH2'];
+  final List<String> _programmes = ['BTECH', 'BBA', 'BDES', 'MDES', 'MBA'];
 
   void _signup() async {
     String nameInput = InputSanitizer.sanitize(_nameController.text.trim());
@@ -37,9 +43,23 @@ class _SignupScreenState extends State<SignupScreen> {
         ? emailInput
         : '$emailInput@jklu.edu.in';
 
-    if (_selectedHostel == null) {
+    if (_selectedProgramme == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select your hostel')),
+        const SnackBar(content: Text('Please select your programme')),
+      );
+      return;
+    }
+
+    if (_selectedGender == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select your gender')),
+      );
+      return;
+    }
+
+    if (_rollNoController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your roll number')),
       );
       return;
     }
@@ -53,8 +73,11 @@ class _SignupScreenState extends State<SignupScreen> {
         nameInput,
         email,
         _passwordController.text.trim(),
-        _selectedHostel!,
+        _userType == 'Short Stay' ? 'Short Stay' : _selectedHostel!,
         phoneInput,
+        _rollNoController.text.trim().toUpperCase(),
+        _selectedProgramme!,
+        _selectedGender!,
       );
       // Trigger the password-save prompt on Android / iOS / Web
       TextInput.finishAutofillContext();
@@ -265,6 +288,36 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // User Type Selection
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _buildTypeButton(
+                                    'Permanent',
+                                    Icons.apartment_rounded,
+                                    _userType == 'Permanent',
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _buildTypeButton(
+                                    'Short Stay',
+                                    Icons.home_outlined,
+                                    _userType == 'Short Stay',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ).animate().fadeIn(delay: 50.ms).slideY(begin: -0.2),
+
                         TextField(
                           controller: _nameController,
                           autofillHints: const [AutofillHints.name],
@@ -298,22 +351,22 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                           keyboardType: TextInputType.phone,
                         ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
-                        const SizedBox(height: 20),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedHostel,
-                          items: _hostels
-                              .map(
-                                (h) =>
-                                    DropdownMenuItem(value: h, child: Text(h)),
-                              )
-                              .toList(),
-                          onChanged: (val) =>
-                              setState(() => _selectedHostel = val),
-                          decoration: const InputDecoration(
-                            labelText: 'Select Hostel',
-                            prefixIcon: Icon(Icons.hotel_outlined),
-                          ),
-                        ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+                        if (_userType == 'Permanent') ...[
+                          const SizedBox(height: 20),
+                          DropdownButtonFormField<String>(
+                            value: _selectedHostel,
+                            items: _permanentHostels
+                                .map(
+                                  (h) => DropdownMenuItem(value: h, child: Text(h)),
+                                )
+                                .toList(),
+                            onChanged: (val) => setState(() => _selectedHostel = val),
+                            decoration: const InputDecoration(
+                              labelText: 'Select Hostel',
+                              prefixIcon: Icon(Icons.hotel_outlined),
+                            ),
+                          ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+                        ],
                         const SizedBox(height: 20),
                         TextField(
                           controller: _passwordController,
@@ -324,10 +377,75 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                           obscureText: true,
                         ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _rollNoController,
+                          decoration: const InputDecoration(
+                            labelText: 'Roll Number',
+                            prefixIcon: Icon(Icons.numbers_outlined),
+                            hintText: 'e.g. 2025BTECH195',
+                          ),
+                          textCapitalization: TextCapitalization.characters,
+                        ).animate().fadeIn(delay: 550.ms).slideX(begin: -0.1),
+                        const SizedBox(height: 20),
+                        DropdownButtonFormField<String>(
+                          value: _selectedProgramme,
+                          items: _programmes
+                              .map(
+                                (p) =>
+                                    DropdownMenuItem(value: p, child: Text(p)),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => _selectedProgramme = val),
+                          decoration: const InputDecoration(
+                            labelText: 'Select Programme',
+                            prefixIcon: Icon(Icons.school_outlined),
+                          ),
+                        ).animate().fadeIn(delay: 600.ms).slideX(begin: -0.1),
+                        const SizedBox(height: 20),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            'Gender',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: const Text('Male', style: TextStyle(fontSize: 14)),
+                                value: 'Male',
+                                groupValue: _selectedGender,
+                                onChanged: (val) =>
+                                    setState(() => _selectedGender = val),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: const Text('Female', style: TextStyle(fontSize: 14)),
+                                value: 'Female',
+                                groupValue: _selectedGender,
+                                onChanged: (val) =>
+                                    setState(() => _selectedGender = val),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                          ],
+                        ).animate().fadeIn(delay: 650.ms).slideX(begin: -0.1),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
                   ElevatedButton(
                     onPressed: _isSubmitting ? null : _signup,
                     child: _isSubmitting
@@ -347,7 +465,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ],
                           )
                         : const Text('Submit Registration'),
-                  ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2),
+                  ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -363,6 +481,56 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+  Widget _buildTypeButton(String label, IconData icon, bool isSelected) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _userType = label;
+          if (_userType == 'Short Stay') {
+            _selectedHostel = 'Short Stay';
+          } else if (_selectedHostel == 'Short Stay') {
+            _selectedHostel = null;
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: 300.ms,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? const Color(0xFF1E3A8A) : Colors.black45,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? const Color(0xFF1E3A8A) : Colors.black45,
+              ),
+            ),
+          ],
         ),
       ),
     );

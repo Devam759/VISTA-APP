@@ -5,6 +5,7 @@ import '../models/vista_user.dart';
 import '../models/attendance_model.dart';
 import '../models/leave_request_model.dart';
 import '../models/complaint_model.dart';
+import '../models/short_stay_model.dart';
 import '../utils/rate_limiter.dart';
 
 class FirebaseService {
@@ -54,6 +55,18 @@ class FirebaseService {
 
   Future<void> clearFcmToken(String uid) {
     return _db.collection('users').doc(uid).update({'fcmToken': null});
+  }
+
+  Future<String?> getUserEmailByPhone(String phone) async {
+    final query = await _db
+        .collection('users')
+        .where('phoneNumber', isEqualTo: phone)
+        .limit(1)
+        .get();
+    if (query.docs.isNotEmpty) {
+      return query.docs.first.data()['email'] as String?;
+    }
+    return null;
   }
 
   Future<VistaUser?> getUserProfile(String uid) async {
@@ -234,6 +247,90 @@ class FirebaseService {
           list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return list;
         });
+  }
+
+  // Short Stay Methods (Annexure - F)
+  Future<void> submitShortStayRequest(ShortStayRequest request) async {
+    return RateLimiter.run('submitShortStay_${request.studentId}', () async {
+      final seqId = await _getNextSequence('SS');
+      final updatedRequest = ShortStayRequest(
+        id: request.id,
+        seqId: seqId,
+        studentId: request.studentId,
+        studentName: request.studentName,
+        rollNo: request.rollNo,
+        programme: request.programme,
+        gender: request.gender,
+        email: request.email,
+        contactNo: request.contactNo,
+        address: request.address,
+        parentName: request.parentName,
+        parentContact: request.parentContact,
+        checkInDate: request.checkInDate,
+        checkOutDate: request.checkOutDate,
+        status: 'Pending',
+        appliedHostel: request.appliedHostel,
+        roomNumber: request.roomNumber,
+        createdAt: DateTime.now(),
+      );
+      await _db.collection('short_stay_requests').add(updatedRequest.toMap());
+    });
+  }
+
+  Stream<List<ShortStayRequest>> getPendingShortStays(String? hostel) {
+    Query<Map<String, dynamic>> query = _db
+        .collection('short_stay_requests')
+        .where('status', isEqualTo: 'Pending');
+    if (hostel != null && hostel != 'All') {
+      query = query.where('appliedHostel', isEqualTo: hostel);
+    }
+    return query.snapshots().map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  Stream<List<ShortStayRequest>> getStudentShortStays(String uid) {
+    return _db
+        .collection('short_stay_requests')
+        .where('studentId', isEqualTo: uid)
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  Future<void> updateShortStayStatus(String id, String status, {String? roomNumber}) {
+    final updates = <String, dynamic>{'status': status};
+    if (roomNumber != null) updates['roomNumber'] = roomNumber;
+    return _db.collection('short_stay_requests').doc(id).update(updates);
+  }
+
+  Future<void> checkOutFromShortStay(String id) {
+    return _db.collection('short_stay_requests').doc(id).update({
+      'status': 'Completed',
+      'actualCheckOutTime': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> requestShortStayExtension(String id, DateTime newToDate) {
+    return _db.collection('short_stay_requests').doc(id).update({
+      'pendingToDate': Timestamp.fromDate(newToDate),
+    });
+  }
+
+  Future<void> approveShortStayExtension(String id, DateTime newToDate) {
+    return _db.collection('short_stay_requests').doc(id).update({
+      'checkOutDate': Timestamp.fromDate(newToDate),
+      'pendingToDate': null,
+    });
   }
 
   // Complaint Methods

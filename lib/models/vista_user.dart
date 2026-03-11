@@ -14,6 +14,10 @@ class VistaUser {
   final String? fcmToken;
   final bool registrationNotified;
   final bool approvalNotified;
+  final String? rollNo;
+  final String? programme;
+  final String? gender;
+  final String? address;
 
   VistaUser({
     required this.uid,
@@ -27,6 +31,10 @@ class VistaUser {
     this.fcmToken,
     this.registrationNotified = false,
     this.approvalNotified = false,
+    this.rollNo,
+    this.programme,
+    this.gender,
+    this.address,
   });
 
   Map<String, dynamic> toMap() {
@@ -42,6 +50,10 @@ class VistaUser {
       'fcmToken': fcmToken,
       'registrationNotified': registrationNotified,
       'approvalNotified': approvalNotified,
+      'rollNo': rollNo,
+      'programme': programme,
+      'gender': gender,
+      'address': address,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -62,6 +74,10 @@ class VistaUser {
       fcmToken: map['fcmToken'],
       registrationNotified: map['registrationNotified'] ?? true,
       approvalNotified: map['approvalNotified'] ?? true,
+      rollNo: map['rollNo'],
+      programme: map['programme'],
+      gender: map['gender'],
+      address: map['address'],
     );
   }
 }

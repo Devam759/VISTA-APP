@@ -17,24 +17,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  String? _errorMessage;
 
   void _login() async {
+    setState(() => _errorMessage = null);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     try {
-      String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
-      if (emailInput.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter your username')),
-        );
+      String identifier = InputSanitizer.sanitize(_emailController.text.trim());
+      if (identifier.isEmpty) {
+        setState(() => _errorMessage = 'Please enter your ID');
         return;
       }
 
       // Handle cases where user might have typed the full email
-      final email = emailInput.contains('@')
-          ? emailInput
-          : '$emailInput@jklu.edu.in';
+      String finalIdentifier = identifier;
+      if (!identifier.contains('@') && !RegExp(r'^[0-9+\s-]+$').hasMatch(identifier)) {
+        finalIdentifier = '$identifier@jklu.edu.in';
+      }
 
-      await authProvider.signIn(email, _passwordController.text.trim());
+      await authProvider.signIn(finalIdentifier, _passwordController.text.trim());
       // Trigger the password-save prompt on Android / iOS / Web
       TextInput.finishAutofillContext();
     } catch (e) {
@@ -43,20 +44,19 @@ class _LoginScreenState extends State<LoginScreen> {
         if (e.toString().contains('invalid-credential') ||
             e.toString().contains('wrong-password') ||
             e.toString().contains('user-not-found')) {
-          message = 'Invalid email or password.';
+          message = 'Incorrect ID or password entered.';
         } else if (e.toString().contains('network-request-failed')) {
           message = 'Network error. Please check your connection.';
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
-        );
+        setState(() => _errorMessage = message);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -109,11 +109,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                       AutofillHints.email,
                                       AutofillHints.username,
                                     ],
-                                    decoration: const InputDecoration(
-                                      labelText: 'JKLU Email Username',
-                                      prefixIcon: Icon(Icons.email_outlined),
-                                      suffixText: '@jklu.edu.in',
+                                    decoration: InputDecoration(
+                                      labelText: 'Email or Mobile Number',
+                                      prefixIcon: const Icon(Icons.person_outline),
+                                      suffix: _emailController.text.contains('@') ||
+                                              RegExp(r'^[0-9+\s-]+$')
+                                                  .hasMatch(_emailController.text)
+                                          ? null
+                                          : const Text(
+                                              '@jklu.edu.in',
+                                              style: TextStyle(color: Colors.grey),
+                                            ),
                                     ),
+                                    onChanged: (val) => setState(() {}),
                                     keyboardType: TextInputType.emailAddress,
                                   )
                                   .animate()
@@ -154,10 +162,58 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
+                        if (_errorMessage != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.red.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ).animate().shake(
+                                  duration: 400.ms,
+                                  offset: const Offset(4, 0),
+                                ),
+                          ),
                         const SizedBox(height: 40),
                         ElevatedButton(
-                          onPressed: _login,
-                          child: const Text('Login'),
+                          onPressed: authProvider.isLoading ? null : _login,
+                          child: authProvider.isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Login'),
                         ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
                         const SizedBox(height: 40),
                         const SizedBox(height: 40),

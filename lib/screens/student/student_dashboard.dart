@@ -13,11 +13,13 @@ import '../../providers/auth_provider.dart';
 import '../../models/attendance_model.dart';
 import '../../models/leave_request_model.dart';
 import '../../models/complaint_model.dart';
+import '../../models/short_stay_model.dart';
 import '../../services/firebase_service.dart';
 import '../../models/vista_user.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/security_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME CONSTANTS (Consistent with Warden portal for unified feel)
@@ -236,6 +238,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       ),
                       _LeaveTab(user: user, fs: _firebaseService),
                       _ComplaintsTab(user: user, fs: _firebaseService),
+                      if (user.hostel == 'Short Stay')
+                        _ShortStayTab(user: user, fs: _firebaseService),
                     ],
                   ),
                 ),
@@ -272,22 +276,28 @@ class _StudentDashboardState extends State<StudentDashboard> {
             fontWeight: FontWeight.w500,
             fontSize: 12,
           ),
-          items: const [
-            BottomNavigationBarItem(
+          items: [
+            const BottomNavigationBarItem(
               icon: Icon(Icons.assignment_ind_outlined),
               activeIcon: Icon(Icons.assignment_ind_rounded),
               label: 'Attendance',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Icon(Icons.event_note_outlined),
               activeIcon: Icon(Icons.event_note_rounded),
               label: 'Leaves',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Icon(Icons.assignment_late_outlined),
               activeIcon: Icon(Icons.assignment_late_rounded),
               label: 'Complaints',
             ),
+            if (user.hostel == 'Short Stay')
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.hotel_outlined),
+                activeIcon: Icon(Icons.hotel_rounded),
+                label: 'Short Stay',
+              ),
           ],
         ),
       ),
@@ -1174,25 +1184,58 @@ class _LeaveTab extends StatelessWidget {
     BuildContext context,
     VistaUser user,
     FirebaseService fs,
-  ) {
-    final fromController = TextEditingController();
-    final toController = TextEditingController();
-    final reasonController = TextEditingController();
-    final parentNameController = TextEditingController();
-    final parentContactController = TextEditingController();
-    final addressController = TextEditingController();
-    String? selectedRelation; // State for dropdown
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final fromController = TextEditingController(text: prefs.getString('leaveDraft_from') ?? '');
+    final toController = TextEditingController(text: prefs.getString('leaveDraft_to') ?? '');
+    final reasonController = TextEditingController(text: prefs.getString('leaveDraft_reason') ?? '');
+    final parentNameController = TextEditingController(text: prefs.getString('leaveDraft_parentName') ?? '');
+    final parentContactController = TextEditingController(text: prefs.getString('leaveDraft_parentContact') ?? '');
+    final addressController = TextEditingController(text: prefs.getString('leaveDraft_address') ?? '');
+    String? selectedRelation = prefs.getString('leaveDraft_relation'); // State for dropdown
+
+    void saveDraft() {
+      prefs.setString('leaveDraft_from', fromController.text);
+      prefs.setString('leaveDraft_to', toController.text);
+      prefs.setString('leaveDraft_reason', reasonController.text);
+      prefs.setString('leaveDraft_parentName', parentNameController.text);
+      prefs.setString('leaveDraft_parentContact', parentContactController.text);
+      prefs.setString('leaveDraft_address', addressController.text);
+      if (selectedRelation != null) {
+        prefs.setString('leaveDraft_relation', selectedRelation!);
+      }
+    }
+
+    fromController.addListener(saveDraft);
+    toController.addListener(saveDraft);
+    reasonController.addListener(saveDraft);
+    parentNameController.addListener(saveDraft);
+    parentContactController.addListener(saveDraft);
+    addressController.addListener(saveDraft);
 
     bool isSubmitting = false;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: ConstrainedBox(
+        builder: (context, setDialogState) => PopScope(
+          onPopInvokedWithResult: (didPop, result) {
+            // If they dismissed the dialog without submitting (didPop implies they exited), we clear it.
+            // Submit explicitly pops with a result/navigates, or we just clear aggressively if it's not a success path.
+            // Actually, `onPopInvoked` is called whenever the dialog pops (including submit).
+            // We already clear on submit. So doing it here ensures it always clears on exit.
+            for (final key in prefs.getKeys()) {
+              if (key.startsWith('leaveDraft_')) {
+                prefs.remove(key);
+              }
+            }
+          },
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -1331,8 +1374,10 @@ class _LeaveTab extends StatelessWidget {
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (v) =>
-                                setDialogState(() => selectedRelation = v),
+                            onChanged: (v) {
+                                  setDialogState(() => selectedRelation = v);
+                                  saveDraft();
+                                },
                           ),
                         ),
                       ),
@@ -1400,6 +1445,14 @@ class _LeaveTab extends StatelessWidget {
                                 createdAt: DateTime.now(),
                               );
                               await fs.submitLeaveRequest(request);
+                              
+                              // Clear draft on success
+                              for (final key in prefs.getKeys()) {
+                                if (key.startsWith('leaveDraft_')) {
+                                  prefs.remove(key);
+                                }
+                              }
+
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1440,7 +1493,14 @@ class _LeaveTab extends StatelessWidget {
                         : const Text('Submit Request'),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      for (final key in prefs.getKeys()) {
+                        if (key.startsWith('leaveDraft_')) {
+                          prefs.remove(key);
+                        }
+                      }
+                      Navigator.pop(context);
+                    },
                     child: const Text(
                       'Cancel',
                       style: TextStyle(color: Colors.black38),
@@ -1452,8 +1512,9 @@ class _LeaveTab extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<DateTime?> _selectDate(
     BuildContext context,
@@ -1940,6 +2001,71 @@ class _ComplaintsTab extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT WIDGETS
 // ─────────────────────────────────────────────────────────────────────────────
+
+class _TabHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final VoidCallback onAction;
+  final String actionLabel;
+  final IconData actionIcon;
+
+  const _TabHeader({
+    required this.title,
+    required this.subtitle,
+    required this.onAction,
+    required this.actionLabel,
+    required this.actionIcon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 16, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: _kPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: onAction,
+            icon: Icon(actionIcon, size: 18),
+            label: Text(actionLabel),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kPrimary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _SectionLabel extends StatelessWidget {
   final String label;
@@ -2457,6 +2583,330 @@ class _StudentAttendanceCalendarState
         ),
       ],
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHORT STAY TAB (Annexure - F)
+// ─────────────────────────────────────────────────────────────────────────────
+class _ShortStayTab extends StatelessWidget {
+  final VistaUser user;
+  final FirebaseService fs;
+  const _ShortStayTab({required this.user, required this.fs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _TabHeader(
+          title: 'Hostel Stays',
+          subtitle: 'Apply for temporary stay',
+          onAction: () => _showShortStayDialog(context),
+          actionLabel: 'Apply Now',
+          actionIcon: Icons.add_home_work_rounded,
+        ),
+        Expanded(
+          child: StreamBuilder<List<ShortStayRequest>>(
+            stream: fs.getStudentShortStays(user.uid),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(color: _kPrimary));
+              }
+              final list = snapshot.data ?? [];
+              if (list.isEmpty) {
+                return const _EmptyState(
+                  icon: Icons.hotel_rounded,
+                  title: 'No Stay Requests',
+                  subtitle: 'Your approved hostel stays will appear here.',
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                itemCount: list.length,
+                itemBuilder: (context, i) => _ShortStayCard(request: list[i], fs: fs),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showShortStayDialog(BuildContext context) {
+    final checkInCtrl = TextEditingController();
+    final checkOutCtrl = TextEditingController();
+    final addressCtrl = TextEditingController(text: user.address ?? '');
+    final parentNameCtrl = TextEditingController();
+    final parentContactCtrl = TextEditingController();
+    String? selectedHostel;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Short Stay (Annexure-F)',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _kPrimary),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'FOR DAY SCHOLARS ONLY',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.redAccent, letterSpacing: 1),
+                  ),
+                  const SizedBox(height: 24),
+                  DropdownButtonFormField<String>(
+                    decoration: _inputDecoration('Target Hostel', Icons.hotel_outlined),
+                    items: ['BH1', 'BH2', 'GH1', 'GH2']
+                        .map((h) => DropdownMenuItem(value: h, child: Text(h)))
+                        .toList(),
+                    onChanged: (v) => selectedHostel = v,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDateTimeField(context, 'Check-in Date & Time', checkInCtrl, Icons.login_rounded),
+                  _buildDateTimeField(context, 'Check-out Date & Time', checkOutCtrl, Icons.logout_rounded),
+                  _buildTextField('Address', addressCtrl, Icons.home_outlined),
+                  _buildTextField('Parent Name', parentNameCtrl, Icons.person_outline),
+                  _buildTextField('Parent Contact', parentContactCtrl, Icons.phone_android_rounded, keyboardType: TextInputType.phone, maxLength: 10),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: isSubmitting
+                        ? null
+                        : () async {
+                            if (checkInCtrl.text.isEmpty || checkOutCtrl.text.isEmpty || selectedHostel == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+                              return;
+                            }
+                            setDialogState(() => isSubmitting = true);
+                            try {
+                              final req = ShortStayRequest(
+                                id: '',
+                                seqId: '',
+                                studentId: user.uid,
+                                studentName: user.name,
+                                rollNo: user.rollNo ?? '',
+                                programme: user.programme ?? '',
+                                gender: user.gender ?? '',
+                                email: user.email,
+                                contactNo: user.phoneNumber ?? '',
+                                address: addressCtrl.text,
+                                parentName: parentNameCtrl.text,
+                                parentContact: parentContactCtrl.text,
+                                checkInDate: DateFormat('dd/MM/yyyy hh:mm a').parse(checkInCtrl.text),
+                                checkOutDate: DateFormat('dd/MM/yyyy hh:mm a').parse(checkOutCtrl.text),
+                                status: 'Pending',
+                                appliedHostel: selectedHostel!,
+                                createdAt: DateTime.now(),
+                              );
+                              await fs.submitShortStayRequest(req);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request submitted!', style: TextStyle(color: Colors.white)), backgroundColor: _kSuccess));
+                              }
+                            } catch (e) {
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                            } finally {
+                              setDialogState(() => isSubmitting = false);
+                            }
+                          },
+                    child: isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Submit Application'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: _kBg.withValues(alpha: 0.5),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController ctrl, IconData icon, {TextInputType? keyboardType, int? maxLength}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: TextField(
+        controller: ctrl,
+        keyboardType: keyboardType,
+        maxLength: maxLength,
+        decoration: _inputDecoration(label, icon).copyWith(counterText: ""),
+      ),
+    );
+  }
+
+  Widget _buildDateTimeField(BuildContext context, String label, TextEditingController ctrl, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: TextField(
+        controller: ctrl,
+        readOnly: true,
+        decoration: _inputDecoration(label, icon),
+        onTap: () async {
+          final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 30)));
+          if (date != null && context.mounted) {
+            final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+            if (time != null) {
+              ctrl.text = DateFormat('dd/MM/yyyy hh:mm a').format(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+            }
+          }
+        },
+      ),
+    );
+  }
+}
+
+class _ShortStayCard extends StatelessWidget {
+  final ShortStayRequest request;
+  final FirebaseService fs;
+  const _ShortStayCard({required this.request, required this.fs});
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = request.status == 'Approved';
+    final isPending = request.status == 'Pending';
+    final isExtensionPending = request.pendingToDate != null;
+
+    Color statusColor = isPending ? _kWarning : (isActive ? _kSuccess : Colors.grey);
+    if (request.status == 'Rejected') statusColor = Colors.redAccent;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text(
+                  request.status.toUpperCase(),
+                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                ),
+              ),
+              const Spacer(),
+              Text(request.seqId, style: const TextStyle(fontSize: 10, color: Colors.black26, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(request.appliedHostel, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _kPrimary)),
+          if (request.roomNumber != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Room: ${request.roomNumber}', style: const TextStyle(color: _kAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+            ),
+          const SizedBox(height: 16),
+          _row(Icons.login_rounded, 'Check-in', DateFormat('MMM d, hh:mm a').format(request.checkInDate)),
+          const SizedBox(height: 8),
+          _row(Icons.logout_rounded, 'Check-out', DateFormat('MMM d, hh:mm a').format(request.checkOutDate)),
+          if (isExtensionPending)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: _kWarning.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: _kWarning.withValues(alpha: 0.2))),
+                child: Row(
+                  children: [
+                    const Icon(Icons.history_rounded, size: 16, color: _kWarning),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Extension requested until ${DateFormat('MMM d').format(request.pendingToDate!)}',
+                        style: const TextStyle(fontSize: 12, color: _kWarning, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (isActive) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(side: BorderSide(color: _kPrimary.withValues(alpha: 0.2)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    onPressed: () => _showExtensionDialog(context),
+                    icon: const Icon(Icons.history_rounded, size: 18),
+                    label: const Text('Extend'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: _kPrimary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
+                    onPressed: () => _handleCheckOut(context),
+                    child: const Text('Check-out'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: Colors.black26),
+        const SizedBox(width: 8),
+        Text('$label: ', style: const TextStyle(fontSize: 13, color: Colors.black45, fontWeight: FontWeight.w500)),
+        Text(value, style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  void _handleCheckOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Check-out'),
+        content: const Text('Are you sure you want to end your hostel stay?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, Check-out')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await fs.checkOutFromShortStay(request.id);
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checked out successfully!')));
+    }
+  }
+
+  void _showExtensionDialog(BuildContext context) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: request.checkOutDate.add(const Duration(days: 1)),
+      firstDate: request.checkOutDate,
+      lastDate: request.checkOutDate.add(const Duration(days: 7)),
+    );
+    if (date != null && context.mounted) {
+      final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(request.checkOutDate));
+      if (time != null) {
+        final newDate = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+        await fs.requestShortStayExtension(request.id, newDate);
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Extension request sent!')));
+      }
+    }
   }
 }
 

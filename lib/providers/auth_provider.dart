@@ -52,6 +52,9 @@ class AuthProvider with ChangeNotifier {
     String password,
     String hostel,
     String phoneNumber,
+    String rollNo,
+    String programme,
+    String gender,
   ) async {
     _isLoading = true;
     _suppressAuthChanges = true; // Block AuthWrapper navigation
@@ -66,6 +69,9 @@ class AuthProvider with ChangeNotifier {
         hostel: hostel,
         phoneNumber: phoneNumber,
         isApproved: false,
+        rollNo: rollNo,
+        programme: programme,
+        gender: gender,
       );
       // Write Firestore profile with a timeout — if Firestore is slow/unavailable
       // on web, we still consider signup successful since the Auth account exists.
@@ -89,10 +95,20 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> signIn(String email, String password) async {
+  Future<void> signIn(String identifier, String password) async {
     _isLoading = true;
     notifyListeners();
     try {
+      String email = identifier;
+      // If identifier looks like a phone number (all digits, or starts with +)
+      if (RegExp(r'^[0-9+\s-]+$').hasMatch(identifier) && identifier.length >= 10) {
+        final resolvedEmail = await _firebaseService.getUserEmailByPhone(identifier);
+        if (resolvedEmail == null) {
+          throw Exception('No account found with this phone number.');
+        }
+        email = resolvedEmail;
+      }
+
       final credential = await _firebaseService.signIn(email, password);
       await fetchUserProfile(credential.user!.uid);
     } catch (e) {
