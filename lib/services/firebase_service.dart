@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -45,8 +46,11 @@ class FirebaseService {
   }
 
   // User Profile Methods
-  Future<void> createUserProfile(VistaUser user) {
-    return _db.collection('users').doc(user.uid).set(user.toMap());
+  Future<void> createUserProfile(VistaUser user) async {
+    await _db.collection('users').doc(user.uid).set(user.toMap());
+    if (user.phoneNumber != null) {
+      await _updatePhoneMapping(user.phoneNumber, user.email);
+    }
   }
 
   Future<void> updateFcmToken(String uid, String token) {
@@ -58,22 +62,36 @@ class FirebaseService {
   }
 
   Future<String?> getUserEmailByPhone(String phone) async {
-    final query = await _db
-        .collection('users')
-        .where('phoneNumber', isEqualTo: phone)
-        .limit(1)
-        .get();
-    if (query.docs.isNotEmpty) {
-      return query.docs.first.data()['email'] as String?;
+    // We target a specific document by phone number to avoid 'list' permissions
+    final doc = await _db.collection('phone_mappings').doc(phone).get();
+    if (doc.exists) {
+      return doc.data()?['email'] as String?;
     }
     return null;
+  }
+
+  /// Internal helper to sync phone-to-email mapping for secure login
+  Future<void> _updatePhoneMapping(String? phone, String email) async {
+    if (phone == null || phone.isEmpty) return;
+    try {
+      await _db.collection('phone_mappings').doc(phone).set({
+        'email': email,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('[FirebaseService] Error updating phone mapping: $e');
+    }
   }
 
   Future<VistaUser?> getUserProfile(String uid) async {
     // 1. Try by UID (document ID = uid) — the standard case
     final doc = await _db.collection('users').doc(uid).get();
     if (doc.exists) {
-      return VistaUser.fromMap(doc.data() as Map<String, dynamic>);
+      final user = VistaUser.fromMap(doc.data() as Map<String, dynamic>);
+      if (user.phoneNumber != null) {
+        _updatePhoneMapping(user.phoneNumber, user.email);
+      }
+      return user;
     }
 
     // 2. Fallback: query by email field — handles manually-created docs
@@ -93,7 +111,11 @@ class FirebaseService {
             'uid': uid,
           });
         }
-        return VistaUser.fromMap({...data, 'uid': uid});
+        final user = VistaUser.fromMap({...data, 'uid': uid});
+        if (user.phoneNumber != null) {
+          _updatePhoneMapping(user.phoneNumber, user.email);
+        }
+        return user;
       }
     }
     return null;

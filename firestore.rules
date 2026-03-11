@@ -82,5 +82,15 @@ service cloud.firestore {
     match /counters/{id} {
       allow read, write: if isSignedIn();
     }
+
+    // ── PHONE MAPPINGS (Secure Lookup) ───────────────────────────────────────
+    match /phone_mappings/{phone} {
+      // Allow unauthenticated lookup of exactly one phone number
+      allow get: if true;
+      // Prevent listing all phone numbers
+      allow list: if false;
+      // Only authenticated users can update their mapping (via FirebaseService)
+      allow write: if isSignedIn();
+    }
   }
 }
