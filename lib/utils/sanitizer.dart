@@ -81,4 +81,18 @@ class InputSanitizer {
     }
     return entropy;
   }
+
+  /// Normalizes phone numbers by stripping non-digit characters
+  /// and handling common prefixes (e.g., +91).
+  static String normalizePhone(String phone) {
+    if (phone.isEmpty) return "";
+    // Remove all non-digit characters
+    String normalized = phone.replaceAll(RegExp(r'\D'), '');
+    // If it's an Indian number with 91 prefix, strip it (12 digits total)
+    if (normalized.length == 12 && normalized.startsWith('91')) {
+      return normalized.substring(2);
+    }
+    // If it's a 10-digit number, return as is
+    return normalized;
+  }
 }

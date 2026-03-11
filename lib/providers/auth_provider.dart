@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/vista_user.dart';
 import '../services/firebase_service.dart';
 import '../services/notification_service.dart';
+import '../utils/sanitizer.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -100,9 +101,10 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
     try {
       String email = identifier;
-      // If identifier looks like a phone number (all digits, or starts with +)
+      // If identifier looks like a phone number
       if (RegExp(r'^[0-9+\s-]+$').hasMatch(identifier) && identifier.length >= 10) {
-        final resolvedEmail = await _firebaseService.getUserEmailByPhone(identifier);
+        final normalizedPhone = InputSanitizer.normalizePhone(identifier);
+        final resolvedEmail = await _firebaseService.getUserEmailByPhone(normalizedPhone);
         if (resolvedEmail == null) {
           throw Exception('No account found with this phone number.');
         }

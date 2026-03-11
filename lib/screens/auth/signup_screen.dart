@@ -30,7 +30,7 @@ class _SignupScreenState extends State<SignupScreen> {
   void _signup() async {
     String nameInput = InputSanitizer.sanitize(_nameController.text.trim());
     String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
-    String phoneInput = InputSanitizer.sanitize(_phoneController.text.trim());
+    String phoneInput = InputSanitizer.normalizePhone(_phoneController.text.trim());
 
     if (emailInput.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
