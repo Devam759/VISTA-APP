@@ -186,22 +186,30 @@ class _WardenDashboardState extends State<WardenDashboard> {
     ).userProfile;
     if (warden == null) return;
 
+    debugPrint('[WardenDashboard] Setting up listeners for hostel: ${warden.hostel}');
+
     // 1. Listen for New Registrations
     _subscriptions.add(
-      _fs.getPendingRegistrations(warden.hostel).listen((list) {
-        if (list.isNotEmpty) {
-          if (_selectedIndex != 0) {
-            setState(() => _hasNewRegistrations = true);
+      _fs.getPendingRegistrations(warden.hostel).listen(
+        (list) {
+          debugPrint('[WardenDashboard] Pending registrations received: ${list.length}');
+          if (list.isNotEmpty) {
+            if (_selectedIndex != 0) {
+              setState(() => _hasNewRegistrations = true);
+            }
+            _showInAppAlert(
+              'New Registration Request',
+              '${list.length} pending',
+              0,
+            );
+          } else {
+            setState(() => _hasNewRegistrations = false);
           }
-          _showInAppAlert(
-            'New Registration Request',
-            '${list.length} pending',
-            0,
-          );
-        } else {
-          setState(() => _hasNewRegistrations = false);
-        }
-      }),
+        },
+        onError: (error) {
+          debugPrint('[WardenDashboard] Error in pending registrations stream: $error');
+        },
+      ),
     );
 
     // 2. Listen for New Leaves
