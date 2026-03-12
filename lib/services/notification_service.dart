@@ -64,7 +64,7 @@ class NotificationService {
             );
 
         await _localNotifications!.initialize(
-          settings: initializationSettings,
+          initializationSettings,
         );
       }
 
