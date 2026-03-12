@@ -224,90 +224,92 @@ class _ExportDialogState extends State<ExportDialog> {
             ),
             const SizedBox(height: 12),
             Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: _options.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final option = _options[index];
-                  final isSelected = _selectedType == option.type;
-
-                  return InkWell(
-                    onTap: () => setState(() => _selectedType = option.type),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF1E3A8A).withValues(alpha: 0.08)
-                            : Colors.grey.withValues(alpha: 0.05),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF1E3A8A)
-                              : Colors.grey.withValues(alpha: 0.2),
-                          width: isSelected ? 2 : 1,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFF1E3A8A)
-                                  : Colors.grey.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              option.icon,
-                              size: 20,
-                              color: isSelected
-                                  ? Colors.white
-                                  : const Color(0xFF1E3A8A),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  option.title,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected
-                                        ? const Color(0xFF1E3A8A)
-                                        : Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  option.subtitle,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Radio<ExportType>(
-                            value: option.type,
-                            groupValue: _selectedType,
-                            onChanged: (ExportType? value) {
-                              if (value != null) {
-                                setState(() => _selectedType = value);
-                              }
-                            },
-                            activeColor: const Color(0xFF1E3A8A),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+              child: RadioGroup<ExportType>(
+                groupValue: _selectedType,
+                onChanged: (ExportType? value) {
+                  if (value != null) {
+                    setState(() => _selectedType = value);
+                  }
                 },
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _options.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final option = _options[index];
+                    final isSelected = _selectedType == option.type;
+
+                    return InkWell(
+                      onTap: () => setState(() => _selectedType = option.type),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF1E3A8A).withValues(alpha: 0.08)
+                              : Colors.grey.withValues(alpha: 0.05),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF1E3A8A)
+                                : Colors.grey.withValues(alpha: 0.2),
+                            width: isSelected ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF1E3A8A)
+                                    : Colors.grey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                option.icon,
+                                size: 20,
+                                color: isSelected
+                                    ? Colors.white
+                                    : const Color(0xFF1E3A8A),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    option.title,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected
+                                          ? const Color(0xFF1E3A8A)
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    option.subtitle,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Radio<ExportType>(
+                              value: option.type,
+                              activeColor: const Color(0xFF1E3A8A),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
             const SizedBox(height: 20),

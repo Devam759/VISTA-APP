@@ -10,8 +10,9 @@ class SecurityImplementation {
         bool isRealDevice = await SafeDevice.isRealDevice;
         bool isJailBroken = await SafeDevice.isJailBroken;
         bool isMock = await SafeDevice.isMockLocation;
+        bool isDevMode = await SafeDevice.isDevelopmentModeEnable;
 
-        return isRealDevice && !isJailBroken && !isMock;
+        return isRealDevice && !isJailBroken && !isMock && !isDevMode;
       }
     } catch (e) {
       debugPrint("Security check failed on mobile: $e");

@@ -38,7 +38,9 @@ class NotificationService {
       // Get the token
       String? token = await _firebaseMessaging.getToken();
       if (token != null) {
-        debugPrint('FCM Token: $token');
+        if (kDebugMode) {
+          debugPrint('FCM Token: $token');
+        }
         await _firebaseService.updateFcmToken(uid, token);
       }
 
@@ -64,7 +66,7 @@ class NotificationService {
             );
 
         await _localNotifications!.initialize(
-          initializationSettings,
+          settings: initializationSettings,
         );
       }
 

@@ -12,6 +12,11 @@
 .swiftpm/
 migrate_working_dir/
 node_modules/
+.qoder/
+.firebase/
+release_outputs/
+analyze.txt
+flutter_analyze*.txt
 
 # IntelliJ related
 *.iml
@@ -26,15 +31,44 @@ node_modules/
 
 # Flutter/Dart/Pub related
 **/doc/api/
-**/ios/Flutter/.last_build_id
-**/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/flutter_export_environment.sh
 .dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
 /coverage/
+/android/build/
+**/android/app/build/
+*.apk
+*.aab
+*.ipa
+
+# iOS/macOS related
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/.symlinks/
+**/ios/Pods/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.h
+**/ios/Runner/GeneratedPluginRegistrant.m
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/Generated.xcconfig
+**/macos/Flutter/flutter_export_environment.sh
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Windows related
+**/windows/flutter/ephemeral/
+**/windows/flutter/generated_config.cmake
+
+# Linux related
+**/linux/flutter/ephemeral/
+**/linux/flutter/generated_config.cmake
 
 # Symbolication related
 app.*.symbols

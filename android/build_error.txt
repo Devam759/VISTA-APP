@@ -1,0 +1,1345 @@
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:compileKotlin UP-TO-DATE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+> Task :app:ReleaseMinSdkCheck
+> Task :app:compileFlutterBuildRelease UP-TO-DATE
+> Task :app:packJniLibsflutterBuildRelease UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:configureCMakeRelease[arm64-v8a]
+> Task :app:buildCMakeRelease[arm64-v8a]
+> Task :app:configureCMakeRelease[armeabi-v7a]
+> Task :app:buildCMakeRelease[armeabi-v7a]
+> Task :app:configureCMakeRelease[x86_64]
+> Task :app:buildCMakeRelease[x86_64]
+> Task :app:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :camera_android:preBuild UP-TO-DATE
+> Task :camera_android:preReleaseBuild UP-TO-DATE
+> Task :camera_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :camera_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :camera_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :cloud_firestore:preBuild UP-TO-DATE
+> Task :cloud_firestore:preReleaseBuild UP-TO-DATE
+> Task :cloud_firestore:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :cloud_firestore:mergeReleaseNativeLibs NO-SOURCE
+> Task :cloud_firestore:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :firebase_app_check:preBuild UP-TO-DATE
+> Task :firebase_app_check:preReleaseBuild UP-TO-DATE
+> Task :firebase_app_check:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :firebase_app_check:mergeReleaseNativeLibs NO-SOURCE
+> Task :firebase_app_check:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :firebase_auth:preBuild UP-TO-DATE
+> Task :firebase_auth:preReleaseBuild UP-TO-DATE
+> Task :firebase_auth:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :firebase_auth:mergeReleaseNativeLibs NO-SOURCE
+> Task :firebase_auth:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :firebase_core:preBuild UP-TO-DATE
+> Task :firebase_core:preReleaseBuild UP-TO-DATE
+> Task :firebase_core:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :firebase_core:mergeReleaseNativeLibs NO-SOURCE
+> Task :firebase_core:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :firebase_messaging:preBuild UP-TO-DATE
+> Task :firebase_messaging:preReleaseBuild UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseNativeLibs NO-SOURCE
+> Task :firebase_messaging:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :firebase_storage:preBuild UP-TO-DATE
+> Task :firebase_storage:preReleaseBuild UP-TO-DATE
+> Task :firebase_storage:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :firebase_storage:mergeReleaseNativeLibs NO-SOURCE
+> Task :firebase_storage:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :flutter_image_compress_common:preBuild UP-TO-DATE
+> Task :flutter_image_compress_common:preReleaseBuild UP-TO-DATE
+> Task :flutter_image_compress_common:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :flutter_image_compress_common:mergeReleaseNativeLibs NO-SOURCE
+> Task :flutter_image_compress_common:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :flutter_local_notifications:preBuild UP-TO-DATE
+> Task :flutter_local_notifications:preReleaseBuild UP-TO-DATE
+> Task :flutter_local_notifications:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :flutter_local_notifications:mergeReleaseNativeLibs NO-SOURCE
+> Task :flutter_local_notifications:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:preBuild UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:preReleaseBuild UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeReleaseNativeLibs NO-SOURCE
+> Task :flutter_plugin_android_lifecycle:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :geolocator_android:preBuild UP-TO-DATE
+> Task :geolocator_android:preReleaseBuild UP-TO-DATE
+> Task :geolocator_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :geolocator_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :geolocator_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :google_mlkit_commons:preBuild UP-TO-DATE
+> Task :google_mlkit_commons:preReleaseBuild UP-TO-DATE
+> Task :google_mlkit_commons:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :google_mlkit_commons:mergeReleaseNativeLibs NO-SOURCE
+> Task :google_mlkit_commons:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :google_mlkit_face_detection:preBuild UP-TO-DATE
+> Task :google_mlkit_face_detection:preReleaseBuild UP-TO-DATE
+> Task :google_mlkit_face_detection:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :google_mlkit_face_detection:mergeReleaseNativeLibs NO-SOURCE
+> Task :google_mlkit_face_detection:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :image_picker_android:preBuild UP-TO-DATE
+> Task :image_picker_android:preReleaseBuild UP-TO-DATE
+> Task :image_picker_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :image_picker_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :image_picker_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :package_info_plus:preBuild UP-TO-DATE
+> Task :package_info_plus:preReleaseBuild UP-TO-DATE
+> Task :package_info_plus:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :package_info_plus:mergeReleaseNativeLibs NO-SOURCE
+> Task :package_info_plus:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :path_provider_android:preBuild UP-TO-DATE
+> Task :path_provider_android:preReleaseBuild UP-TO-DATE
+> Task :path_provider_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :path_provider_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :path_provider_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :permission_handler_android:preBuild UP-TO-DATE
+> Task :permission_handler_android:preReleaseBuild UP-TO-DATE
+> Task :permission_handler_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :permission_handler_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :permission_handler_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :safe_device:preBuild UP-TO-DATE
+> Task :safe_device:preReleaseBuild UP-TO-DATE
+> Task :safe_device:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :safe_device:mergeReleaseNativeLibs NO-SOURCE
+> Task :safe_device:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :share_plus:preBuild UP-TO-DATE
+> Task :share_plus:preReleaseBuild UP-TO-DATE
+> Task :share_plus:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :share_plus:mergeReleaseNativeLibs NO-SOURCE
+> Task :share_plus:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :shared_preferences_android:preBuild UP-TO-DATE
+> Task :shared_preferences_android:preReleaseBuild UP-TO-DATE
+> Task :shared_preferences_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :shared_preferences_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :shared_preferences_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :tflite_flutter:preBuild UP-TO-DATE
+> Task :tflite_flutter:preReleaseBuild UP-TO-DATE
+> Task :tflite_flutter:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :tflite_flutter:mergeReleaseNativeLibs NO-SOURCE
+> Task :tflite_flutter:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :url_launcher_android:preBuild UP-TO-DATE
+> Task :url_launcher_android:preReleaseBuild UP-TO-DATE
+> Task :url_launcher_android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :url_launcher_android:mergeReleaseNativeLibs NO-SOURCE
+> Task :url_launcher_android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeReleaseNativeLibs UP-TO-DATE
+> Task :app:stripReleaseDebugSymbols UP-TO-DATE
+> Task :app:extractReleaseNativeSymbolTables UP-TO-DATE
+> Task :app:mergeReleaseNativeDebugMetadata UP-TO-DATE
+> Task :camera_android:prepareReleaseArtProfile UP-TO-DATE
+> Task :cloud_firestore:prepareReleaseArtProfile UP-TO-DATE
+> Task :firebase_app_check:prepareReleaseArtProfile UP-TO-DATE
+> Task :firebase_auth:prepareReleaseArtProfile UP-TO-DATE
+> Task :firebase_core:prepareReleaseArtProfile UP-TO-DATE
+> Task :firebase_messaging:prepareReleaseArtProfile UP-TO-DATE
+> Task :firebase_storage:prepareReleaseArtProfile UP-TO-DATE
+> Task :flutter_image_compress_common:prepareReleaseArtProfile UP-TO-DATE
+> Task :flutter_local_notifications:prepareReleaseArtProfile UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:prepareReleaseArtProfile UP-TO-DATE
+> Task :geolocator_android:prepareReleaseArtProfile UP-TO-DATE
+> Task :google_mlkit_commons:prepareReleaseArtProfile UP-TO-DATE
+> Task :google_mlkit_face_detection:prepareReleaseArtProfile UP-TO-DATE
+> Task :image_picker_android:prepareReleaseArtProfile UP-TO-DATE
+> Task :package_info_plus:prepareReleaseArtProfile UP-TO-DATE
+> Task :path_provider_android:prepareReleaseArtProfile UP-TO-DATE
+> Task :permission_handler_android:prepareReleaseArtProfile UP-TO-DATE
+> Task :safe_device:prepareReleaseArtProfile UP-TO-DATE
+> Task :share_plus:prepareReleaseArtProfile UP-TO-DATE
+> Task :shared_preferences_android:prepareReleaseArtProfile UP-TO-DATE
+> Task :tflite_flutter:prepareReleaseArtProfile UP-TO-DATE
+> Task :url_launcher_android:prepareReleaseArtProfile UP-TO-DATE
+> Task :app:mergeReleaseArtProfile UP-TO-DATE
+> Task :app:expandReleaseL8ArtProfileWildcards UP-TO-DATE
+> Task :camera_android:generateReleaseBuildConfig UP-TO-DATE
+> Task :camera_android:generateReleaseResValues UP-TO-DATE
+> Task :camera_android:generateReleaseResources UP-TO-DATE
+> Task :camera_android:packageReleaseResources UP-TO-DATE
+> Task :camera_android:parseReleaseLocalResources UP-TO-DATE
+> Task :camera_android:generateReleaseRFile UP-TO-DATE
+> Task :camera_android:javaPreCompileRelease UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:generateReleaseResValues UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:generateReleaseResources UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:packageReleaseResources UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:parseReleaseLocalResources UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:generateReleaseRFile UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:javaPreCompileRelease UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :camera_android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :camera_android:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :camera_android:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :cloud_firestore:generateReleaseBuildConfig UP-TO-DATE
+> Task :cloud_firestore:generateReleaseResValues UP-TO-DATE
+> Task :cloud_firestore:generateReleaseResources UP-TO-DATE
+> Task :cloud_firestore:packageReleaseResources UP-TO-DATE
+> Task :cloud_firestore:parseReleaseLocalResources UP-TO-DATE
+> Task :cloud_firestore:generateReleaseRFile UP-TO-DATE
+> Task :cloud_firestore:javaPreCompileRelease UP-TO-DATE
+> Task :firebase_core:generateReleaseBuildConfig UP-TO-DATE
+> Task :firebase_core:generateReleaseResValues UP-TO-DATE
+> Task :firebase_core:generateReleaseResources UP-TO-DATE
+> Task :firebase_core:packageReleaseResources UP-TO-DATE
+> Task :firebase_core:parseReleaseLocalResources UP-TO-DATE
+> Task :firebase_core:generateReleaseRFile UP-TO-DATE
+> Task :firebase_core:javaPreCompileRelease UP-TO-DATE
+> Task :firebase_core:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :firebase_core:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :cloud_firestore:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :cloud_firestore:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :cloud_firestore:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_app_check:generateReleaseBuildConfig UP-TO-DATE
+> Task :firebase_app_check:generateReleaseResValues UP-TO-DATE
+> Task :firebase_app_check:generateReleaseResources UP-TO-DATE
+> Task :firebase_app_check:packageReleaseResources UP-TO-DATE
+> Task :firebase_app_check:parseReleaseLocalResources UP-TO-DATE
+> Task :firebase_app_check:generateReleaseRFile UP-TO-DATE
+> Task :firebase_app_check:javaPreCompileRelease UP-TO-DATE
+> Task :firebase_app_check:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :firebase_app_check:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :firebase_app_check:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_auth:generateReleaseBuildConfig UP-TO-DATE
+> Task :firebase_auth:generateReleaseResValues UP-TO-DATE
+> Task :firebase_auth:generateReleaseResources UP-TO-DATE
+> Task :firebase_auth:packageReleaseResources UP-TO-DATE
+> Task :firebase_auth:parseReleaseLocalResources UP-TO-DATE
+> Task :firebase_auth:generateReleaseRFile UP-TO-DATE
+> Task :firebase_auth:javaPreCompileRelease UP-TO-DATE
+> Task :firebase_auth:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :firebase_auth:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :firebase_auth:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_messaging:generateReleaseBuildConfig UP-TO-DATE
+> Task :firebase_messaging:generateReleaseResValues UP-TO-DATE
+> Task :firebase_messaging:generateReleaseResources UP-TO-DATE
+> Task :firebase_messaging:packageReleaseResources UP-TO-DATE
+> Task :firebase_messaging:parseReleaseLocalResources UP-TO-DATE
+> Task :firebase_messaging:generateReleaseRFile UP-TO-DATE
+> Task :firebase_messaging:javaPreCompileRelease UP-TO-DATE
+> Task :firebase_messaging:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :firebase_messaging:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_storage:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :firebase_storage:generateReleaseBuildConfig UP-TO-DATE
+> Task :firebase_storage:generateReleaseResValues UP-TO-DATE
+> Task :firebase_storage:generateReleaseResources UP-TO-DATE
+> Task :firebase_storage:packageReleaseResources UP-TO-DATE
+> Task :firebase_storage:parseReleaseLocalResources UP-TO-DATE
+> Task :firebase_storage:generateReleaseRFile UP-TO-DATE
+> Task :firebase_storage:compileReleaseKotlin UP-TO-DATE
+> Task :firebase_storage:javaPreCompileRelease UP-TO-DATE
+> Task :firebase_storage:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :firebase_storage:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :firebase_storage:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_core:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :firebase_core:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :flutter_image_compress_common:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :flutter_image_compress_common:generateReleaseResValues UP-TO-DATE
+> Task :flutter_image_compress_common:generateReleaseResources UP-TO-DATE
+> Task :flutter_image_compress_common:packageReleaseResources UP-TO-DATE
+> Task :flutter_image_compress_common:parseReleaseLocalResources UP-TO-DATE
+> Task :flutter_image_compress_common:generateReleaseRFile UP-TO-DATE
+> Task :flutter_image_compress_common:compileReleaseKotlin UP-TO-DATE
+> Task :flutter_image_compress_common:javaPreCompileRelease UP-TO-DATE
+> Task :flutter_image_compress_common:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :flutter_image_compress_common:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :flutter_image_compress_common:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :flutter_local_notifications:generateReleaseResValues UP-TO-DATE
+> Task :flutter_local_notifications:generateReleaseResources UP-TO-DATE
+> Task :flutter_local_notifications:packageReleaseResources UP-TO-DATE
+> Task :flutter_local_notifications:parseReleaseLocalResources UP-TO-DATE
+> Task :flutter_local_notifications:generateReleaseRFile UP-TO-DATE
+> Task :flutter_local_notifications:javaPreCompileRelease UP-TO-DATE
+> Task :flutter_local_notifications:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :flutter_local_notifications:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :flutter_local_notifications:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :image_picker_android:generateReleaseResValues UP-TO-DATE
+> Task :image_picker_android:generateReleaseResources UP-TO-DATE
+> Task :image_picker_android:packageReleaseResources UP-TO-DATE
+> Task :image_picker_android:parseReleaseLocalResources UP-TO-DATE
+> Task :image_picker_android:generateReleaseRFile UP-TO-DATE
+> Task :image_picker_android:javaPreCompileRelease UP-TO-DATE
+> Task :image_picker_android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :image_picker_android:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :image_picker_android:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :geolocator_android:generateReleaseResValues UP-TO-DATE
+> Task :geolocator_android:generateReleaseResources UP-TO-DATE
+> Task :geolocator_android:packageReleaseResources UP-TO-DATE
+> Task :geolocator_android:parseReleaseLocalResources UP-TO-DATE
+> Task :geolocator_android:generateReleaseRFile UP-TO-DATE
+> Task :geolocator_android:javaPreCompileRelease UP-TO-DATE
+> Task :geolocator_android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :geolocator_android:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :geolocator_android:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :google_mlkit_commons:generateReleaseResValues UP-TO-DATE
+> Task :google_mlkit_commons:generateReleaseResources UP-TO-DATE
+> Task :google_mlkit_commons:packageReleaseResources UP-TO-DATE
+> Task :google_mlkit_commons:parseReleaseLocalResources UP-TO-DATE
+> Task :google_mlkit_commons:generateReleaseRFile UP-TO-DATE
+> Task :google_mlkit_commons:javaPreCompileRelease UP-TO-DATE
+> Task :google_mlkit_commons:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :google_mlkit_commons:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:generateReleaseResValues UP-TO-DATE
+> Task :google_mlkit_face_detection:generateReleaseResources UP-TO-DATE
+> Task :google_mlkit_face_detection:packageReleaseResources UP-TO-DATE
+> Task :google_mlkit_face_detection:parseReleaseLocalResources UP-TO-DATE
+> Task :google_mlkit_face_detection:generateReleaseRFile UP-TO-DATE
+> Task :google_mlkit_face_detection:javaPreCompileRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :google_mlkit_face_detection:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :google_mlkit_face_detection:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :google_mlkit_commons:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :google_mlkit_commons:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :package_info_plus:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :package_info_plus:generateReleaseResValues UP-TO-DATE
+> Task :package_info_plus:generateReleaseResources UP-TO-DATE
+> Task :package_info_plus:packageReleaseResources UP-TO-DATE
+> Task :package_info_plus:parseReleaseLocalResources UP-TO-DATE
+> Task :package_info_plus:generateReleaseRFile UP-TO-DATE
+> Task :package_info_plus:compileReleaseKotlin UP-TO-DATE
+> Task :package_info_plus:javaPreCompileRelease UP-TO-DATE
+> Task :package_info_plus:compileReleaseJavaWithJavac NO-SOURCE
+> Task :package_info_plus:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :package_info_plus:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :path_provider_android:generateReleaseResValues UP-TO-DATE
+> Task :path_provider_android:generateReleaseResources UP-TO-DATE
+> Task :path_provider_android:packageReleaseResources UP-TO-DATE
+> Task :path_provider_android:parseReleaseLocalResources UP-TO-DATE
+> Task :path_provider_android:generateReleaseRFile UP-TO-DATE
+> Task :path_provider_android:javaPreCompileRelease UP-TO-DATE
+> Task :path_provider_android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :path_provider_android:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :path_provider_android:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :permission_handler_android:generateReleaseResValues UP-TO-DATE
+> Task :permission_handler_android:generateReleaseResources UP-TO-DATE
+> Task :permission_handler_android:packageReleaseResources UP-TO-DATE
+> Task :permission_handler_android:parseReleaseLocalResources UP-TO-DATE
+> Task :permission_handler_android:generateReleaseRFile UP-TO-DATE
+> Task :permission_handler_android:javaPreCompileRelease UP-TO-DATE
+> Task :permission_handler_android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :permission_handler_android:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :permission_handler_android:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :safe_device:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :safe_device:generateReleaseResValues UP-TO-DATE
+> Task :safe_device:generateReleaseResources UP-TO-DATE
+> Task :safe_device:packageReleaseResources UP-TO-DATE
+> Task :safe_device:parseReleaseLocalResources UP-TO-DATE
+> Task :safe_device:generateReleaseRFile UP-TO-DATE
+> Task :safe_device:compileReleaseKotlin NO-SOURCE
+> Task :safe_device:javaPreCompileRelease UP-TO-DATE
+> Task :safe_device:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :safe_device:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :safe_device:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :share_plus:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :share_plus:generateReleaseResValues UP-TO-DATE
+> Task :share_plus:generateReleaseResources UP-TO-DATE
+> Task :share_plus:packageReleaseResources UP-TO-DATE
+> Task :share_plus:parseReleaseLocalResources UP-TO-DATE
+> Task :share_plus:generateReleaseRFile UP-TO-DATE
+> Task :share_plus:compileReleaseKotlin UP-TO-DATE
+> Task :share_plus:javaPreCompileRelease UP-TO-DATE
+> Task :share_plus:compileReleaseJavaWithJavac NO-SOURCE
+> Task :share_plus:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :share_plus:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :shared_preferences_android:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared_preferences_android:generateReleaseResValues UP-TO-DATE
+> Task :shared_preferences_android:generateReleaseResources UP-TO-DATE
+> Task :shared_preferences_android:packageReleaseResources UP-TO-DATE
+> Task :shared_preferences_android:parseReleaseLocalResources UP-TO-DATE
+> Task :shared_preferences_android:generateReleaseRFile UP-TO-DATE
+> Task :shared_preferences_android:compileReleaseKotlin UP-TO-DATE
+> Task :shared_preferences_android:javaPreCompileRelease UP-TO-DATE
+> Task :shared_preferences_android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :shared_preferences_android:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :shared_preferences_android:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :tflite_flutter:generateReleaseResValues UP-TO-DATE
+> Task :tflite_flutter:generateReleaseResources UP-TO-DATE
+> Task :tflite_flutter:packageReleaseResources UP-TO-DATE
+> Task :tflite_flutter:parseReleaseLocalResources UP-TO-DATE
+> Task :tflite_flutter:generateReleaseRFile UP-TO-DATE
+> Task :tflite_flutter:javaPreCompileRelease UP-TO-DATE
+> Task :tflite_flutter:compileReleaseJavaWithJavac NO-SOURCE
+> Task :tflite_flutter:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :tflite_flutter:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :url_launcher_android:generateReleaseBuildConfig UP-TO-DATE
+> Task :url_launcher_android:generateReleaseResValues UP-TO-DATE
+> Task :url_launcher_android:generateReleaseResources UP-TO-DATE
+> Task :url_launcher_android:packageReleaseResources UP-TO-DATE
+> Task :url_launcher_android:parseReleaseLocalResources UP-TO-DATE
+> Task :url_launcher_android:generateReleaseRFile UP-TO-DATE
+> Task :url_launcher_android:javaPreCompileRelease UP-TO-DATE
+> Task :url_launcher_android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :url_launcher_android:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :url_launcher_android:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:checkReleaseDuplicateClasses UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :camera_android:writeReleaseAarMetadata UP-TO-DATE
+> Task :cloud_firestore:writeReleaseAarMetadata UP-TO-DATE
+> Task :firebase_app_check:writeReleaseAarMetadata UP-TO-DATE
+> Task :firebase_auth:writeReleaseAarMetadata UP-TO-DATE
+> Task :firebase_core:writeReleaseAarMetadata UP-TO-DATE
+> Task :firebase_messaging:writeReleaseAarMetadata UP-TO-DATE
+> Task :firebase_storage:writeReleaseAarMetadata UP-TO-DATE
+> Task :flutter_image_compress_common:writeReleaseAarMetadata UP-TO-DATE
+> Task :flutter_local_notifications:writeReleaseAarMetadata UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:writeReleaseAarMetadata UP-TO-DATE
+> Task :geolocator_android:writeReleaseAarMetadata UP-TO-DATE
+> Task :google_mlkit_commons:writeReleaseAarMetadata UP-TO-DATE
+> Task :google_mlkit_face_detection:writeReleaseAarMetadata UP-TO-DATE
+> Task :image_picker_android:writeReleaseAarMetadata UP-TO-DATE
+> Task :package_info_plus:writeReleaseAarMetadata UP-TO-DATE
+> Task :path_provider_android:writeReleaseAarMetadata UP-TO-DATE
+> Task :permission_handler_android:writeReleaseAarMetadata UP-TO-DATE
+> Task :safe_device:writeReleaseAarMetadata UP-TO-DATE
+> Task :share_plus:writeReleaseAarMetadata UP-TO-DATE
+> Task :shared_preferences_android:writeReleaseAarMetadata UP-TO-DATE
+> Task :tflite_flutter:writeReleaseAarMetadata UP-TO-DATE
+> Task :url_launcher_android:writeReleaseAarMetadata UP-TO-DATE
+> Task :app:checkReleaseAarMetadata UP-TO-DATE
+> Task :app:cleanMergeReleaseAssets
+> Task :app:mergeReleaseShaders UP-TO-DATE
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :camera_android:mergeReleaseShaders UP-TO-DATE
+> Task :camera_android:compileReleaseShaders NO-SOURCE
+> Task :camera_android:generateReleaseAssets UP-TO-DATE
+> Task :camera_android:mergeReleaseAssets UP-TO-DATE
+> Task :cloud_firestore:mergeReleaseShaders UP-TO-DATE
+> Task :cloud_firestore:compileReleaseShaders NO-SOURCE
+> Task :cloud_firestore:generateReleaseAssets UP-TO-DATE
+> Task :cloud_firestore:mergeReleaseAssets UP-TO-DATE
+> Task :firebase_app_check:mergeReleaseShaders UP-TO-DATE
+> Task :firebase_app_check:compileReleaseShaders NO-SOURCE
+> Task :firebase_app_check:generateReleaseAssets UP-TO-DATE
+> Task :firebase_app_check:mergeReleaseAssets UP-TO-DATE
+> Task :firebase_auth:mergeReleaseShaders UP-TO-DATE
+> Task :firebase_auth:compileReleaseShaders NO-SOURCE
+> Task :firebase_auth:generateReleaseAssets UP-TO-DATE
+> Task :firebase_auth:mergeReleaseAssets UP-TO-DATE
+> Task :firebase_core:mergeReleaseShaders UP-TO-DATE
+> Task :firebase_core:compileReleaseShaders NO-SOURCE
+> Task :firebase_core:generateReleaseAssets UP-TO-DATE
+> Task :firebase_core:mergeReleaseAssets UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseShaders UP-TO-DATE
+> Task :firebase_messaging:compileReleaseShaders NO-SOURCE
+> Task :firebase_messaging:generateReleaseAssets UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseAssets UP-TO-DATE
+> Task :firebase_storage:mergeReleaseShaders UP-TO-DATE
+> Task :firebase_storage:compileReleaseShaders NO-SOURCE
+> Task :firebase_storage:generateReleaseAssets UP-TO-DATE
+> Task :firebase_storage:mergeReleaseAssets UP-TO-DATE
+> Task :flutter_image_compress_common:mergeReleaseShaders UP-TO-DATE
+> Task :flutter_image_compress_common:compileReleaseShaders NO-SOURCE
+> Task :flutter_image_compress_common:generateReleaseAssets UP-TO-DATE
+> Task :flutter_image_compress_common:mergeReleaseAssets UP-TO-DATE
+> Task :flutter_local_notifications:mergeReleaseShaders UP-TO-DATE
+> Task :flutter_local_notifications:compileReleaseShaders NO-SOURCE
+> Task :flutter_local_notifications:generateReleaseAssets UP-TO-DATE
+> Task :flutter_local_notifications:mergeReleaseAssets UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeReleaseShaders UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:compileReleaseShaders NO-SOURCE
+> Task :flutter_plugin_android_lifecycle:generateReleaseAssets UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeReleaseAssets UP-TO-DATE
+> Task :geolocator_android:mergeReleaseShaders UP-TO-DATE
+> Task :geolocator_android:compileReleaseShaders NO-SOURCE
+> Task :geolocator_android:generateReleaseAssets UP-TO-DATE
+> Task :geolocator_android:mergeReleaseAssets UP-TO-DATE
+> Task :google_mlkit_commons:mergeReleaseShaders UP-TO-DATE
+> Task :google_mlkit_commons:compileReleaseShaders NO-SOURCE
+> Task :google_mlkit_commons:generateReleaseAssets UP-TO-DATE
+> Task :google_mlkit_commons:mergeReleaseAssets UP-TO-DATE
+> Task :google_mlkit_face_detection:mergeReleaseShaders UP-TO-DATE
+> Task :google_mlkit_face_detection:compileReleaseShaders NO-SOURCE
+> Task :google_mlkit_face_detection:generateReleaseAssets UP-TO-DATE
+> Task :google_mlkit_face_detection:mergeReleaseAssets UP-TO-DATE
+> Task :image_picker_android:mergeReleaseShaders UP-TO-DATE
+> Task :image_picker_android:compileReleaseShaders NO-SOURCE
+> Task :image_picker_android:generateReleaseAssets UP-TO-DATE
+> Task :image_picker_android:mergeReleaseAssets UP-TO-DATE
+> Task :package_info_plus:mergeReleaseShaders UP-TO-DATE
+> Task :package_info_plus:compileReleaseShaders NO-SOURCE
+> Task :package_info_plus:generateReleaseAssets UP-TO-DATE
+> Task :package_info_plus:mergeReleaseAssets UP-TO-DATE
+> Task :path_provider_android:mergeReleaseShaders UP-TO-DATE
+> Task :path_provider_android:compileReleaseShaders NO-SOURCE
+> Task :path_provider_android:generateReleaseAssets UP-TO-DATE
+> Task :path_provider_android:mergeReleaseAssets UP-TO-DATE
+> Task :permission_handler_android:mergeReleaseShaders UP-TO-DATE
+> Task :permission_handler_android:compileReleaseShaders NO-SOURCE
+> Task :permission_handler_android:generateReleaseAssets UP-TO-DATE
+> Task :permission_handler_android:mergeReleaseAssets UP-TO-DATE
+> Task :safe_device:mergeReleaseShaders UP-TO-DATE
+> Task :safe_device:compileReleaseShaders NO-SOURCE
+> Task :safe_device:generateReleaseAssets UP-TO-DATE
+> Task :safe_device:mergeReleaseAssets UP-TO-DATE
+> Task :share_plus:mergeReleaseShaders UP-TO-DATE
+> Task :share_plus:compileReleaseShaders NO-SOURCE
+> Task :share_plus:generateReleaseAssets UP-TO-DATE
+> Task :share_plus:mergeReleaseAssets UP-TO-DATE
+> Task :shared_preferences_android:mergeReleaseShaders UP-TO-DATE
+> Task :shared_preferences_android:compileReleaseShaders NO-SOURCE
+> Task :shared_preferences_android:generateReleaseAssets UP-TO-DATE
+> Task :shared_preferences_android:mergeReleaseAssets UP-TO-DATE
+> Task :tflite_flutter:mergeReleaseShaders UP-TO-DATE
+> Task :tflite_flutter:compileReleaseShaders NO-SOURCE
+> Task :tflite_flutter:generateReleaseAssets UP-TO-DATE
+> Task :tflite_flutter:mergeReleaseAssets UP-TO-DATE
+> Task :url_launcher_android:mergeReleaseShaders UP-TO-DATE
+> Task :url_launcher_android:compileReleaseShaders NO-SOURCE
+> Task :url_launcher_android:generateReleaseAssets UP-TO-DATE
+> Task :url_launcher_android:mergeReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets
+> Task :app:copyFlutterAssetsRelease
+> Task :app:generateReleaseResValues UP-TO-DATE
+> Task :app:processReleaseGoogleServices UP-TO-DATE
+> Task :app:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :app:generateReleaseResources UP-TO-DATE
+> Task :app:mergeReleaseResources UP-TO-DATE
+> Task :app:packageReleaseResources UP-TO-DATE
+> Task :app:parseReleaseLocalResources UP-TO-DATE
+> Task :app:createReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksRelease UP-TO-DATE
+> Task :camera_android:extractDeepLinksRelease UP-TO-DATE
+> Task :camera_android:processReleaseManifest UP-TO-DATE
+> Task :cloud_firestore:extractDeepLinksRelease UP-TO-DATE
+> Task :cloud_firestore:processReleaseManifest UP-TO-DATE
+> Task :firebase_app_check:extractDeepLinksRelease UP-TO-DATE
+> Task :firebase_app_check:processReleaseManifest UP-TO-DATE
+> Task :firebase_auth:extractDeepLinksRelease UP-TO-DATE
+> Task :firebase_auth:processReleaseManifest UP-TO-DATE
+> Task :firebase_core:extractDeepLinksRelease UP-TO-DATE
+> Task :firebase_core:processReleaseManifest UP-TO-DATE
+> Task :firebase_messaging:extractDeepLinksRelease UP-TO-DATE
+> Task :firebase_messaging:processReleaseManifest UP-TO-DATE
+> Task :firebase_storage:extractDeepLinksRelease UP-TO-DATE
+> Task :firebase_storage:processReleaseManifest UP-TO-DATE
+> Task :flutter_image_compress_common:extractDeepLinksRelease UP-TO-DATE
+> Task :flutter_image_compress_common:processReleaseManifest UP-TO-DATE
+> Task :flutter_local_notifications:extractDeepLinksRelease UP-TO-DATE
+> Task :flutter_local_notifications:processReleaseManifest UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:extractDeepLinksRelease UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:processReleaseManifest UP-TO-DATE
+> Task :geolocator_android:extractDeepLinksRelease UP-TO-DATE
+> Task :geolocator_android:processReleaseManifest UP-TO-DATE
+> Task :google_mlkit_commons:extractDeepLinksRelease UP-TO-DATE
+> Task :google_mlkit_commons:processReleaseManifest UP-TO-DATE
+> Task :google_mlkit_face_detection:extractDeepLinksRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:processReleaseManifest UP-TO-DATE
+> Task :image_picker_android:extractDeepLinksRelease UP-TO-DATE
+> Task :image_picker_android:processReleaseManifest UP-TO-DATE
+> Task :package_info_plus:extractDeepLinksRelease UP-TO-DATE
+> Task :package_info_plus:processReleaseManifest UP-TO-DATE
+> Task :path_provider_android:extractDeepLinksRelease UP-TO-DATE
+> Task :path_provider_android:processReleaseManifest UP-TO-DATE
+> Task :permission_handler_android:extractDeepLinksRelease UP-TO-DATE
+> Task :permission_handler_android:processReleaseManifest UP-TO-DATE
+> Task :safe_device:extractDeepLinksRelease UP-TO-DATE
+> Task :safe_device:processReleaseManifest UP-TO-DATE
+> Task :share_plus:extractDeepLinksRelease UP-TO-DATE
+> Task :share_plus:processReleaseManifest UP-TO-DATE
+> Task :shared_preferences_android:extractDeepLinksRelease UP-TO-DATE
+> Task :shared_preferences_android:processReleaseManifest UP-TO-DATE
+> Task :tflite_flutter:extractDeepLinksRelease UP-TO-DATE
+> Task :tflite_flutter:processReleaseManifest UP-TO-DATE
+> Task :url_launcher_android:extractDeepLinksRelease UP-TO-DATE
+> Task :url_launcher_android:processReleaseManifest UP-TO-DATE
+> Task :app:processReleaseMainManifest UP-TO-DATE
+> Task :app:outputReleaseAppLinkSettings UP-TO-DATE
+> Task :app:processReleaseManifest UP-TO-DATE
+> Task :app:processReleaseManifestForPackage UP-TO-DATE
+> Task :app:processReleaseResources UP-TO-DATE
+> Task :camera_android:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :cloud_firestore:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :firebase_app_check:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :firebase_auth:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :firebase_messaging:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :firebase_storage:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :flutter_image_compress_common:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :flutter_local_notifications:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :geolocator_android:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :image_picker_android:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :package_info_plus:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :path_provider_android:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :permission_handler_android:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :safe_device:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :share_plus:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :shared_preferences_android:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :tflite_flutter:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :url_launcher_android:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :app:compileReleaseKotlin UP-TO-DATE
+> Task :app:javaPreCompileRelease UP-TO-DATE
+> Task :app:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :camera_android:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :cloud_firestore:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :firebase_app_check:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :firebase_auth:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :firebase_core:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :firebase_messaging:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :firebase_storage:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :flutter_image_compress_common:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :flutter_local_notifications:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :geolocator_android:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :google_mlkit_commons:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :image_picker_android:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :package_info_plus:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :path_provider_android:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :permission_handler_android:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :safe_device:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :share_plus:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :shared_preferences_android:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :tflite_flutter:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :url_launcher_android:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :app:expandReleaseArtProfileWildcards UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :app:processReleaseJavaRes UP-TO-DATE
+> Task :camera_android:processReleaseJavaRes NO-SOURCE
+> Task :cloud_firestore:processReleaseJavaRes NO-SOURCE
+> Task :firebase_app_check:processReleaseJavaRes NO-SOURCE
+> Task :firebase_auth:processReleaseJavaRes NO-SOURCE
+> Task :firebase_core:processReleaseJavaRes NO-SOURCE
+> Task :firebase_messaging:processReleaseJavaRes NO-SOURCE
+> Task :firebase_storage:processReleaseJavaRes UP-TO-DATE
+> Task :flutter_image_compress_common:processReleaseJavaRes UP-TO-DATE
+> Task :flutter_local_notifications:processReleaseJavaRes NO-SOURCE
+> Task :flutter_plugin_android_lifecycle:processReleaseJavaRes NO-SOURCE
+> Task :geolocator_android:processReleaseJavaRes NO-SOURCE
+> Task :google_mlkit_commons:processReleaseJavaRes NO-SOURCE
+> Task :google_mlkit_face_detection:processReleaseJavaRes NO-SOURCE
+> Task :image_picker_android:processReleaseJavaRes NO-SOURCE
+> Task :package_info_plus:processReleaseJavaRes UP-TO-DATE
+> Task :path_provider_android:processReleaseJavaRes NO-SOURCE
+> Task :permission_handler_android:processReleaseJavaRes NO-SOURCE
+> Task :safe_device:processReleaseJavaRes NO-SOURCE
+> Task :share_plus:processReleaseJavaRes UP-TO-DATE
+> Task :shared_preferences_android:processReleaseJavaRes UP-TO-DATE
+> Task :tflite_flutter:processReleaseJavaRes NO-SOURCE
+> Task :url_launcher_android:processReleaseJavaRes NO-SOURCE
+> Task :app:mergeReleaseJavaResource UP-TO-DATE
+> Task :app:mergeReleaseStartupProfile UP-TO-DATE
+> Task :app:compressReleaseAssets UP-TO-DATE
+> Task :app:extractReleaseVersionControlInfo UP-TO-DATE
+> Task :camera_android:createFullJarRelease UP-TO-DATE
+> Task :camera_android:extractProguardFiles UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:createFullJarRelease UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:extractProguardFiles UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:generateReleaseLintModel UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:prepareLintJarForPublish UP-TO-DATE
+> Task :camera_android:generateReleaseLintModel UP-TO-DATE
+> Task :camera_android:prepareLintJarForPublish UP-TO-DATE
+> Task :cloud_firestore:createFullJarRelease UP-TO-DATE
+> Task :cloud_firestore:extractProguardFiles UP-TO-DATE
+> Task :firebase_core:createFullJarRelease UP-TO-DATE
+> Task :firebase_core:extractProguardFiles UP-TO-DATE
+> Task :firebase_core:generateReleaseLintModel UP-TO-DATE
+> Task :firebase_core:prepareLintJarForPublish UP-TO-DATE
+> Task :cloud_firestore:generateReleaseLintModel UP-TO-DATE
+> Task :cloud_firestore:prepareLintJarForPublish UP-TO-DATE
+> Task :firebase_app_check:createFullJarRelease UP-TO-DATE
+> Task :firebase_app_check:extractProguardFiles UP-TO-DATE
+> Task :firebase_app_check:generateReleaseLintModel UP-TO-DATE
+> Task :firebase_app_check:prepareLintJarForPublish UP-TO-DATE
+> Task :firebase_auth:createFullJarRelease UP-TO-DATE
+> Task :firebase_auth:extractProguardFiles UP-TO-DATE
+> Task :firebase_auth:generateReleaseLintModel UP-TO-DATE
+> Task :firebase_auth:prepareLintJarForPublish UP-TO-DATE
+> Task :firebase_messaging:createFullJarRelease UP-TO-DATE
+> Task :firebase_messaging:extractProguardFiles UP-TO-DATE
+> Task :firebase_messaging:generateReleaseLintModel UP-TO-DATE
+> Task :firebase_messaging:prepareLintJarForPublish UP-TO-DATE
+> Task :firebase_storage:createFullJarRelease UP-TO-DATE
+> Task :firebase_storage:extractProguardFiles UP-TO-DATE
+> Task :firebase_storage:generateReleaseLintModel UP-TO-DATE
+> Task :firebase_storage:prepareLintJarForPublish UP-TO-DATE
+> Task :flutter_image_compress_common:createFullJarRelease UP-TO-DATE
+> Task :flutter_image_compress_common:extractProguardFiles UP-TO-DATE
+> Task :flutter_image_compress_common:generateReleaseLintModel UP-TO-DATE
+> Task :flutter_image_compress_common:prepareLintJarForPublish UP-TO-DATE
+> Task :flutter_local_notifications:createFullJarRelease UP-TO-DATE
+> Task :flutter_local_notifications:extractProguardFiles UP-TO-DATE
+> Task :flutter_local_notifications:generateReleaseLintModel UP-TO-DATE
+> Task :flutter_local_notifications:prepareLintJarForPublish UP-TO-DATE
+> Task :geolocator_android:createFullJarRelease UP-TO-DATE
+> Task :geolocator_android:extractProguardFiles UP-TO-DATE
+> Task :geolocator_android:generateReleaseLintModel UP-TO-DATE
+> Task :geolocator_android:prepareLintJarForPublish UP-TO-DATE
+> Task :google_mlkit_commons:createFullJarRelease UP-TO-DATE
+> Task :google_mlkit_commons:extractProguardFiles UP-TO-DATE
+> Task :google_mlkit_commons:generateReleaseLintModel UP-TO-DATE
+> Task :google_mlkit_commons:prepareLintJarForPublish UP-TO-DATE
+> Task :google_mlkit_face_detection:createFullJarRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:extractProguardFiles UP-TO-DATE
+> Task :google_mlkit_face_detection:generateReleaseLintModel UP-TO-DATE
+> Task :google_mlkit_face_detection:prepareLintJarForPublish UP-TO-DATE
+> Task :image_picker_android:createFullJarRelease UP-TO-DATE
+> Task :image_picker_android:extractProguardFiles UP-TO-DATE
+> Task :image_picker_android:generateReleaseLintModel UP-TO-DATE
+> Task :image_picker_android:prepareLintJarForPublish UP-TO-DATE
+> Task :package_info_plus:createFullJarRelease UP-TO-DATE
+> Task :package_info_plus:extractProguardFiles UP-TO-DATE
+> Task :package_info_plus:generateReleaseLintModel UP-TO-DATE
+> Task :package_info_plus:prepareLintJarForPublish UP-TO-DATE
+> Task :path_provider_android:createFullJarRelease UP-TO-DATE
+> Task :path_provider_android:extractProguardFiles UP-TO-DATE
+> Task :path_provider_android:generateReleaseLintModel UP-TO-DATE
+> Task :path_provider_android:prepareLintJarForPublish UP-TO-DATE
+> Task :permission_handler_android:createFullJarRelease UP-TO-DATE
+> Task :permission_handler_android:extractProguardFiles UP-TO-DATE
+> Task :permission_handler_android:generateReleaseLintModel UP-TO-DATE
+> Task :permission_handler_android:prepareLintJarForPublish UP-TO-DATE
+> Task :safe_device:createFullJarRelease UP-TO-DATE
+> Task :safe_device:extractProguardFiles UP-TO-DATE
+> Task :safe_device:generateReleaseLintModel UP-TO-DATE
+> Task :safe_device:prepareLintJarForPublish UP-TO-DATE
+> Task :share_plus:createFullJarRelease UP-TO-DATE
+> Task :share_plus:extractProguardFiles UP-TO-DATE
+> Task :share_plus:generateReleaseLintModel UP-TO-DATE
+> Task :share_plus:prepareLintJarForPublish UP-TO-DATE
+> Task :shared_preferences_android:createFullJarRelease UP-TO-DATE
+> Task :shared_preferences_android:extractProguardFiles UP-TO-DATE
+> Task :shared_preferences_android:generateReleaseLintModel UP-TO-DATE
+> Task :shared_preferences_android:prepareLintJarForPublish UP-TO-DATE
+> Task :tflite_flutter:createFullJarRelease UP-TO-DATE
+> Task :tflite_flutter:extractProguardFiles UP-TO-DATE
+> Task :tflite_flutter:generateReleaseLintModel UP-TO-DATE
+> Task :tflite_flutter:prepareLintJarForPublish UP-TO-DATE
+> Task :url_launcher_android:createFullJarRelease UP-TO-DATE
+> Task :url_launcher_android:extractProguardFiles UP-TO-DATE
+> Task :url_launcher_android:generateReleaseLintModel UP-TO-DATE
+> Task :url_launcher_android:prepareLintJarForPublish UP-TO-DATE
+> Task :app:generateReleaseLintVitalReportModel UP-TO-DATE
+> Task :camera_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :camera_android:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :camera_android:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :camera_android:extractReleaseAnnotations UP-TO-DATE
+> Task :camera_android:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :camera_android:mergeReleaseJavaResource UP-TO-DATE
+> Task :camera_android:syncReleaseLibJars UP-TO-DATE
+> Task :camera_android:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :cloud_firestore:stripReleaseDebugSymbols NO-SOURCE
+> Task :cloud_firestore:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :cloud_firestore:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :cloud_firestore:extractReleaseAnnotations UP-TO-DATE
+> Task :cloud_firestore:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :cloud_firestore:mergeReleaseJavaResource UP-TO-DATE
+> Task :cloud_firestore:syncReleaseLibJars UP-TO-DATE
+> Task :cloud_firestore:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :firebase_app_check:stripReleaseDebugSymbols NO-SOURCE
+> Task :firebase_app_check:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :firebase_app_check:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :firebase_app_check:extractReleaseAnnotations UP-TO-DATE
+> Task :firebase_app_check:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_app_check:mergeReleaseJavaResource UP-TO-DATE
+> Task :firebase_app_check:syncReleaseLibJars UP-TO-DATE
+> Task :firebase_app_check:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :firebase_auth:stripReleaseDebugSymbols NO-SOURCE
+> Task :firebase_auth:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :firebase_auth:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :firebase_auth:extractReleaseAnnotations UP-TO-DATE
+> Task :firebase_auth:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_auth:mergeReleaseJavaResource UP-TO-DATE
+> Task :firebase_auth:syncReleaseLibJars UP-TO-DATE
+> Task :firebase_auth:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :firebase_messaging:stripReleaseDebugSymbols NO-SOURCE
+> Task :firebase_messaging:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :firebase_messaging:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :firebase_messaging:extractReleaseAnnotations UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseJavaResource UP-TO-DATE
+> Task :firebase_messaging:syncReleaseLibJars UP-TO-DATE
+> Task :firebase_messaging:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :firebase_storage:stripReleaseDebugSymbols NO-SOURCE
+> Task :firebase_storage:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :firebase_storage:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :firebase_storage:extractReleaseAnnotations UP-TO-DATE
+> Task :firebase_storage:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_storage:mergeReleaseJavaResource UP-TO-DATE
+> Task :firebase_storage:syncReleaseLibJars UP-TO-DATE
+> Task :firebase_storage:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :firebase_core:stripReleaseDebugSymbols NO-SOURCE
+> Task :firebase_core:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :firebase_core:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :firebase_core:extractReleaseAnnotations UP-TO-DATE
+> Task :firebase_core:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :firebase_core:mergeReleaseJavaResource UP-TO-DATE
+> Task :firebase_core:syncReleaseLibJars UP-TO-DATE
+> Task :firebase_core:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :flutter_image_compress_common:stripReleaseDebugSymbols NO-SOURCE
+> Task :flutter_image_compress_common:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :flutter_image_compress_common:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :flutter_image_compress_common:extractReleaseAnnotations UP-TO-DATE
+> Task :flutter_image_compress_common:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :flutter_image_compress_common:mergeReleaseJavaResource UP-TO-DATE
+> Task :flutter_image_compress_common:syncReleaseLibJars UP-TO-DATE
+> Task :flutter_image_compress_common:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :flutter_local_notifications:stripReleaseDebugSymbols NO-SOURCE
+> Task :flutter_local_notifications:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :flutter_local_notifications:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :flutter_local_notifications:extractReleaseAnnotations UP-TO-DATE
+> Task :flutter_local_notifications:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :flutter_local_notifications:mergeReleaseJavaResource UP-TO-DATE
+> Task :flutter_local_notifications:syncReleaseLibJars UP-TO-DATE
+> Task :flutter_local_notifications:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :image_picker_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :image_picker_android:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :image_picker_android:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :image_picker_android:extractReleaseAnnotations UP-TO-DATE
+> Task :image_picker_android:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :image_picker_android:mergeReleaseJavaResource UP-TO-DATE
+> Task :image_picker_android:syncReleaseLibJars UP-TO-DATE
+> Task :image_picker_android:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:stripReleaseDebugSymbols NO-SOURCE
+> Task :flutter_plugin_android_lifecycle:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:extractReleaseAnnotations UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeReleaseJavaResource UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:syncReleaseLibJars UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :geolocator_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :geolocator_android:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :geolocator_android:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :geolocator_android:extractReleaseAnnotations UP-TO-DATE
+> Task :geolocator_android:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :geolocator_android:mergeReleaseJavaResource UP-TO-DATE
+> Task :geolocator_android:syncReleaseLibJars UP-TO-DATE
+> Task :geolocator_android:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :google_mlkit_face_detection:stripReleaseDebugSymbols NO-SOURCE
+> Task :google_mlkit_face_detection:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :google_mlkit_face_detection:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:extractReleaseAnnotations UP-TO-DATE
+> Task :google_mlkit_face_detection:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :google_mlkit_face_detection:mergeReleaseJavaResource UP-TO-DATE
+> Task :google_mlkit_face_detection:syncReleaseLibJars UP-TO-DATE
+> Task :google_mlkit_face_detection:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :google_mlkit_commons:stripReleaseDebugSymbols NO-SOURCE
+> Task :google_mlkit_commons:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :google_mlkit_commons:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :google_mlkit_commons:extractReleaseAnnotations UP-TO-DATE
+> Task :google_mlkit_commons:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :google_mlkit_commons:mergeReleaseJavaResource UP-TO-DATE
+> Task :google_mlkit_commons:syncReleaseLibJars UP-TO-DATE
+> Task :google_mlkit_commons:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :package_info_plus:stripReleaseDebugSymbols NO-SOURCE
+> Task :package_info_plus:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :package_info_plus:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :package_info_plus:extractReleaseAnnotations UP-TO-DATE
+> Task :package_info_plus:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :package_info_plus:mergeReleaseJavaResource UP-TO-DATE
+> Task :package_info_plus:syncReleaseLibJars UP-TO-DATE
+> Task :package_info_plus:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :path_provider_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :path_provider_android:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :path_provider_android:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :path_provider_android:extractReleaseAnnotations UP-TO-DATE
+> Task :path_provider_android:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :path_provider_android:mergeReleaseJavaResource UP-TO-DATE
+> Task :path_provider_android:syncReleaseLibJars UP-TO-DATE
+> Task :path_provider_android:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :permission_handler_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :permission_handler_android:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :permission_handler_android:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :permission_handler_android:extractReleaseAnnotations UP-TO-DATE
+> Task :permission_handler_android:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :permission_handler_android:mergeReleaseJavaResource UP-TO-DATE
+> Task :permission_handler_android:syncReleaseLibJars UP-TO-DATE
+> Task :permission_handler_android:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :safe_device:stripReleaseDebugSymbols NO-SOURCE
+> Task :safe_device:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :safe_device:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :safe_device:extractReleaseAnnotations UP-TO-DATE
+> Task :safe_device:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :safe_device:mergeReleaseJavaResource UP-TO-DATE
+> Task :safe_device:syncReleaseLibJars UP-TO-DATE
+> Task :safe_device:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :share_plus:stripReleaseDebugSymbols NO-SOURCE
+> Task :share_plus:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :share_plus:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :share_plus:extractReleaseAnnotations UP-TO-DATE
+> Task :share_plus:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :share_plus:mergeReleaseJavaResource UP-TO-DATE
+> Task :share_plus:syncReleaseLibJars UP-TO-DATE
+> Task :share_plus:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :shared_preferences_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :shared_preferences_android:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :shared_preferences_android:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :shared_preferences_android:extractReleaseAnnotations UP-TO-DATE
+> Task :shared_preferences_android:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :shared_preferences_android:mergeReleaseJavaResource UP-TO-DATE
+> Task :shared_preferences_android:syncReleaseLibJars UP-TO-DATE
+> Task :shared_preferences_android:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :tflite_flutter:stripReleaseDebugSymbols NO-SOURCE
+> Task :tflite_flutter:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :tflite_flutter:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :tflite_flutter:extractReleaseAnnotations UP-TO-DATE
+> Task :tflite_flutter:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :tflite_flutter:mergeReleaseJavaResource UP-TO-DATE
+> Task :tflite_flutter:syncReleaseLibJars UP-TO-DATE
+> Task :tflite_flutter:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :url_launcher_android:stripReleaseDebugSymbols NO-SOURCE
+> Task :url_launcher_android:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :url_launcher_android:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :url_launcher_android:extractReleaseAnnotations UP-TO-DATE
+> Task :url_launcher_android:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :url_launcher_android:mergeReleaseJavaResource UP-TO-DATE
+> Task :url_launcher_android:syncReleaseLibJars UP-TO-DATE
+> Task :url_launcher_android:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :camera_android:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :camera_android:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :firebase_core:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :cloud_firestore:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :cloud_firestore:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :firebase_app_check:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :firebase_app_check:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :firebase_auth:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :firebase_auth:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :firebase_core:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :firebase_messaging:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :firebase_messaging:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :firebase_storage:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :firebase_storage:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :flutter_image_compress_common:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :flutter_image_compress_common:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :flutter_local_notifications:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :flutter_local_notifications:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :geolocator_android:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :geolocator_android:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :google_mlkit_commons:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :google_mlkit_commons:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :google_mlkit_face_detection:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :image_picker_android:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :image_picker_android:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :package_info_plus:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :package_info_plus:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :path_provider_android:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :path_provider_android:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :permission_handler_android:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :permission_handler_android:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :safe_device:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :safe_device:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :share_plus:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :share_plus:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :shared_preferences_android:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :shared_preferences_android:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :tflite_flutter:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :tflite_flutter:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :url_launcher_android:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :url_launcher_android:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :app:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :camera_android:generateReleaseLintVitalModel UP-TO-DATE
+> Task :cloud_firestore:generateReleaseLintVitalModel UP-TO-DATE
+> Task :firebase_app_check:generateReleaseLintVitalModel UP-TO-DATE
+> Task :firebase_auth:generateReleaseLintVitalModel UP-TO-DATE
+> Task :firebase_core:generateReleaseLintVitalModel UP-TO-DATE
+> Task :firebase_messaging:generateReleaseLintVitalModel UP-TO-DATE
+> Task :firebase_storage:generateReleaseLintVitalModel UP-TO-DATE
+> Task :flutter_image_compress_common:generateReleaseLintVitalModel UP-TO-DATE
+> Task :flutter_local_notifications:generateReleaseLintVitalModel UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:generateReleaseLintVitalModel UP-TO-DATE
+> Task :geolocator_android:generateReleaseLintVitalModel UP-TO-DATE
+> Task :google_mlkit_commons:generateReleaseLintVitalModel UP-TO-DATE
+> Task :google_mlkit_face_detection:generateReleaseLintVitalModel UP-TO-DATE
+> Task :image_picker_android:generateReleaseLintVitalModel UP-TO-DATE
+> Task :package_info_plus:generateReleaseLintVitalModel UP-TO-DATE
+> Task :path_provider_android:generateReleaseLintVitalModel UP-TO-DATE
+> Task :permission_handler_android:generateReleaseLintVitalModel UP-TO-DATE
+> Task :safe_device:generateReleaseLintVitalModel UP-TO-DATE
+> Task :share_plus:generateReleaseLintVitalModel UP-TO-DATE
+> Task :shared_preferences_android:generateReleaseLintVitalModel UP-TO-DATE
+> Task :tflite_flutter:generateReleaseLintVitalModel UP-TO-DATE
+> Task :url_launcher_android:generateReleaseLintVitalModel UP-TO-DATE
+> Task :app:lintVitalReportRelease UP-TO-DATE
+> Task :app:lintVitalRelease
+> Task :app:collectReleaseDependencies UP-TO-DATE
+> Task :app:sdkReleaseDependencyData UP-TO-DATE
+> Task :app:validateSigningRelease UP-TO-DATE
+> Task :app:writeReleaseAppMetadata UP-TO-DATE
+> Task :app:writeReleaseSigningConfigVersions UP-TO-DATE
+> Task :camera_android:bundleReleaseAar UP-TO-DATE
+> Task :camera_android:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :camera_android:mergeReleaseResources UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:compileReleaseLibraryResources UP-TO-DATE
+> Task :camera_android:verifyReleaseResources UP-TO-DATE
+> Task :camera_android:assembleRelease UP-TO-DATE
+> Task :cloud_firestore:bundleReleaseAar UP-TO-DATE
+> Task :cloud_firestore:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :cloud_firestore:mergeReleaseResources UP-TO-DATE
+> Task :firebase_core:compileReleaseLibraryResources UP-TO-DATE
+> Task :cloud_firestore:verifyReleaseResources UP-TO-DATE
+> Task :cloud_firestore:assembleRelease UP-TO-DATE
+> Task :firebase_app_check:bundleReleaseAar UP-TO-DATE
+> Task :firebase_app_check:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :firebase_app_check:mergeReleaseResources UP-TO-DATE
+> Task :firebase_app_check:verifyReleaseResources UP-TO-DATE
+> Task :firebase_app_check:assembleRelease UP-TO-DATE
+> Task :firebase_auth:bundleReleaseAar UP-TO-DATE
+> Task :firebase_auth:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :firebase_auth:mergeReleaseResources UP-TO-DATE
+> Task :firebase_auth:verifyReleaseResources UP-TO-DATE
+> Task :firebase_auth:assembleRelease UP-TO-DATE
+> Task :firebase_core:bundleReleaseAar UP-TO-DATE
+> Task :firebase_core:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :firebase_core:mergeReleaseResources UP-TO-DATE
+> Task :firebase_core:verifyReleaseResources UP-TO-DATE
+> Task :firebase_core:assembleRelease UP-TO-DATE
+> Task :firebase_messaging:bundleReleaseAar UP-TO-DATE
+> Task :firebase_messaging:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :firebase_messaging:mergeReleaseResources UP-TO-DATE
+> Task :firebase_messaging:verifyReleaseResources UP-TO-DATE
+> Task :firebase_messaging:assembleRelease UP-TO-DATE
+> Task :firebase_storage:bundleReleaseAar UP-TO-DATE
+> Task :firebase_storage:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :firebase_storage:mergeReleaseResources UP-TO-DATE
+> Task :firebase_storage:verifyReleaseResources UP-TO-DATE
+> Task :firebase_storage:assembleRelease UP-TO-DATE
+> Task :flutter_image_compress_common:bundleReleaseAar UP-TO-DATE
+> Task :flutter_image_compress_common:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :flutter_image_compress_common:mergeReleaseResources UP-TO-DATE
+> Task :flutter_image_compress_common:verifyReleaseResources UP-TO-DATE
+> Task :flutter_image_compress_common:assembleRelease UP-TO-DATE
+> Task :flutter_local_notifications:bundleReleaseAar UP-TO-DATE
+> Task :flutter_local_notifications:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :flutter_local_notifications:mergeReleaseResources UP-TO-DATE
+> Task :flutter_local_notifications:verifyReleaseResources UP-TO-DATE
+> Task :flutter_local_notifications:assembleRelease UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:bundleReleaseAar UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeReleaseResources UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:verifyReleaseResources UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:assembleRelease UP-TO-DATE
+> Task :geolocator_android:bundleReleaseAar UP-TO-DATE
+> Task :geolocator_android:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :geolocator_android:mergeReleaseResources UP-TO-DATE
+> Task :geolocator_android:verifyReleaseResources UP-TO-DATE
+> Task :geolocator_android:assembleRelease UP-TO-DATE
+> Task :google_mlkit_commons:bundleReleaseAar UP-TO-DATE
+> Task :google_mlkit_commons:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :google_mlkit_commons:mergeReleaseResources UP-TO-DATE
+> Task :google_mlkit_commons:verifyReleaseResources UP-TO-DATE
+> Task :google_mlkit_commons:assembleRelease UP-TO-DATE
+> Task :google_mlkit_face_detection:bundleReleaseAar UP-TO-DATE
+> Task :google_mlkit_commons:compileReleaseLibraryResources UP-TO-DATE
+> Task :google_mlkit_face_detection:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :google_mlkit_face_detection:mergeReleaseResources UP-TO-DATE
+> Task :image_picker_android:bundleReleaseAar
+> Task :image_picker_android:mapReleaseSourceSetPaths
+> Task :image_picker_android:mergeReleaseResources
+> Task :package_info_plus:bundleReleaseAar
+> Task :package_info_plus:mapReleaseSourceSetPaths
+> Task :image_picker_android:verifyReleaseResources
+> Task :google_mlkit_face_detection:verifyReleaseResources
+> Task :package_info_plus:mergeReleaseResources
+> Task :google_mlkit_face_detection:assembleRelease
+> Task :image_picker_android:assembleRelease
+> Task :path_provider_android:bundleReleaseAar
+> Task :path_provider_android:mapReleaseSourceSetPaths
+> Task :package_info_plus:verifyReleaseResources
+> Task :path_provider_android:mergeReleaseResources
+> Task :package_info_plus:assembleRelease
+> Task :permission_handler_android:bundleReleaseAar
+> Task :permission_handler_android:mapReleaseSourceSetPaths
+> Task :path_provider_android:verifyReleaseResources
+> Task :permission_handler_android:mergeReleaseResources
+> Task :path_provider_android:assembleRelease
+> Task :safe_device:bundleReleaseAar
+> Task :safe_device:mapReleaseSourceSetPaths
+> Task :permission_handler_android:verifyReleaseResources
+
+> Task :app:minifyReleaseWithR8 FAILED
+ERROR: Missing classes detected while running R8. Please add the missing classes or apply additional keep rules that are generated in E:\Projects\VISTA APP\android\app\build\outputs\mapping\release\missing_rules.txt.
+ERROR: R8: Missing class com.google.android.play.core.splitcompat.SplitCompatApplication (referenced from: void io.flutter.embedding.android.FlutterPlayStoreSplitApplication.<init>() and 2 other contexts)
+
+> Task :safe_device:mergeReleaseResources
+
+[Incubating] Problems report is available at: file:///E:/Projects/VISTA%20APP/android/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:minifyReleaseWithR8'.
+> A failure occurred while executing com.android.build.gradle.internal.tasks.R8Task$R8Runnable
+   > Compilation failed to complete
+
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+* Exception is:
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:minifyReleaseWithR8'.
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:130)
+	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:293)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:128)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
+	at org.gradle.api.internal.tasks.execution.ProblemsTaskPathTrackingTaskExecuter.execute(ProblemsTaskPathTrackingTaskExecuter.java:41)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:85)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing com.android.build.gradle.internal.tasks.R8Task$R8Runnable
+	at org.gradle.workers.internal.DefaultWorkerExecutor$WorkItemExecution.waitForCompletion(DefaultWorkerExecutor.java:287)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.lambda$waitForItemsAndGatherFailures$2(DefaultAsyncWorkTracker.java:130)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:335)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:318)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLock(DefaultWorkerLeaseService.java:323)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:126)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:92)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForAll(DefaultAsyncWorkTracker.java:78)
+	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForCompletion(DefaultAsyncWorkTracker.java:66)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:252)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:30)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:27)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:48)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:229)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:212)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:195)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:162)
+	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
+	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
+	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:42)
+	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:75)
+	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:50)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:28)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:67)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:37)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:61)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:26)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:69)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:46)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:40)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:29)
+	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
+	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:75)
+	at org.gradle.internal.Either$Right.fold(Either.java:175)
+	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:73)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:48)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:46)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:35)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:75)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:35)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
+	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:49)
+	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:27)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:71)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:39)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:65)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:36)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:107)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:56)
+	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:64)
+	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:43)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.executeWithNonEmptySources(AbstractSkipEmptyWorkStep.java:125)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:56)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:36)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:75)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:41)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$execute$0(AssignMutableWorkspaceStep.java:35)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:289)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:31)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:22)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:48)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:35)
+	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:64)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:127)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
+	at org.gradle.api.internal.tasks.execution.ProblemsTaskPathTrackingTaskExecuter.execute(ProblemsTaskPathTrackingTaskExecuter.java:41)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:85)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+Caused by: com.android.tools.r8.CompilationFailedException: Compilation failed to complete
+	at Version.fakeStackEntry(Version_8.11.18.java:0)
+	at com.android.tools.r8.P.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:1)
+	at com.android.tools.r8.internal.xv.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:82)
+	at com.android.tools.r8.internal.xv.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:32)
+	at com.android.tools.r8.internal.xv.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:31)
+	at com.android.tools.r8.R8.run(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:8)
+	at com.android.builder.dexing.R8Tool.runR8(r8Tool.kt:322)
+	at com.android.build.gradle.internal.tasks.R8Task$Companion.shrink(R8Task.kt:868)
+	at com.android.build.gradle.internal.tasks.R8Task$R8Runnable.execute(R8Task.kt:971)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:263)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+	... 2 more
+Caused by: com.android.tools.r8.internal.g: Missing class com.google.android.play.core.splitcompat.SplitCompatApplication (referenced from: void io.flutter.embedding.android.FlutterPlayStoreSplitApplication.<init>() and 2 other contexts)
+	at com.android.tools.r8.internal.yg0.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:21)
+	at com.android.tools.r8.internal.yg0.error(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:1)
+	at com.android.tools.r8.shaking.O.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:6742)
+	at com.android.tools.r8.shaking.O.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:1659)
+	at com.android.tools.r8.R8.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:1579)
+	at com.android.tools.r8.R8.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:197)
+	at com.android.tools.r8.R8.c(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:8)
+	at com.android.tools.r8.R8.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:5)
+	at com.android.tools.r8.internal.xv.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:28)
+	... 32 more
+	Suppressed: java.lang.RuntimeException: com.android.tools.r8.internal.g: Missing class com.google.android.play.core.splitcompat.SplitCompatApplication (referenced from: void io.flutter.embedding.android.FlutterPlayStoreSplitApplication.<init>() and 2 other contexts)
+		at com.android.tools.r8.internal.yg0.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:27)
+		at com.android.tools.r8.shaking.O.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:6744)
+		at com.android.tools.r8.shaking.O.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:1659)
+		at com.android.tools.r8.R8.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:1579)
+		at com.android.tools.r8.R8.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:197)
+		at com.android.tools.r8.R8.c(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:8)
+		at com.android.tools.r8.R8.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:5)
+		at com.android.tools.r8.internal.xv.a(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:28)
+		at com.android.tools.r8.R8.run(R8_8.11.18_94248c9a6fd57686ded562f231d18f14e8923ad1fe977e99b974a9bf901c8a48:8)
+		at com.android.builder.dexing.R8Tool.runR8(r8Tool.kt:322)
+		at com.android.build.gradle.internal.tasks.R8Task$Companion.shrink(R8Task.kt:868)
+		at com.android.build.gradle.internal.tasks.R8Task$R8Runnable.execute(R8Task.kt:971)
+		at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+		at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+		at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+		at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+		at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+		at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+		at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+		at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+		at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+		at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+		at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+		at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+		at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+		at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+		at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+		at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+		at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+		at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
+		at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+		at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+		at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+		at org.gradle.internal.Factories$1.create(Factories.java:31)
+		at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:263)
+		at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
+		at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
+		at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+		at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+		at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Unknown Source)
+		at java.base/java.util.concurrent.FutureTask.run(Unknown Source)
+		at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+		at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+		at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
+		at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+		at java.base/java.lang.Thread.run(Unknown Source)
+	Caused by: [CIRCULAR REFERENCE: com.android.tools.r8.internal.g: Missing class com.google.android.play.core.splitcompat.SplitCompatApplication (referenced from: void io.flutter.embedding.android.FlutterPlayStoreSplitApplication.<init>() and 2 other contexts)]
+
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 17s
+877 actionable tasks: 32 executed, 845 up-to-date

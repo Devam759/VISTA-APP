@@ -59,18 +59,21 @@ void main() async {
 
   bool isSecure = true;
 
-  try {
-    if (!kIsWeb) {
-      final String debugToken = await platform.invokeMethod('getDebugToken');
-      debugPrint("\n\n=======================================================");
-      debugPrint("YOUR FIREBASE APP CHECK DEBUG TOKEN IS:");
-      debugPrint(debugToken);
-      debugPrint("=======================================================\n\n");
+  // Only attempt to retrieve debug token in debug builds
+  if (kDebugMode) {
+    try {
+      if (!kIsWeb) {
+        final String debugToken = await platform.invokeMethod('getDebugToken');
+        debugPrint("\n\n=======================================================");
+        debugPrint("YOUR FIREBASE APP CHECK DEBUG TOKEN IS:");
+        debugPrint(debugToken);
+        debugPrint("=======================================================\n\n");
+      }
+    } on PlatformException catch (e) {
+      debugPrint("Failed to get debug token: '${e.message}'.");
+    } catch (e) {
+      debugPrint("Debug token not available: $e");
     }
-  } on PlatformException catch (e) {
-    debugPrint("Failed to get debug token: '${e.message}'.");
-  } catch (e) {
-    debugPrint("Debug token not available: $e");
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -172,7 +175,7 @@ class _BlockedScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const Text(
-                'VISTA is not allowed to run on Emulators, Rooted devices, or with Mock Locations enabled for security and attendance integrity.',
+                'VISTA is not allowed to run on Emulators, Rooted devices, with Mock Locations enabled, or if USB Debugging/Developer Options are active for security and attendance integrity.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.black54, height: 1.5),
               ),

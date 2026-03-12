@@ -1,12 +1,12 @@
 {
-    "name": "vista_app",
+    "name": "VISTA - JKLU Hostel Management",
     "gcm_sender_id": "103953800507",
-    "short_name": "vista_app",
+    "short_name": "VISTA",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Comprehensive hostel management for JKLU students, wardens, and head wardens.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
