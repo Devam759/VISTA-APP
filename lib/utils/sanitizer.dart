@@ -96,6 +96,40 @@ class InputSanitizer {
     return normalized;
   }
 
+  /// Formats phone number to +91 format for storage and display
+  /// Input can be: 7340015201, 917340015201, +917340015201, 07340015201, etc.
+  static String formatPhoneWithCountryCode(String phone) {
+    if (phone.isEmpty) return "";
+    // Remove all non-digit characters
+    String digits = phone.replaceAll(RegExp(r'\D'), '');
+    
+    // Remove leading 0 if present
+    if (digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+    
+    // If it already has 91 prefix, ensure it's valid
+    if (digits.length == 12 && digits.startsWith('91')) {
+      // Verify it's a valid Indian mobile (starts with 6, 7, 8, or 9)
+      final mobilePrefix = digits.substring(2, 3);
+      if (RegExp(r'[6-9]').hasMatch(mobilePrefix)) {
+        return '+91 ${digits.substring(2)}';
+      }
+    }
+    
+    // If it's a 10-digit number, add +91
+    if (digits.length == 10) {
+      // Verify it's a valid Indian mobile (starts with 6, 7, 8, or 9)
+      final mobilePrefix = digits.substring(0, 1);
+      if (RegExp(r'[6-9]').hasMatch(mobilePrefix)) {
+        return '+91 $digits';
+      }
+    }
+    
+    // Return original if we can't format it properly
+    return phone;
+  }
+
   /// Capitalizes the first letter of each word in a string.
   static String capitalize(String input) {
     if (input.isEmpty) return "";

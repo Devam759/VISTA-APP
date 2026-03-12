@@ -32,7 +32,7 @@ class _SignupScreenState extends State<SignupScreen> {
     String firstNameInput = InputSanitizer.capitalize(_firstNameController.text.trim());
     String lastNameInput = InputSanitizer.capitalize(_lastNameController.text.trim());
     String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
-    String phoneInput = InputSanitizer.normalizePhone(_phoneController.text.trim());
+    String phoneInput = InputSanitizer.formatPhoneWithCountryCode(_phoneController.text.trim());
 
     if (firstNameInput.isEmpty || lastNameInput.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -41,14 +41,13 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    if (phoneInput.length != 10 && !phoneInput.startsWith('+')) {
-       // Assuming 10 digits if no country code, or just enforce 10 for local
-       if (phoneInput.length != 10) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Mobile number must be exactly 10 digits')),
-          );
-          return;
-       }
+    // Validate phone number format (+91 XXXXXXXXXX)
+    final phoneDigits = phoneInput.replaceAll(RegExp(r'\D'), '');
+    if (phoneDigits.length != 12 || !phoneInput.startsWith('+91')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
+      );
+      return;
     }
 
     if (emailInput.isEmpty && phoneInput.isEmpty) {
@@ -68,7 +67,7 @@ class _SignupScreenState extends State<SignupScreen> {
     String lastNameInput = InputSanitizer.capitalize(_lastNameController.text.trim());
     String nameInput = "$firstNameInput $lastNameInput";
     String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
-    String phoneInput = InputSanitizer.normalizePhone(_phoneController.text.trim());
+    String phoneInput = InputSanitizer.formatPhoneWithCountryCode(_phoneController.text.trim());
     
     String finalEmail;
     if (emailInput.isNotEmpty) {

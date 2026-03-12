@@ -13,6 +13,7 @@ import '../../services/firebase_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/export_helper.dart';
 import '../../models/short_stay_model.dart';
+import '../../widgets/export_dialog.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME CONSTANTS
@@ -38,6 +39,129 @@ class _WardenDashboardState extends State<WardenDashboard> {
   bool _hasNewLeaves = false;
   bool _hasNewComplaints = false;
   bool _hasNewShortStays = false;
+
+  final GlobalKey<_StudentsTabState> _studentsKey = GlobalKey();
+  final GlobalKey<_AttendanceTabState> _attendanceKey = GlobalKey();
+  final GlobalKey<_LeavesTabState> _leavesKey = GlobalKey();
+  final GlobalKey<_ComplaintsTabState> _complaintsKey = GlobalKey();
+  final GlobalKey<_ShortStaysTabState> _shortStaysKey = GlobalKey();
+
+  Future<void> _showExportDialog() async {
+    final warden = Provider.of<AuthProvider>(context, listen: false).userProfile;
+    if (warden == null) return;
+
+    final result = await showDialog<ExportDialogResult>(
+      context: context,
+      builder: (context) => ExportDialog(hostel: warden.hostel ?? 'All'),
+    );
+
+    if (result == null) return;
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Preparing Export...')));
+
+    try {
+      switch (result.exportType) {
+        case ExportType.attendance:
+          final students = await _fs.getHostelStudents(warden.hostel).first;
+          final attendance = await _fs
+              .getHostelAttendanceRange(
+                warden.hostel,
+                result.startDate,
+                result.endDate,
+              )
+              .first;
+          final leaves = await _fs
+              .getHostelLeavesRange(warden.hostel, result.startDate, result.endDate)
+              .first;
+
+          List<DateTime> dates = [];
+          for (int i = 0;
+              i <= result.endDate.difference(result.startDate).inDays;
+              i++) {
+            dates.add(result.startDate.add(Duration(days: i)));
+          }
+
+          await ExportHelper.exportAttendanceSummary(
+            students,
+            attendance,
+            leaves,
+            dates,
+            warden.hostel ?? 'All',
+            sortByRoomNumber: true,
+          );
+          break;
+
+        case ExportType.students:
+          final students = await _fs.getHostelStudents(warden.hostel).first;
+          await ExportHelper.exportStudents(
+            students,
+            warden.hostel ?? 'All',
+            startDate: result.startDate,
+            endDate: result.endDate,
+          );
+          break;
+
+        case ExportType.leaveRequests:
+          final students = await _fs.getHostelStudents(warden.hostel).first;
+          final leaves = await _fs
+              .getHostelLeavesRange(warden.hostel, result.startDate, result.endDate)
+              .first;
+          await ExportHelper.exportLeaves(
+            leaves,
+            students,
+            warden.hostel ?? 'All',
+            startDate: result.startDate,
+            endDate: result.endDate,
+          );
+          break;
+
+        case ExportType.complaints:
+          final complaints = await _fs
+              .getHostelComplaintsRange(
+                warden.hostel,
+                result.startDate,
+                result.endDate,
+              )
+              .first;
+          await ExportHelper.exportComplaints(
+            complaints,
+            warden.hostel ?? 'All',
+            startDate: result.startDate,
+            endDate: result.endDate,
+          );
+          break;
+
+        case ExportType.shortStays:
+          final shortStays = await _fs
+              .getHostelShortStaysRange(
+                warden.hostel,
+                result.startDate,
+                result.endDate,
+              )
+              .first;
+          await ExportHelper.exportShortStays(
+            shortStays,
+            warden.hostel ?? 'All',
+            startDate: result.startDate,
+            endDate: result.endDate,
+          );
+          break;
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Export completed successfully!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -185,11 +309,11 @@ class _WardenDashboardState extends State<WardenDashboard> {
     final warden = Provider.of<AuthProvider>(context).userProfile!;
 
     final pages = [
-      _StudentsTab(warden: warden, fs: _fs),
-      _AttendanceTab(warden: warden, fs: _fs),
-      _LeavesTab(warden: warden, fs: _fs),
-      _ComplaintsTab(warden: warden, fs: _fs),
-      _ShortStaysTab(warden: warden, fs: _fs),
+      _StudentsTab(key: _studentsKey, warden: warden, fs: _fs),
+      _AttendanceTab(key: _attendanceKey, warden: warden, fs: _fs),
+      _LeavesTab(key: _leavesKey, warden: warden, fs: _fs),
+      _ComplaintsTab(key: _complaintsKey, warden: warden, fs: _fs),
+      _ShortStaysTab(key: _shortStaysKey, warden: warden, fs: _fs),
     ];
 
     const labels = [
@@ -353,6 +477,15 @@ class _WardenDashboardState extends State<WardenDashboard> {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: _showExportDialog,
+                              icon: const Icon(
+                                Icons.file_download_outlined,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                              tooltip: 'Export Data',
+                            ),
                             IconButton(
                               onPressed: () => FirebaseService().signOut(),
                               icon: const Icon(
@@ -564,7 +697,7 @@ class _Card extends StatelessWidget {
 class _StudentsTab extends StatefulWidget {
   final VistaUser warden;
   final FirebaseService fs;
-  const _StudentsTab({required this.warden, required this.fs});
+  const _StudentsTab({super.key, required this.warden, required this.fs});
 
   @override
   State<_StudentsTab> createState() => _StudentsTabState();
@@ -575,6 +708,11 @@ class _StudentsTabState extends State<_StudentsTab> {
   bool _showRequests = false;
   String _searchQuery = '';
   String _statusFilter = 'All'; // 'All', 'In Campus', 'On Leave', 'Short Stay'
+
+  Future<void> export() async {
+    final students = await widget.fs.getHostelStudents(widget.warden.hostel!).first;
+    await ExportHelper.exportStudents(students, widget.warden.hostel ?? 'All');
+  }
 
   late Stream<List<VistaUser>> _pendingStream;
   late Stream<List<VistaUser>> _memberStream;
@@ -1429,7 +1567,7 @@ class _AttendanceRecord {
 class _AttendanceTab extends StatefulWidget {
   final VistaUser warden;
   final FirebaseService fs;
-  const _AttendanceTab({required this.warden, required this.fs});
+  const _AttendanceTab({super.key, required this.warden, required this.fs});
 
   @override
   State<_AttendanceTab> createState() => _AttendanceTabState();
@@ -1439,6 +1577,8 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
   String _statusFilter = 'All'; // 'All', 'Marked', 'Late', 'Absent'
+
+  void export() => _showRangeExport();
 
   late Stream<List<VistaUser>> _studentStream;
   late Stream<List<LeaveRequest>> _leaveStream;
@@ -1797,22 +1937,6 @@ class _AttendanceTabState extends State<_AttendanceTab> {
               _buildFilterChip('On Leave'),
               const SizedBox(width: 8),
               _buildFilterChip('Absent'),
-              const SizedBox(width: 8),
-              // Export Button
-              TextButton.icon(
-                onPressed: _showRangeExport,
-                icon: const Icon(Icons.file_download_outlined, size: 18),
-                label: const Text('Export', style: TextStyle(fontSize: 12)),
-                style: TextButton.styleFrom(
-                  foregroundColor: _kPrimary,
-                  backgroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    side: BorderSide(color: Colors.grey.shade300),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -2093,7 +2217,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 class _LeavesTab extends StatefulWidget {
   final VistaUser warden;
   final FirebaseService fs;
-  const _LeavesTab({required this.warden, required this.fs});
+  const _LeavesTab({super.key, required this.warden, required this.fs});
 
   @override
   State<_LeavesTab> createState() => _LeavesTabState();
@@ -2103,6 +2227,8 @@ class _LeavesTabState extends State<_LeavesTab> {
   String _searchQuery = '';
   String _statusFilter = 'All';
   DateTime? _selectedDate = DateTime.now();
+
+  void export() => _showRangeExport();
 
   Future<void> _showRangeExport() async {
     final DateTimeRange? range = await showDateRangePicker(
@@ -2372,21 +2498,6 @@ class _LeavesTabState extends State<_LeavesTab> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _SectionLabel('Leave History', count: list.length),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: TextButton.icon(
-                          onPressed: _showRangeExport,
-                          icon: const Icon(
-                            Icons.file_download_outlined,
-                            size: 20,
-                          ),
-                          label: const Text('Export'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: _kPrimary,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   Expanded(
@@ -2672,7 +2783,7 @@ class _LeavesTabState extends State<_LeavesTab> {
 class _ComplaintsTab extends StatefulWidget {
   final VistaUser warden;
   final FirebaseService fs;
-  const _ComplaintsTab({required this.warden, required this.fs});
+  const _ComplaintsTab({super.key, required this.warden, required this.fs});
 
   @override
   State<_ComplaintsTab> createState() => _ComplaintsTabState();
@@ -2681,6 +2792,8 @@ class _ComplaintsTab extends StatefulWidget {
 class _ComplaintsTabState extends State<_ComplaintsTab> {
   String _searchQuery = '';
   DateTime? _selectedDate = DateTime.now();
+
+  void export() => _showRangeExport();
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -2915,21 +3028,6 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _SectionLabel('All Complaints', count: list.length),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: TextButton.icon(
-                          onPressed: _showRangeExport,
-                          icon: const Icon(
-                            Icons.file_download_outlined,
-                            size: 20,
-                          ),
-                          label: const Text('Export'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: _kPrimary,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   Expanded(
@@ -3109,7 +3207,7 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
 class _ShortStaysTab extends StatefulWidget {
   final VistaUser warden;
   final FirebaseService fs;
-  const _ShortStaysTab({required this.warden, required this.fs});
+  const _ShortStaysTab({super.key, required this.warden, required this.fs});
 
   @override
   State<_ShortStaysTab> createState() => _ShortStaysTabState();
@@ -3119,6 +3217,8 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
   String _statusFilter = 'Pending';
   String _searchQuery = '';
   final _searchCtrl = TextEditingController();
+
+  void export() => _showRangeExport();
 
   Widget _buildFilterChip(String label) {
     final isSelected = _statusFilter == label;
@@ -3289,31 +3389,13 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                     const SizedBox(width: 8),
                     _buildFilterChip('Rejected'),
                     const SizedBox(width: 8),
-                      _buildFilterChip('All'),
-                    ],
-                  ),
+                    _buildFilterChip('All'),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _showRangeExport,
-                    icon: const Icon(Icons.download, size: 16),
-                    label: const Text('Export', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _kPrimary,
-                      side: const BorderSide(color: _kPrimary),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
         Expanded(
           child: StreamBuilder<List<ShortStayRequest>>(
@@ -3368,13 +3450,6 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                                   fontSize: 14,
                                 ),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.download_rounded, color: _kPrimary, size: 20),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () => ExportHelper.exportShortStays([r], r.appliedHostel),
-                              tooltip: 'Export Annexure-F',
                             ),
                             const SizedBox(width: 8),
                             if (isExtending)
