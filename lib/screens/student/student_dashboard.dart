@@ -19,6 +19,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/security_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/skeleton_loader.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME CONSTANTS (Consistent with Warden portal for unified feel)
@@ -483,80 +484,79 @@ class _AttendanceTabState extends State<_AttendanceTab> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              _kPrimary.withValues(alpha: 0.02),
-            ],
+            colors: [Colors.white, _kPrimary.withValues(alpha: 0.02)],
           ),
         ),
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.mobile_friendly_rounded,
-                    size: 80,
-                    color: _kPrimary,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  'Mobile Only Feature',
-                  style: GoogleFonts.outfit(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: _kPrimary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Text(
-                    'For security and accurate location verification, attendance marking is exclusively available on the VISTA mobile app.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      color: Colors.black54,
-                      fontSize: 16,
-                      height: 1.6,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.mobile_friendly_rounded,
+                      size: 80,
+                      color: _kPrimary,
                     ),
                   ),
-                ),
-                const SizedBox(height: 48),
-                Text(
-                  'Download the App',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black38,
-                    letterSpacing: 1.2,
+                  const SizedBox(height: 32),
+                  Text(
+                    'Mobile Only Feature',
+                    style: GoogleFonts.outfit(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: _kPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    _buildDownloadButton(Icons.apple, 'App Store'),
-                    _buildDownloadButton(Icons.android_rounded, 'Play Store'),
-                  ],
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Text(
+                      'For security and accurate location verification, attendance marking is exclusively available on the VISTA mobile app.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: Colors.black54,
+                        fontSize: 16,
+                        height: 1.6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  Text(
+                    'Download the App',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black38,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      _buildDownloadButton(Icons.apple, 'App Store'),
+                      _buildDownloadButton(Icons.android_rounded, 'Play Store'),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -570,9 +570,9 @@ class _AttendanceTabState extends State<_AttendanceTab> {
           stream: widget.fs.getStudentShortStays(widget.user.uid),
           builder: (context, staySnap) {
             // Early exit if snapshots are still loading to avoid build flutters
-            if (leaveSnap.connectionState == ConnectionState.waiting || 
+            if (leaveSnap.connectionState == ConnectionState.waiting ||
                 staySnap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const AttendanceListSkeleton();
             }
 
             final approvedLeaves = (leaveSnap.data ?? [])
@@ -583,267 +583,283 @@ class _AttendanceTabState extends State<_AttendanceTab> {
             final approvedStays = (staySnap.data ?? [])
                 .where((s) => s.status == 'Approved')
                 .toList();
-            
+
             bool hasValidStay = true;
             if (widget.user.hostel == 'Short Stay') {
               final now = DateTime.now();
               final today = DateTime(now.year, now.month, now.day);
               hasValidStay = approvedStays.any((stay) {
-                final from = DateTime(stay.checkInDate.year, stay.checkInDate.month, stay.checkInDate.day);
-                final to = DateTime(stay.checkOutDate.year, stay.checkOutDate.month, stay.checkOutDate.day);
+                final from = DateTime(
+                  stay.checkInDate.year,
+                  stay.checkInDate.month,
+                  stay.checkInDate.day,
+                );
+                final to = DateTime(
+                  stay.checkOutDate.year,
+                  stay.checkOutDate.month,
+                  stay.checkOutDate.day,
+                );
                 return !today.isBefore(from) && !today.isAfter(to);
               });
             }
 
-        return ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            _SectionLabel("Night Attendance"),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _kPrimary.withValues(alpha: 0.05)),
-                boxShadow: [
-                  BoxShadow(
-                    color: _kPrimary.withValues(alpha: 0.03),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Reporting Window',
-                    style: TextStyle(
-                      color: Colors.black45,
-                      fontWeight: FontWeight.w600,
+            return ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                _SectionLabel("Night Attendance"),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: _kPrimary.withValues(alpha: 0.05),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _kPrimary.withValues(alpha: 0.03),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
-                  const Text(
-                    '10:00 PM - 10:30 PM',
-                    style: TextStyle(
-                      color: _kPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(
-                    'Late: 10:30 PM - 11:59 PM',
-                    style: TextStyle(
-                      color: _kPrimary.withValues(alpha: 0.5),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  GestureDetector(
-                    onTap: (onLeave || !hasValidStay || _isMarking)
-                        ? null
-                        : _handleMarkAttendance,
-                    child:
-                        Container(
-                              width: 180,
-                              height: 180,
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Reporting Window',
+                        style: TextStyle(
+                          color: Colors.black45,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Text(
+                        '10:00 PM - 10:30 PM',
+                        style: TextStyle(
+                          color: _kPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        'Late: 10:30 PM - 11:59 PM',
+                        style: TextStyle(
+                          color: _kPrimary.withValues(alpha: 0.5),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      GestureDetector(
+                        onTap: (onLeave || !hasValidStay || _isMarking)
+                            ? null
+                            : _handleMarkAttendance,
+                        child: Container(
+                          width: 180,
+                          height: 180,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: onLeave
+                                    ? Colors.green.withValues(alpha: 0.1)
+                                    : _isValidTime()
+                                    ? (_isLate() ? _kWarning : _kPrimary)
+                                          .withValues(alpha: 0.1)
+                                    : Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 150,
+                              height: 150,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: onLeave
-                                        ? Colors.green.withValues(alpha: 0.1)
-                                        : _isValidTime()
-                                        ? (_isLate() ? _kWarning : _kPrimary)
-                                              .withValues(alpha: 0.1)
-                                        : Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 30,
-                                    spreadRadius: 5,
-                                  ),
-                                ],
+                                gradient: LinearGradient(
+                                  colors: onLeave
+                                      ? [_kSuccess, Colors.green.shade700]
+                                      : (hasValidStay && _isValidTime())
+                                      ? (_isLate()
+                                            ? [_kWarning, Colors.orange]
+                                            : [_kPrimary, _kAccent])
+                                      : [
+                                          Colors.grey.shade300,
+                                          Colors.grey.shade400,
+                                        ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
                               ),
                               child: Center(
-                                child: Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: onLeave
-                                          ? [_kSuccess, Colors.green.shade700]
-                                          : (hasValidStay && _isValidTime())
-                                          ? (_isLate()
-                                                ? [_kWarning, Colors.orange]
-                                                : [_kPrimary, _kAccent])
-                                          : [
-                                              Colors.grey.shade300,
-                                              Colors.grey.shade400,
-                                            ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: onLeave
-                                        ? const Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.event_available_rounded,
-                                                color: Colors.white,
-                                                size: 40,
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                'ON LEAVE',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w900,
-                                                  letterSpacing: 1.2,
-                                                ),
-                                              ),
-                                            ],
-                                          )
-                                        : _isMarking
-                                        ? const CircularProgressIndicator(
+                                child: onLeave
+                                    ? const Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.event_available_rounded,
                                             color: Colors.white,
-                                          )
-                                        : Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.touch_app_rounded,
-                                                color: Colors.white,
-                                                size: 40,
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                _isValidTime()
-                                                    ? (_isLate()
-                                                          ? 'LATE'
-                                                          : 'TAP TO MARK')
-                                                    : 'CLOSED',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w900,
-                                                  letterSpacing: 1.2,
-                                                ),
-                                              ),
-                                            ],
+                                            size: 40,
                                           ),
-                                  ),
-                                ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'ON LEAVE',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 1.2,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : _isMarking
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                    : Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.touch_app_rounded,
+                                            color: Colors.white,
+                                            size: 40,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            _isValidTime()
+                                                ? (_isLate()
+                                                      ? 'LATE'
+                                                      : 'TAP TO MARK')
+                                                : 'CLOSED',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 1.2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                               ),
                             ),
-                  ),
-                  if (onLeave) ...[
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _isCheckingIn
-                            ? null
-                            : () {
-                                final activeLeave = approvedLeaves.firstWhere((l) {
-                                  final today = DateTime(
-                                    DateTime.now().year,
-                                    DateTime.now().month,
-                                    DateTime.now().day,
-                                  );
-                                  final from = DateTime(
-                                    l.fromDate.year,
-                                    l.fromDate.month,
-                                    l.fromDate.day,
-                                  );
-                                  final to = DateTime(
-                                    l.toDate.year,
-                                    l.toDate.month,
-                                    l.toDate.day,
-                                  );
-                                  return !today.isBefore(from) && !today.isAfter(to) && l.checkInTime == null;
-                                });
-                                _handleLeaveCheckIn(activeLeave.id);
-                              },
-                        icon: _isCheckingIn
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.location_on_rounded),
-                        label: Text(
-                          _isCheckingIn ? 'CHECKING...' : 'CHECK-IN FROM LEAVE',
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _kSuccess,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
                           ),
-                          elevation: 0,
                         ),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 40),
-                  Text(
-                    onLeave
-                        ? "You are officially on leave. Attendance is handled automatically."
-                        : !hasValidStay
-                        ? "Attendance is blocked. You must have an approved Short Stay for today."
-                        : _isWithinGracePeriod()
-                        ? (_isLate()
-                              ? "You are outside the reporting window. Marking now will be flagged as Late."
-                              : "It's time! Please mark your presence.")
-                        : "Attendance window is currently closed.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: onLeave
-                          ? _kSuccess
-                          : _isWithinGracePeriod()
-                          ? (_isLate() ? _kWarning : _kSuccess)
-                          : Colors.black38,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  TextButton.icon(
-                    onPressed: () =>
-                        _showAttendanceHistory(context, widget.user),
-                    icon: const Icon(Icons.history_rounded, size: 20),
-                    label: const Text(
-                      'View My Attendance History',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: _kPrimary,
-                      backgroundColor: _kPrimary.withValues(alpha: 0.05),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
+                      if (onLeave) ...[
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _isCheckingIn
+                                ? null
+                                : () {
+                                    final activeLeave = approvedLeaves
+                                        .firstWhere((l) {
+                                          final today = DateTime(
+                                            DateTime.now().year,
+                                            DateTime.now().month,
+                                            DateTime.now().day,
+                                          );
+                                          final from = DateTime(
+                                            l.fromDate.year,
+                                            l.fromDate.month,
+                                            l.fromDate.day,
+                                          );
+                                          final to = DateTime(
+                                            l.toDate.year,
+                                            l.toDate.month,
+                                            l.toDate.day,
+                                          );
+                                          return !today.isBefore(from) &&
+                                              !today.isAfter(to) &&
+                                              l.checkInTime == null;
+                                        });
+                                    _handleLeaveCheckIn(activeLeave.id);
+                                  },
+                            icon: _isCheckingIn
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.location_on_rounded),
+                            label: Text(
+                              _isCheckingIn
+                                  ? 'CHECKING...'
+                                  : 'CHECK-IN FROM LEAVE',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _kSuccess,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 40),
+                      Text(
+                        onLeave
+                            ? "You are officially on leave. Attendance is handled automatically."
+                            : !hasValidStay
+                            ? "Attendance is blocked. You must have an approved Short Stay for today."
+                            : _isWithinGracePeriod()
+                            ? (_isLate()
+                                  ? "You are outside the reporting window. Marking now will be flagged as Late."
+                                  : "It's time! Please mark your presence.")
+                            : "Attendance window is currently closed.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: onLeave
+                              ? _kSuccess
+                              : _isWithinGracePeriod()
+                              ? (_isLate() ? _kWarning : _kSuccess)
+                              : Colors.black38,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 32),
+                      TextButton.icon(
+                        onPressed: () =>
+                            _showAttendanceHistory(context, widget.user),
+                        icon: const Icon(Icons.history_rounded, size: 20),
+                        label: const Text(
+                          'View My Attendance History',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: _kPrimary,
+                          backgroundColor: _kPrimary.withValues(alpha: 0.05),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
-        );
+                ),
+              ],
+            );
           },
         );
       },
@@ -1095,9 +1111,7 @@ class _LeaveTab extends StatelessWidget {
         stream: fs.getStudentLeaves(user.uid),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: _kPrimary),
-            );
+            return const AttendanceListSkeleton();
           }
           final list = snap.data ?? [];
           if (list.isEmpty) {
@@ -1204,13 +1218,27 @@ class _LeaveTab extends StatelessWidget {
   ) async {
     final prefs = await SharedPreferences.getInstance();
 
-    final fromController = TextEditingController(text: prefs.getString('leaveDraft_from') ?? '');
-    final toController = TextEditingController(text: prefs.getString('leaveDraft_to') ?? '');
-    final reasonController = TextEditingController(text: prefs.getString('leaveDraft_reason') ?? '');
-    final parentNameController = TextEditingController(text: prefs.getString('leaveDraft_parentName') ?? '');
-    final parentContactController = TextEditingController(text: prefs.getString('leaveDraft_parentContact') ?? '');
-    final addressController = TextEditingController(text: prefs.getString('leaveDraft_address') ?? '');
-    String? selectedRelation = prefs.getString('leaveDraft_relation'); // State for dropdown
+    final fromController = TextEditingController(
+      text: prefs.getString('leaveDraft_from') ?? '',
+    );
+    final toController = TextEditingController(
+      text: prefs.getString('leaveDraft_to') ?? '',
+    );
+    final reasonController = TextEditingController(
+      text: prefs.getString('leaveDraft_reason') ?? '',
+    );
+    final parentNameController = TextEditingController(
+      text: prefs.getString('leaveDraft_parentName') ?? '',
+    );
+    final parentContactController = TextEditingController(
+      text: prefs.getString('leaveDraft_parentContact') ?? '',
+    );
+    final addressController = TextEditingController(
+      text: prefs.getString('leaveDraft_address') ?? '',
+    );
+    String? selectedRelation = prefs.getString(
+      'leaveDraft_relation',
+    ); // State for dropdown
 
     void saveDraft() {
       prefs.setString('leaveDraft_from', fromController.text);
@@ -1255,286 +1283,289 @@ class _LeaveTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
             ),
             child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Apply for Leave',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: _kPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildInput(
-                    'From Date & Time',
-                    fromController,
-                    icon: Icons.access_time_rounded,
-                    readOnly: true,
-                    onTap: () async {
-                      final date = await _selectDate(
-                        context,
-                        DateTime.now(),
-                        DateTime.now(),
-                      );
-                      if (date != null && context.mounted) {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.now(),
-                        );
-                        if (time != null) {
-                          final fullDateTime = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
-                          );
-                          fromController.text = DateFormat(
-                            'dd/MM/yyyy hh:mm a',
-                          ).format(fullDateTime);
-                        }
-                      }
-                    },
-                  ),
-                  _buildInput(
-                    'To Date & Time',
-                    toController,
-                    icon: Icons.update_rounded,
-                    readOnly: true,
-                    onTap: () async {
-                      final fromDateStr = fromController.text;
-                      DateTime initialDate = DateTime.now();
-                      if (fromDateStr.isNotEmpty) {
-                        initialDate = DateFormat(
-                          'dd/MM/yyyy hh:mm a',
-                        ).parse(fromDateStr);
-                      }
-
-                      final date = await _selectDate(
-                        context,
-                        initialDate,
-                        initialDate,
-                      );
-                      if (date != null && context.mounted) {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.now(),
-                        );
-                        if (time != null) {
-                          final fullDateTime = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
-                          );
-                          toController.text = DateFormat(
-                            'dd/MM/yyyy hh:mm a',
-                          ).format(fullDateTime);
-                        }
-                      }
-                    },
-                  ),
-                  _buildInput(
-                    'Reason',
-                    reasonController,
-                    icon: Icons.edit_note_rounded,
-                  ),
-                  _buildInput(
-                    'Address during leave',
-                    addressController,
-                    icon: Icons.home_work_outlined,
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: _buildInput(
-                          'Parent Name',
-                          parentNameController,
-                          icon: Icons.person_outline,
-                        ),
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Apply for Leave',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: _kPrimary,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 1,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: DropdownButtonFormField<String>(
-                            isExpanded: true,
-                            initialValue: selectedRelation,
-                            decoration: InputDecoration(
-                              labelText: 'Relation',
-                              filled: true,
-                              fillColor: _kBg.withValues(alpha: 0.5),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 14,
-                              ),
-                            ),
-                            items: ['Father', 'Mother', 'Guardian']
-                                .map(
-                                  (s) => DropdownMenuItem(
-                                    value: s,
-                                    child: Text(
-                                      s,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                                  setDialogState(() => selectedRelation = v);
-                                  saveDraft();
-                                },
+                    ),
+                    const SizedBox(height: 20),
+                    _buildInput(
+                      'From Date & Time',
+                      fromController,
+                      icon: Icons.access_time_rounded,
+                      readOnly: true,
+                      onTap: () async {
+                        final date = await _selectDate(
+                          context,
+                          DateTime.now(),
+                          DateTime.now(),
+                        );
+                        if (date != null && context.mounted) {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          if (time != null) {
+                            final fullDateTime = DateTime(
+                              date.year,
+                              date.month,
+                              date.day,
+                              time.hour,
+                              time.minute,
+                            );
+                            fromController.text = DateFormat(
+                              'dd/MM/yyyy hh:mm a',
+                            ).format(fullDateTime);
+                          }
+                        }
+                      },
+                    ),
+                    _buildInput(
+                      'To Date & Time',
+                      toController,
+                      icon: Icons.update_rounded,
+                      readOnly: true,
+                      onTap: () async {
+                        final fromDateStr = fromController.text;
+                        DateTime initialDate = DateTime.now();
+                        if (fromDateStr.isNotEmpty) {
+                          initialDate = DateFormat(
+                            'dd/MM/yyyy hh:mm a',
+                          ).parse(fromDateStr);
+                        }
+
+                        final date = await _selectDate(
+                          context,
+                          initialDate,
+                          initialDate,
+                        );
+                        if (date != null && context.mounted) {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          if (time != null) {
+                            final fullDateTime = DateTime(
+                              date.year,
+                              date.month,
+                              date.day,
+                              time.hour,
+                              time.minute,
+                            );
+                            toController.text = DateFormat(
+                              'dd/MM/yyyy hh:mm a',
+                            ).format(fullDateTime);
+                          }
+                        }
+                      },
+                    ),
+                    _buildInput(
+                      'Reason',
+                      reasonController,
+                      icon: Icons.edit_note_rounded,
+                    ),
+                    _buildInput(
+                      'Address during leave',
+                      addressController,
+                      icon: Icons.home_work_outlined,
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: _buildInput(
+                            'Parent Name',
+                            parentNameController,
+                            icon: Icons.person_outline,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  _buildInput(
-                    'Parent Contact',
-                    parentContactController,
-                    icon: Icons.phone_android_rounded,
-                    keyboardType: TextInputType.phone,
-                    maxLength: 10,
-                  ),
-                  const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: isSubmitting
-                        ? null
-                        : () async {
-                            final contact = parentContactController.text.trim();
-                            if (contact.length != 10 ||
-                                double.tryParse(contact) == null) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Please enter a valid 10-digit number',
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 1,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              initialValue: selectedRelation,
+                              decoration: InputDecoration(
+                                labelText: 'Relation',
+                                filled: true,
+                                fillColor: _kBg.withValues(alpha: 0.5),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 14,
+                                ),
+                              ),
+                              items: ['Father', 'Mother', 'Guardian']
+                                  .map(
+                                    (s) => DropdownMenuItem(
+                                      value: s,
+                                      child: Text(
+                                        s,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
                                     ),
-                                    backgroundColor: Colors.redAccent,
+                                  )
+                                  .toList(),
+                              onChanged: (v) {
+                                setDialogState(() => selectedRelation = v);
+                                saveDraft();
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    _buildInput(
+                      'Parent Contact',
+                      parentContactController,
+                      icon: Icons.phone_android_rounded,
+                      keyboardType: TextInputType.phone,
+                      maxLength: 10,
+                    ),
+                    const SizedBox(height: 30),
+                    ElevatedButton(
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              final contact = parentContactController.text
+                                  .trim();
+                              if (contact.length != 10 ||
+                                  double.tryParse(contact) == null) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Please enter a valid 10-digit number',
+                                      ),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+
+                              setDialogState(() => isSubmitting = true);
+                              try {
+                                final fromText = fromController.text.trim();
+                                final toText = toController.text.trim();
+                                final reasonText = reasonController.text.trim();
+
+                                if (fromText.isEmpty || toText.isEmpty) {
+                                  throw 'Please select both From and To dates';
+                                }
+                                if (reasonText.isEmpty) {
+                                  throw 'Please enter a reason';
+                                }
+
+                                final request = LeaveRequest(
+                                  id: '',
+                                  studentId: user.uid,
+                                  studentName: user.name,
+                                  hostel: user.hostel ?? 'N/A',
+                                  fromDate: DateFormat(
+                                    'dd/MM/yyyy hh:mm a',
+                                  ).parse(fromText),
+                                  toDate: DateFormat(
+                                    'dd/MM/yyyy hh:mm a',
+                                  ).parse(toText),
+                                  reason: InputSanitizer.sanitize(reasonText),
+                                  address: InputSanitizer.sanitize(
+                                    addressController.text,
+                                  ),
+                                  parentName: InputSanitizer.sanitize(
+                                    parentNameController.text,
+                                  ),
+                                  parentRelation:
+                                      selectedRelation ?? 'Guardian',
+                                  parentContact: contact,
+                                  studentContact: user.phoneNumber ?? '',
+                                  status: 'Pending',
+                                  createdAt: DateTime.now(),
+                                );
+                                await fs.submitLeaveRequest(request);
+
+                                // Clear draft on success
+                                for (final key in prefs.getKeys()) {
+                                  if (key.startsWith('leaveDraft_')) {
+                                    prefs.remove(key);
+                                  }
+                                }
+
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Leave request submitted successfully!',
+                                      ),
+                                      backgroundColor: _kSuccess,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                debugPrint('Error submitting leave: $e');
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Submission failed: $e'),
                                   ),
                                 );
-                              }
-                              return;
-                            }
-
-                            setDialogState(() => isSubmitting = true);
-                            try {
-                              final fromText = fromController.text.trim();
-                              final toText = toController.text.trim();
-                              final reasonText = reasonController.text.trim();
-                              
-                              if (fromText.isEmpty || toText.isEmpty) {
-                                throw 'Please select both From and To dates';
-                              }
-                              if (reasonText.isEmpty) {
-                                throw 'Please enter a reason';
-                              }
-
-                              final request = LeaveRequest(
-                                id: '',
-                                studentId: user.uid,
-                                studentName: user.name,
-                                hostel: user.hostel ?? 'N/A',
-                                fromDate: DateFormat(
-                                  'dd/MM/yyyy hh:mm a',
-                                ).parse(fromText),
-                                toDate: DateFormat(
-                                  'dd/MM/yyyy hh:mm a',
-                                ).parse(toText),
-                                reason: InputSanitizer.sanitize(reasonText),
-                                address: InputSanitizer.sanitize(addressController.text),
-                                parentName: InputSanitizer.sanitize(parentNameController.text),
-                                parentRelation: selectedRelation ?? 'Guardian',
-                                parentContact: contact,
-                                studentContact: user.phoneNumber ?? '',
-                                status: 'Pending',
-                                createdAt: DateTime.now(),
-                              );
-                              await fs.submitLeaveRequest(request);
-                              
-                              // Clear draft on success
-                              for (final key in prefs.getKeys()) {
-                                if (key.startsWith('leaveDraft_')) {
-                                  prefs.remove(key);
+                              } finally {
+                                if (context.mounted) {
+                                  setDialogState(() => isSubmitting = false);
                                 }
                               }
-
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Leave request submitted successfully!',
-                                    ),
-                                    backgroundColor: _kSuccess,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              debugPrint('Error submitting leave: $e');
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Submission failed: $e',
-                                  ),
-                                ),
-                              );
-                            } finally {
-                              if (context.mounted) {
-                                setDialogState(() => isSubmitting = false);
-                              }
-                            }
-                          },
-                    child: isSubmitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Submit Request'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      for (final key in prefs.getKeys()) {
-                        if (key.startsWith('leaveDraft_')) {
-                          prefs.remove(key);
-                        }
-                      }
-                      Navigator.pop(context);
-                    },
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(color: Colors.black38),
+                            },
+                      child: isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text('Submit Request'),
                     ),
-                  ),
-                ],
+                    TextButton(
+                      onPressed: () {
+                        for (final key in prefs.getKeys()) {
+                          if (key.startsWith('leaveDraft_')) {
+                            prefs.remove(key);
+                          }
+                        }
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.black38),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1581,10 +1612,7 @@ Future<DateTime?> _selectDate(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(
-            'Cancel',
-            style: TextStyle(color: Colors.black38),
-          ),
+          child: const Text('Cancel', style: TextStyle(color: Colors.black38)),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(context, tempDate),
@@ -1657,9 +1685,7 @@ class _ComplaintsTab extends StatelessWidget {
         stream: fs.getStudentComplaints(user.uid),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: _kPrimary),
-            );
+            return const ComplaintListSkeleton();
           }
           final list = snap.data ?? [];
           if (list.isEmpty) {
@@ -1694,7 +1720,7 @@ class _ComplaintsTab extends StatelessWidget {
                               Icon(
                                 Icons.assignment_late_outlined,
                                 size: 14,
-                              color: _kPrimary.withValues(alpha: 0.5),
+                                color: _kPrimary.withValues(alpha: 0.5),
                               ),
                               const SizedBox(width: 8),
                               Flexible(
@@ -1819,7 +1845,7 @@ class _ComplaintsTab extends StatelessWidget {
     final titleController = TextEditingController();
     final descController = TextEditingController();
     List<String> selectedTargets = ['Warden'];
-    final authorities = ['Warden', 'Head Warden'];
+    final authorities = ['Warden', 'Head Warden', 'Chief Warden'];
 
     bool isSubmitting = false;
 
@@ -1938,8 +1964,12 @@ class _ComplaintsTab extends StatelessWidget {
                                 id: '',
                                 studentId: user.uid,
                                 studentName: user.name,
-                                title: InputSanitizer.sanitize(titleController.text.trim()),
-                                description: InputSanitizer.sanitize(descController.text.trim()),
+                                title: InputSanitizer.sanitize(
+                                  titleController.text.trim(),
+                                ),
+                                description: InputSanitizer.sanitize(
+                                  descController.text.trim(),
+                                ),
                                 hostel: user.hostel!,
                                 targetRoles: selectedTargets,
                                 status: 'Pending',
@@ -2274,120 +2304,120 @@ class _StudentAttendanceCalendarState
                         final leaves = leaveSnap.data ?? [];
                         final stays = staySnap.data ?? [];
 
-                    return SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        children: [
-                          TableCalendar(
-                            focusedDay: _focusedDay,
-                            firstDay: DateTime(2025, 1, 1),
-                            lastDay: DateTime.now(),
-                            calendarFormat: _format,
-                            rowHeight: 52,
-                            selectedDayPredicate: (day) =>
-                                isSameDay(_selectedDay, day),
-                            onDaySelected: (selectedDay, focusedDay) {
-                              setState(() {
-                                _selectedDay = selectedDay;
-                                _focusedDay = focusedDay;
-                              });
-                            },
-                            onFormatChanged: (format) {
-                              setState(() => _format = format);
-                            },
-                            calendarStyle: CalendarStyle(
-                              todayDecoration: BoxDecoration(
-                                color: Colors.transparent,
-                                border: Border.all(
-                                  color: _kPrimary,
-                                  width: 1.5,
+                        return SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            children: [
+                              TableCalendar(
+                                focusedDay: _focusedDay,
+                                firstDay: DateTime(2025, 1, 1),
+                                lastDay: DateTime.now(),
+                                calendarFormat: _format,
+                                rowHeight: 52,
+                                selectedDayPredicate: (day) =>
+                                    isSameDay(_selectedDay, day),
+                                onDaySelected: (selectedDay, focusedDay) {
+                                  setState(() {
+                                    _selectedDay = selectedDay;
+                                    _focusedDay = focusedDay;
+                                  });
+                                },
+                                onFormatChanged: (format) {
+                                  setState(() => _format = format);
+                                },
+                                calendarStyle: CalendarStyle(
+                                  todayDecoration: BoxDecoration(
+                                    color: Colors.transparent,
+                                    border: Border.all(
+                                      color: _kPrimary,
+                                      width: 1.5,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  todayTextStyle: const TextStyle(
+                                    color: _kPrimary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  selectedDecoration: const BoxDecoration(
+                                    color: _kPrimary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  defaultTextStyle: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                  weekendTextStyle: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: Color(0xFF1E293B),
+                                  ),
                                 ),
-                                shape: BoxShape.circle,
-                              ),
-                              todayTextStyle: const TextStyle(
-                                color: _kPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              selectedDecoration: const BoxDecoration(
-                                color: _kPrimary,
-                                shape: BoxShape.circle,
-                              ),
-                              defaultTextStyle: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                              weekendTextStyle: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
-                            headerStyle: HeaderStyle(
-                              formatButtonVisible: true,
-                              titleCentered: true,
-                              formatButtonShowsNext: false,
-                              titleTextStyle: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: _kPrimary,
-                              ),
-                              leftChevronIcon: const Icon(
-                                Icons.chevron_left_rounded,
-                                color: _kPrimary,
-                              ),
-                              rightChevronIcon: const Icon(
-                                Icons.chevron_right_rounded,
-                                color: _kPrimary,
-                              ),
-                              formatButtonDecoration: BoxDecoration(
-                                border: Border.all(
-                                  color: _kPrimary.withValues(alpha: 0.2),
+                                headerStyle: HeaderStyle(
+                                  formatButtonVisible: true,
+                                  titleCentered: true,
+                                  formatButtonShowsNext: false,
+                                  titleTextStyle: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: _kPrimary,
+                                  ),
+                                  leftChevronIcon: const Icon(
+                                    Icons.chevron_left_rounded,
+                                    color: _kPrimary,
+                                  ),
+                                  rightChevronIcon: const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: _kPrimary,
+                                  ),
+                                  formatButtonDecoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: _kPrimary.withValues(alpha: 0.2),
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  formatButtonTextStyle: const TextStyle(
+                                    color: _kPrimary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(8),
+                                calendarBuilders: CalendarBuilders(
+                                  defaultBuilder: (context, day, focusedDay) {
+                                    final status = _getDayStatus(
+                                      day,
+                                      attendanceList,
+                                      leaves,
+                                      stays,
+                                    );
+                                    if (status == null) return null;
+                                    return _buildCalendarDay(day, status);
+                                  },
+                                  outsideBuilder: (context, day, focusedDay) {
+                                    final status = _getDayStatus(
+                                      day,
+                                      attendanceList,
+                                      leaves,
+                                      stays,
+                                    );
+                                    if (status == null) return null;
+                                    return Opacity(
+                                      opacity: 0.5,
+                                      child: _buildCalendarDay(day, status),
+                                    );
+                                  },
+                                ),
                               ),
-                              formatButtonTextStyle: const TextStyle(
-                                color: _kPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            calendarBuilders: CalendarBuilders(
-                              defaultBuilder: (context, day, focusedDay) {
-                                final status = _getDayStatus(
-                                  day,
+                              const SizedBox(height: 20),
+                              _buildLegend(),
+                              const SizedBox(height: 24),
+                              if (_selectedDay != null)
+                                _buildSelectedDayDetails(
                                   attendanceList,
                                   leaves,
                                   stays,
-                                );
-                                if (status == null) return null;
-                                return _buildCalendarDay(day, status);
-                              },
-                              outsideBuilder: (context, day, focusedDay) {
-                                final status = _getDayStatus(
-                                  day,
-                                  attendanceList,
-                                  leaves,
-                                  stays,
-                                );
-                                if (status == null) return null;
-                                return Opacity(
-                                  opacity: 0.5,
-                                  child: _buildCalendarDay(day, status),
-                                );
-                              },
-                            ),
+                                ),
+                              const SizedBox(height: 32),
+                            ],
                           ),
-                          const SizedBox(height: 20),
-                          _buildLegend(),
-                          const SizedBox(height: 24),
-                          if (_selectedDay != null)
-                            _buildSelectedDayDetails(
-                              attendanceList,
-                              leaves,
-                              stays,
-                            ),
-                          const SizedBox(height: 32),
-                        ],
-                      ),
                         );
                       },
                     );
@@ -2685,7 +2715,7 @@ class _ShortStayTab extends StatelessWidget {
             stream: fs.getStudentShortStays(user.uid),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator(color: _kPrimary));
+                return const AttendanceListSkeleton();
               }
               final list = snapshot.data ?? [];
               if (list.isEmpty) {
@@ -2696,9 +2726,13 @@ class _ShortStayTab extends StatelessWidget {
                 );
               }
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 8,
+                ),
                 itemCount: list.length,
-                itemBuilder: (context, i) => _ShortStayCard(request: list[i], fs: fs),
+                itemBuilder: (context, i) =>
+                    _ShortStayCard(request: list[i], fs: fs),
               );
             },
           ),
@@ -2712,7 +2746,9 @@ class _ShortStayTab extends StatelessWidget {
     final checkOutCtrl = TextEditingController();
     final addressCtrl = TextEditingController(text: user.address ?? '');
     final parentNameCtrl = TextEditingController(text: user.parentName ?? '');
-    final parentContactCtrl = TextEditingController(text: user.parentContact ?? '');
+    final parentContactCtrl = TextEditingController(
+      text: user.parentContact ?? '',
+    );
     final reasonCtrl = TextEditingController();
     bool isSubmitting = false;
 
@@ -2720,7 +2756,9 @@ class _ShortStayTab extends StatelessWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: SingleChildScrollView(
@@ -2731,12 +2769,21 @@ class _ShortStayTab extends StatelessWidget {
                 children: [
                   const Text(
                     'Short Stay (Annexure-F)',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _kPrimary),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: _kPrimary,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   const Text(
                     'FOR DAY SCHOLARS ONLY',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.redAccent, letterSpacing: 1),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.redAccent,
+                      letterSpacing: 1,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   _buildInput(
@@ -2745,11 +2792,27 @@ class _ShortStayTab extends StatelessWidget {
                     icon: Icons.login_rounded,
                     readOnly: true,
                     onTap: () async {
-                      final date = await _selectDate(context, DateTime.now(), DateTime.now());
+                      final date = await _selectDate(
+                        context,
+                        DateTime.now(),
+                        DateTime.now(),
+                      );
                       if (date != null && context.mounted) {
-                        final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
                         if (time != null) {
-                          checkInCtrl.text = DateFormat('dd/MM/yyyy hh:mm a').format(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+                          checkInCtrl.text = DateFormat('dd/MM/yyyy hh:mm a')
+                              .format(
+                                DateTime(
+                                  date.year,
+                                  date.month,
+                                  date.day,
+                                  time.hour,
+                                  time.minute,
+                                ),
+                              );
                         }
                       }
                     },
@@ -2764,30 +2827,71 @@ class _ShortStayTab extends StatelessWidget {
                       DateTime initialDate = DateTime.now();
                       if (fromStr.isNotEmpty) {
                         try {
-                          initialDate = DateFormat('dd/MM/yyyy hh:mm a').parse(fromStr);
+                          initialDate = DateFormat(
+                            'dd/MM/yyyy hh:mm a',
+                          ).parse(fromStr);
                         } catch (_) {}
                       }
-                      
-                      final date = await _selectDate(context, initialDate, initialDate);
+
+                      final date = await _selectDate(
+                        context,
+                        initialDate,
+                        initialDate,
+                      );
                       if (date != null && context.mounted) {
-                        final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
                         if (time != null) {
-                          checkOutCtrl.text = DateFormat('dd/MM/yyyy hh:mm a').format(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+                          checkOutCtrl.text = DateFormat('dd/MM/yyyy hh:mm a')
+                              .format(
+                                DateTime(
+                                  date.year,
+                                  date.month,
+                                  date.day,
+                                  time.hour,
+                                  time.minute,
+                                ),
+                              );
                         }
                       }
                     },
                   ),
-                  _buildInput('Address', addressCtrl, icon: Icons.home_outlined),
-                  _buildInput('Parent Name', parentNameCtrl, icon: Icons.person_outline),
-                  _buildInput('Parent Contact', parentContactCtrl, icon: Icons.phone_android_rounded, keyboardType: TextInputType.phone, maxLength: 10),
-                  _buildInput('Reason for Stay', reasonCtrl, icon: Icons.description_outlined),
+                  _buildInput(
+                    'Address',
+                    addressCtrl,
+                    icon: Icons.home_outlined,
+                  ),
+                  _buildInput(
+                    'Parent Name',
+                    parentNameCtrl,
+                    icon: Icons.person_outline,
+                  ),
+                  _buildInput(
+                    'Parent Contact',
+                    parentContactCtrl,
+                    icon: Icons.phone_android_rounded,
+                    keyboardType: TextInputType.phone,
+                    maxLength: 10,
+                  ),
+                  _buildInput(
+                    'Reason for Stay',
+                    reasonCtrl,
+                    icon: Icons.description_outlined,
+                  ),
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: isSubmitting
                         ? null
                         : () async {
-                            if (checkInCtrl.text.isEmpty || checkOutCtrl.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+                            if (checkInCtrl.text.isEmpty ||
+                                checkOutCtrl.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please fill all fields'),
+                                ),
+                              );
                               return;
                             }
                             setDialogState(() => isSubmitting = true);
@@ -2806,8 +2910,12 @@ class _ShortStayTab extends StatelessWidget {
                                 reason: reasonCtrl.text,
                                 parentName: parentNameCtrl.text,
                                 parentContact: parentContactCtrl.text,
-                                checkInDate: DateFormat('dd/MM/yyyy hh:mm a').parse(checkInCtrl.text),
-                                checkOutDate: DateFormat('dd/MM/yyyy hh:mm a').parse(checkOutCtrl.text),
+                                checkInDate: DateFormat(
+                                  'dd/MM/yyyy hh:mm a',
+                                ).parse(checkInCtrl.text),
+                                checkOutDate: DateFormat(
+                                  'dd/MM/yyyy hh:mm a',
+                                ).parse(checkOutCtrl.text),
                                 status: 'Pending',
                                 appliedHostel: 'Pending',
                                 createdAt: DateTime.now(),
@@ -2815,15 +2923,35 @@ class _ShortStayTab extends StatelessWidget {
                               await fs.submitShortStayRequest(req);
                               if (context.mounted) {
                                 Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request submitted!', style: TextStyle(color: Colors.white)), backgroundColor: _kSuccess));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Request submitted!',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    backgroundColor: _kSuccess,
+                                  ),
+                                );
                               }
                             } catch (e) {
-                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                              if (context.mounted)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
                             } finally {
                               setDialogState(() => isSubmitting = false);
                             }
                           },
-                    child: isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Submit Application'),
+                    child: isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('Submit Application'),
                   ),
                 ],
               ),
@@ -2846,7 +2974,9 @@ class _ShortStayCard extends StatelessWidget {
     final isPending = request.status == 'Pending';
     final isExtensionPending = request.pendingToDate != null;
 
-    Color statusColor = isPending ? _kWarning : (isActive ? _kSuccess : Colors.grey);
+    Color statusColor = isPending
+        ? _kWarning
+        : (isActive ? _kSuccess : Colors.grey);
     if (request.status == 'Rejected') statusColor = Colors.redAccent;
 
     return _Card(
@@ -2856,42 +2986,94 @@ class _ShortStayCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Text(
                   request.status.toUpperCase(),
-                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
               const Spacer(),
-              Text(request.seqId, style: const TextStyle(fontSize: 10, color: Colors.black26, fontWeight: FontWeight.bold)),
+              Text(
+                request.seqId,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.black26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(request.appliedHostel, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _kPrimary)),
+          Text(
+            request.appliedHostel,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: _kPrimary,
+            ),
+          ),
           if (request.roomNumber != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text('Room: ${request.roomNumber}', style: const TextStyle(color: _kAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+              child: Text(
+                'Room: ${request.roomNumber}',
+                style: const TextStyle(
+                  color: _kAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
             ),
           const SizedBox(height: 16),
-          _row(Icons.login_rounded, 'Check-in', DateFormat('MMM d, hh:mm a').format(request.checkInDate)),
+          _row(
+            Icons.login_rounded,
+            'Check-in',
+            DateFormat('MMM d, hh:mm a').format(request.checkInDate),
+          ),
           const SizedBox(height: 8),
-          _row(Icons.logout_rounded, 'Check-out', DateFormat('MMM d, hh:mm a').format(request.checkOutDate)),
+          _row(
+            Icons.logout_rounded,
+            'Check-out',
+            DateFormat('MMM d, hh:mm a').format(request.checkOutDate),
+          ),
           if (isExtensionPending)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: _kWarning.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: _kWarning.withValues(alpha: 0.2))),
+                decoration: BoxDecoration(
+                  color: _kWarning.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _kWarning.withValues(alpha: 0.2)),
+                ),
                 child: Row(
                   children: [
-                    const Icon(Icons.history_rounded, size: 16, color: _kWarning),
+                    const Icon(
+                      Icons.history_rounded,
+                      size: 16,
+                      color: _kWarning,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Extension requested until ${DateFormat('MMM d').format(request.pendingToDate!)}',
-                        style: const TextStyle(fontSize: 12, color: _kWarning, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: _kWarning,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -2904,7 +3086,12 @@ class _ShortStayCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(side: BorderSide(color: _kPrimary.withValues(alpha: 0.2)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: _kPrimary.withValues(alpha: 0.2)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     onPressed: () => _showExtensionDialog(context),
                     icon: const Icon(Icons.history_rounded, size: 18),
                     label: const Text('Extend'),
@@ -2913,7 +3100,14 @@ class _ShortStayCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: _kPrimary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _kPrimary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
                     onPressed: () => _handleCheckOut(context),
                     child: const Text('Check-out'),
                   ),
@@ -2931,8 +3125,22 @@ class _ShortStayCard extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: Colors.black26),
         const SizedBox(width: 8),
-        Text('$label: ', style: const TextStyle(fontSize: 13, color: Colors.black45, fontWeight: FontWeight.w500)),
-        Text(value, style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w600)),
+        Text(
+          '$label: ',
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.black45,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -2944,14 +3152,23 @@ class _ShortStayCard extends StatelessWidget {
         title: const Text('Confirm Check-out'),
         content: const Text('Are you sure you want to end your hostel stay?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('No')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, Check-out')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes, Check-out'),
+          ),
         ],
       ),
     );
     if (confirmed == true) {
       await fs.checkOutFromShortStay(request.id);
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checked out successfully!')));
+      if (context.mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Checked out successfully!')),
+        );
     }
   }
 
@@ -2963,11 +3180,23 @@ class _ShortStayCard extends StatelessWidget {
       lastDate: request.checkOutDate.add(const Duration(days: 7)),
     );
     if (date != null && context.mounted) {
-      final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(request.checkOutDate));
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(request.checkOutDate),
+      );
       if (time != null) {
-        final newDate = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+        final newDate = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time.hour,
+          time.minute,
+        );
         await fs.requestShortStayExtension(request.id, newDate);
-        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Extension request sent!')));
+        if (context.mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Extension request sent!')),
+          );
       }
     }
   }

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum UserRole { student, warden, headWarden }
+enum UserRole { student, warden, headWarden, chiefWarden }
 
 class VistaUser {
   final String uid;
@@ -19,6 +19,7 @@ class VistaUser {
   final String? gender;
   final String? address;
   final bool hasUsedShortStay;
+  final bool isDayScholar;
   final String? parentName;
   final String? parentContact;
 
@@ -39,6 +40,7 @@ class VistaUser {
     this.gender,
     this.address,
     this.hasUsedShortStay = false,
+    this.isDayScholar = false,
     this.parentName,
     this.parentContact,
   });
@@ -63,6 +65,7 @@ class VistaUser {
       'parentName': parentName,
       'parentContact': parentContact,
       'hasUsedShortStay': hasUsedShortStay,
+      'isDayScholar': isDayScholar,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -90,6 +93,7 @@ class VistaUser {
       parentName: map['parentName'],
       parentContact: map['parentContact'],
       hasUsedShortStay: map['hasUsedShortStay'] ?? false,
+      isDayScholar: map['isDayScholar'] ?? false,
     );
   }
 }

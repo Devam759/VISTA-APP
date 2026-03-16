@@ -23,14 +23,14 @@ const _kPrimary = Color(0xFF1E3A8A);
 const _kAccent = Color(0xFF2563EB);
 const _kBg = Color(0xFFF0F4FF);
 
-class HeadWardenDashboard extends StatefulWidget {
-  const HeadWardenDashboard({super.key});
+class ChiefWardenDashboard extends StatefulWidget {
+  const ChiefWardenDashboard({super.key});
 
   @override
-  State<HeadWardenDashboard> createState() => _HeadWardenDashboardState();
+  State<ChiefWardenDashboard> createState() => _ChiefWardenDashboardState();
 }
 
-class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
+class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
   final FirebaseService _fs = FirebaseService();
   int _selectedIndex = 0;
   final List<StreamSubscription> _subscriptions = [];
@@ -45,7 +45,7 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
   @override
   void initState() {
     super.initState();
-    _setupHeadWardenListeners();
+    _setupChiefWardenListeners();
   }
 
   @override
@@ -170,7 +170,7 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
     }
   }
 
-  void _setupHeadWardenListeners() {
+  void _setupChiefWardenListeners() {
     // final warden = Provider.of<AuthProvider>(context, listen: false).userProfile!;
 
     // 1. Listen for New Student Registrations
@@ -211,7 +211,7 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
 
     // 3. Listen for New Complaints
     _subscriptions.add(
-      _fs.getComplaintsForRole('Head Warden', 'All').listen((list) {
+      _fs.getComplaintsForRole('Chief Warden', 'All').listen((list) {
         final pending = list.where((c) => c.status == 'Pending').toList();
         if (pending.isNotEmpty) {
           if (_selectedIndex != 3) {
@@ -3230,7 +3230,7 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
         Expanded(
           child: StreamBuilder<List<Complaint>>(
             stream: widget.fs.getComplaintsForRole(
-              'Head Warden',
+              'Chief Warden',
               widget.warden.hostel,
             ),
             builder: (context, snap) {

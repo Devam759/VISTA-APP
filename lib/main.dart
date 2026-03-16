@@ -9,6 +9,7 @@ import 'screens/auth/signup_screen.dart';
 import 'screens/student/student_dashboard.dart';
 import 'screens/warden/warden_dashboard.dart';
 import 'screens/head_warden/head_warden_dashboard.dart';
+import 'screens/head_warden/chief_warden_dashboard.dart';
 import 'screens/auth/pending_approval_screen.dart';
 import 'utils/theme.dart';
 import 'models/vista_user.dart';
@@ -114,6 +115,7 @@ class VistaApp extends StatelessWidget {
           '/student': (context) => const StudentDashboard(),
           '/warden': (context) => const WardenDashboard(),
           '/head-warden': (context) => const HeadWardenDashboard(),
+          '/chief-warden': (context) => const ChiefWardenDashboard(),
         },
       ),
     );
@@ -144,6 +146,8 @@ class AuthWrapper extends StatelessWidget {
         return const WardenDashboard();
       case UserRole.headWarden:
         return const HeadWardenDashboard();
+      case UserRole.chiefWarden:
+        return const ChiefWardenDashboard();
     }
   }
 }

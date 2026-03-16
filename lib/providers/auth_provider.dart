@@ -56,16 +56,16 @@ class AuthProvider with ChangeNotifier {
     String phoneNumber,
     String rollNo,
     String programme,
-    String gender,
-    {
-      String? parentName,
-      String? parentContact,
-      bool isApproved = false,
-      bool staySignedIn = false,
-    }
-  ) async {
+    String gender, {
+    String? parentName,
+    String? parentContact,
+    bool isApproved = false,
+    bool staySignedIn = false,
+    bool isDayScholar = false,
+  }) async {
     _isLoading = true;
-    _suppressAuthChanges = !staySignedIn;
+    // Always suppress auth changes during signup to prevent race conditions
+    _suppressAuthChanges = true;
     notifyListeners();
     try {
       final credential = await _firebaseService.signUp(email, password);
@@ -82,6 +82,7 @@ class AuthProvider with ChangeNotifier {
         gender: gender,
         parentName: parentName,
         parentContact: parentContact,
+        isDayScholar: isDayScholar,
       );
       // Write Firestore profile with a timeout — if Firestore is slow/unavailable
       // on web, we still consider signup successful since the Auth account exists.
@@ -94,7 +95,7 @@ class AuthProvider with ChangeNotifier {
           '[Auth] Firestore profile write failed (non-fatal): $firestoreError',
         );
       }
-      
+
       if (staySignedIn) {
         _userProfile = newUser;
       }
@@ -105,12 +106,18 @@ class AuthProvider with ChangeNotifier {
       _suppressAuthChanges = false; // Re-enable auth listener
       notifyListeners();
     }
+    // After finally block, if staySignedIn, fetch the actual profile from Firestore
+    // to ensure we have the latest data and trigger navigation
+    if (staySignedIn && _userProfile != null) {
+      await fetchUserProfile(_userProfile!.uid);
+    }
   }
 
   // OTP Verification
   String? _verificationId;
-  
-  Future<void> sendOTP(String phoneNumber, {
+
+  Future<void> sendOTP(
+    String phoneNumber, {
     required Function(String, int?) onCodeSent,
     required Function(String) onError,
     Object? webVerifier,
@@ -123,7 +130,8 @@ class AuthProvider with ChangeNotifier {
           _verificationId = verId;
           onCodeSent(verId, forceResend);
         },
-        onVerificationFailed: (e) => onError(e.message ?? 'Verification failed'),
+        onVerificationFailed: (e) =>
+            onError(e.message ?? 'Verification failed'),
         onVerificationCompleted: (credential) async {
           // If auto-retrieval works, we might need a way to pass this back.
           // For now, focus on manual code entry.
@@ -140,7 +148,7 @@ class AuthProvider with ChangeNotifier {
       verificationId: _verificationId!,
       smsCode: smsCode,
     );
-    
+
     final currentUser = _firebaseService.currentUser;
     if (currentUser != null) {
       // Link the phone number to the existing email account
@@ -168,9 +176,12 @@ class AuthProvider with ChangeNotifier {
     try {
       String email = identifier;
       // If identifier looks like a phone number
-      if (RegExp(r'^[0-9+\s-]+$').hasMatch(identifier) && identifier.length >= 10) {
+      if (RegExp(r'^[0-9+\s-]+$').hasMatch(identifier) &&
+          identifier.length >= 10) {
         final normalizedPhone = InputSanitizer.normalizePhone(identifier);
-        final resolvedEmail = await _firebaseService.getUserEmailByPhone(normalizedPhone);
+        final resolvedEmail = await _firebaseService.getUserEmailByPhone(
+          normalizedPhone,
+        );
         if (resolvedEmail == null) {
           throw Exception('No account found with this phone number.');
         }

@@ -18,7 +18,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _parentNameController = TextEditingController();
   final _parentContactController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _userType = 'Permanent';
+  String _userType = 'Hosteller';
   String? _selectedHostel;
   String? _selectedProgramme;
   String? _selectedGender;
@@ -29,10 +29,16 @@ class _SignupScreenState extends State<SignupScreen> {
   final List<String> _programmes = ['BTECH', 'BBA', 'BDES', 'MDES', 'MBA'];
 
   void _signup() async {
-    String firstNameInput = InputSanitizer.capitalize(_firstNameController.text.trim());
-    String lastNameInput = InputSanitizer.capitalize(_lastNameController.text.trim());
+    String firstNameInput = InputSanitizer.capitalize(
+      _firstNameController.text.trim(),
+    );
+    String lastNameInput = InputSanitizer.capitalize(
+      _lastNameController.text.trim(),
+    );
     String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
-    String phoneInput = InputSanitizer.formatPhoneWithCountryCode(_phoneController.text.trim());
+    String phoneInput = InputSanitizer.formatPhoneWithCountryCode(
+      _phoneController.text.trim(),
+    );
 
     if (firstNameInput.isEmpty || lastNameInput.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,14 +51,18 @@ class _SignupScreenState extends State<SignupScreen> {
     final phoneDigits = phoneInput.replaceAll(RegExp(r'\D'), '');
     if (phoneDigits.length != 12 || !phoneInput.startsWith('+91')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
+        const SnackBar(
+          content: Text('Please enter a valid 10-digit mobile number'),
+        ),
       );
       return;
     }
 
     if (emailInput.isEmpty && phoneInput.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter either an email or a phone number')),
+        const SnackBar(
+          content: Text('Please enter either an email or a phone number'),
+        ),
       );
       return;
     }
@@ -63,15 +73,23 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _finalizeSignup() async {
-    String firstNameInput = InputSanitizer.capitalize(_firstNameController.text.trim());
-    String lastNameInput = InputSanitizer.capitalize(_lastNameController.text.trim());
+    String firstNameInput = InputSanitizer.capitalize(
+      _firstNameController.text.trim(),
+    );
+    String lastNameInput = InputSanitizer.capitalize(
+      _lastNameController.text.trim(),
+    );
     String nameInput = "$firstNameInput $lastNameInput";
     String emailInput = InputSanitizer.sanitize(_emailController.text.trim());
-    String phoneInput = InputSanitizer.formatPhoneWithCountryCode(_phoneController.text.trim());
-    
+    String phoneInput = InputSanitizer.formatPhoneWithCountryCode(
+      _phoneController.text.trim(),
+    );
+
     String finalEmail;
     if (emailInput.isNotEmpty) {
-      finalEmail = emailInput.contains('@') ? emailInput : '$emailInput@jklu.edu.in';
+      finalEmail = emailInput.contains('@')
+          ? emailInput
+          : '$emailInput@jklu.edu.in';
     } else {
       finalEmail = '$phoneInput@vista.local';
     }
@@ -86,45 +104,46 @@ class _SignupScreenState extends State<SignupScreen> {
         _rollNoController.text.trim().isEmpty ||
         _selectedProgramme == null ||
         _selectedGender == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All fields are required')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('All fields are required')));
       setState(() => _isSubmitting = false);
       return;
     }
 
     setState(() => _isSubmitting = true);
-    final authProvider = Provider.of<vista.AuthProvider>(context, listen: false);
-    
+    final authProvider = Provider.of<vista.AuthProvider>(
+      context,
+      listen: false,
+    );
+
     try {
       debugPrint('[Signup] Attempting signup for $finalEmail...');
       await authProvider.signUp(
         nameInput,
         finalEmail,
         _passwordController.text.trim(),
-        _userType == 'Short Stay' ? 'Short Stay' : _selectedHostel!,
+        _userType == 'Day Scholar' ? 'Short Stay' : _selectedHostel!,
         phoneInput,
         _rollNoController.text.trim().toUpperCase(),
         _selectedProgramme!,
         _selectedGender!,
         parentName: _parentNameController.text.trim(),
         parentContact: _parentContactController.text.trim(),
-        isApproved: _userType == 'Short Stay',
-        staySignedIn: _userType == 'Short Stay', // Auto-login for Short Stay
+        isApproved: _userType == 'Day Scholar',
+        staySignedIn: _userType == 'Day Scholar', // Auto-login for Day Scholar
+        isDayScholar: _userType == 'Day Scholar',
       );
-      
+
       debugPrint('[Signup] Signup succeeded. Finalizing flow...');
-      
+
       if (mounted) {
         setState(() => _isSubmitting = false);
-        if (_userType == 'Short Stay') {
-          // Short Stay students are auto-approved and stay signed in.
-          // Navigation is handled by AuthWrapper.
-        } else {
+        if (_userType != 'Day Scholar') {
           // Permanent students need approval and should be signed out
           await authProvider.signOut();
-          _showSuccessDialog();
         }
+        _showSuccessDialog();
       }
     } catch (e, s) {
       debugPrint('[Signup] Error: $e');
@@ -136,8 +155,9 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-
   void _showSuccessDialog() {
+    final bool isDayScholar = _userType == 'Day Scholar';
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -207,10 +227,12 @@ class _SignupScreenState extends State<SignupScreen> {
                   padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
                   child: Column(
                     children: [
-                      const Text(
-                        'Your account has been submitted for warden approval. Once approved, you\'ll be able to access all VISTA features.',
+                      Text(
+                        isDayScholar
+                            ? 'Welcome to VISTA! Your account is active and you can now access the portal directly.'
+                            : 'Your account has been submitted for warden approval. Once approved, you\'ll be able to access all VISTA features.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Colors.black54,
                           height: 1.5,
@@ -220,10 +242,13 @@ class _SignupScreenState extends State<SignupScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          icon: const Icon(Icons.login_rounded, size: 20),
-                          label: const Text(
-                            'Go to Login',
-                            style: TextStyle(
+                          icon: Icon(
+                            isDayScholar ? Icons.dashboard_rounded : Icons.login_rounded,
+                            size: 20,
+                          ),
+                          label: Text(
+                            isDayScholar ? 'Go to Portal' : 'Go to Login',
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -238,8 +263,17 @@ class _SignupScreenState extends State<SignupScreen> {
                             elevation: 0,
                           ),
                           onPressed: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop();
+                            if (isDayScholar) {
+                              // For Day Scholars, go to the Student Dashboard
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                '/student',
+                                (route) => false,
+                              );
+                            } else {
+                              // For Hostellers, return to login screen
+                              Navigator.of(context).pop(); // Close dialog
+                              Navigator.of(context).pop(); // Go back to login
+                            }
                           },
                         ),
                       ),
@@ -342,16 +376,16 @@ class _SignupScreenState extends State<SignupScreen> {
                               children: [
                                 Expanded(
                                   child: _buildTypeButton(
-                                    'Permanent',
+                                    'Hosteller',
                                     Icons.apartment_rounded,
-                                    _userType == 'Permanent',
+                                    _userType == 'Hosteller',
                                   ),
                                 ),
                                 Expanded(
                                   child: _buildTypeButton(
-                                    'Short Stay',
+                                    'Day Scholar',
                                     Icons.home_outlined,
-                                    _userType == 'Short Stay',
+                                    _userType == 'Day Scholar',
                                   ),
                                 ),
                               ],
@@ -393,13 +427,17 @@ class _SignupScreenState extends State<SignupScreen> {
                           decoration: InputDecoration(
                             labelText: 'JKLU Email Username',
                             prefixIcon: const Icon(Icons.email_outlined),
-                            suffix: (_emailController.text.isEmpty ||
+                            suffix:
+                                (_emailController.text.isEmpty ||
                                     _emailController.text.contains('@') ||
-                                    RegExp(r'^[0-9+\s-]+$')
-                                        .hasMatch(_emailController.text))
+                                    RegExp(
+                                      r'^[0-9+\s-]+$',
+                                    ).hasMatch(_emailController.text))
                                 ? null
-                                : const Text('@jklu.edu.in',
-                                    style: TextStyle(color: Colors.grey)),
+                                : const Text(
+                                    '@jklu.edu.in',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
                             hintText: 'example',
                           ),
                           onChanged: (val) => setState(() {}),
@@ -433,16 +471,20 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                           keyboardType: TextInputType.phone,
                         ),
-                        if (_userType == 'Permanent') ...[
+                        if (_userType == 'Hosteller') ...[
                           const SizedBox(height: 20),
                           DropdownButtonFormField<String>(
                             initialValue: _selectedHostel,
                             items: _permanentHostels
                                 .map(
-                                  (h) => DropdownMenuItem(value: h, child: Text(h)),
+                                  (h) => DropdownMenuItem(
+                                    value: h,
+                                    child: Text(h),
+                                  ),
                                 )
                                 .toList(),
-                            onChanged: (val) => setState(() => _selectedHostel = val),
+                            onChanged: (val) =>
+                                setState(() => _selectedHostel = val),
                             decoration: const InputDecoration(
                               labelText: 'Select Hostel',
                               prefixIcon: Icon(Icons.hotel_outlined),
@@ -502,7 +544,10 @@ class _SignupScreenState extends State<SignupScreen> {
                           children: [
                             Expanded(
                               child: RadioListTile<String>(
-                                title: const Text('Male', style: TextStyle(fontSize: 14)),
+                                title: const Text(
+                                  'Male',
+                                  style: TextStyle(fontSize: 14),
+                                ),
                                 value: 'Male',
                                 // ignore: deprecated_member_use
                                 groupValue: _selectedGender,
@@ -515,7 +560,10 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                             Expanded(
                               child: RadioListTile<String>(
-                                title: const Text('Female', style: TextStyle(fontSize: 14)),
+                                title: const Text(
+                                  'Female',
+                                  style: TextStyle(fontSize: 14),
+                                ),
                                 value: 'Female',
                                 // ignore: deprecated_member_use
                                 groupValue: _selectedGender,
@@ -571,12 +619,13 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
+
   Widget _buildTypeButton(String label, IconData icon, bool isSelected) {
     return GestureDetector(
       onTap: () {
         setState(() {
           _userType = label;
-          if (_userType == 'Short Stay') {
+          if (_userType == 'Day Scholar') {
             _selectedHostel = 'Short Stay';
           } else if (_selectedHostel == 'Short Stay') {
             _selectedHostel = null;

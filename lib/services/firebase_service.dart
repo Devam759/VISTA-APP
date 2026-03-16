@@ -495,8 +495,8 @@ class FirebaseService {
       'status': 'Pending',
       'isEscalated': true,
       'studentConfirmed': false,
-      'targetRole': 'Head Warden',
-      'targetRoles': ['Head Warden'],
+      'targetRole': 'Head Warden', // Keep for compatibility
+      'targetRoles': ['Head Warden', 'Chief Warden'],
     });
   }
 

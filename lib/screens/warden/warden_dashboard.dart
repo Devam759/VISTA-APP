@@ -14,6 +14,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../utils/export_helper.dart';
 import '../../models/short_stay_model.dart';
 import '../../widgets/export_dialog.dart';
+import '../../widgets/skeleton_loader.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME CONSTANTS
@@ -47,7 +48,10 @@ class _WardenDashboardState extends State<WardenDashboard> {
   final GlobalKey<_ShortStaysTabState> _shortStaysKey = GlobalKey();
 
   Future<void> _showExportDialog() async {
-    final warden = Provider.of<AuthProvider>(context, listen: false).userProfile;
+    final warden = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    ).userProfile;
     if (warden == null) return;
 
     final result = await showDialog<ExportDialogResult>(
@@ -74,13 +78,19 @@ class _WardenDashboardState extends State<WardenDashboard> {
               )
               .first;
           final leaves = await _fs
-              .getHostelLeavesRange(warden.hostel, result.startDate, result.endDate)
+              .getHostelLeavesRange(
+                warden.hostel,
+                result.startDate,
+                result.endDate,
+              )
               .first;
 
           List<DateTime> dates = [];
-          for (int i = 0;
-              i <= result.endDate.difference(result.startDate).inDays;
-              i++) {
+          for (
+            int i = 0;
+            i <= result.endDate.difference(result.startDate).inDays;
+            i++
+          ) {
             dates.add(result.startDate.add(Duration(days: i)));
           }
 
@@ -107,7 +117,11 @@ class _WardenDashboardState extends State<WardenDashboard> {
         case ExportType.leaveRequests:
           final students = await _fs.getHostelStudents(warden.hostel).first;
           final leaves = await _fs
-              .getHostelLeavesRange(warden.hostel, result.startDate, result.endDate)
+              .getHostelLeavesRange(
+                warden.hostel,
+                result.startDate,
+                result.endDate,
+              )
               .first;
           await ExportHelper.exportLeaves(
             leaves,
@@ -157,9 +171,9 @@ class _WardenDashboardState extends State<WardenDashboard> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
     }
   }
 
@@ -186,30 +200,38 @@ class _WardenDashboardState extends State<WardenDashboard> {
     ).userProfile;
     if (warden == null) return;
 
-    debugPrint('[WardenDashboard] Setting up listeners for hostel: ${warden.hostel}');
+    debugPrint(
+      '[WardenDashboard] Setting up listeners for hostel: ${warden.hostel}',
+    );
 
     // 1. Listen for New Registrations
     _subscriptions.add(
-      _fs.getPendingRegistrations(warden.hostel).listen(
-        (list) {
-          debugPrint('[WardenDashboard] Pending registrations received: ${list.length}');
-          if (list.isNotEmpty) {
-            if (_selectedIndex != 0) {
-              setState(() => _hasNewRegistrations = true);
-            }
-            _showInAppAlert(
-              'New Registration Request',
-              '${list.length} pending',
-              0,
-            );
-          } else {
-            setState(() => _hasNewRegistrations = false);
-          }
-        },
-        onError: (error) {
-          debugPrint('[WardenDashboard] Error in pending registrations stream: $error');
-        },
-      ),
+      _fs
+          .getPendingRegistrations(warden.hostel)
+          .listen(
+            (list) {
+              debugPrint(
+                '[WardenDashboard] Pending registrations received: ${list.length}',
+              );
+              if (list.isNotEmpty) {
+                if (_selectedIndex != 0) {
+                  setState(() => _hasNewRegistrations = true);
+                }
+                _showInAppAlert(
+                  'New Registration Request',
+                  '${list.length} pending',
+                  0,
+                );
+              } else {
+                setState(() => _hasNewRegistrations = false);
+              }
+            },
+            onError: (error) {
+              debugPrint(
+                '[WardenDashboard] Error in pending registrations stream: $error',
+              );
+            },
+          ),
     );
 
     // 2. Listen for New Leaves
@@ -361,7 +383,8 @@ class _WardenDashboardState extends State<WardenDashboard> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(5, (i) {
                 final selected = _selectedIndex == i;
-                final showMarker = (i == 0 && _hasNewRegistrations) ||
+                final showMarker =
+                    (i == 0 && _hasNewRegistrations) ||
                     (i == 2 && _hasNewLeaves) ||
                     (i == 3 && _hasNewComplaints) ||
                     (i == 4 && _hasNewShortStays);
@@ -718,7 +741,9 @@ class _StudentsTabState extends State<_StudentsTab> {
   String _statusFilter = 'All'; // 'All', 'In Campus', 'On Leave', 'Short Stay'
 
   Future<void> export() async {
-    final students = await widget.fs.getHostelStudents(widget.warden.hostel!).first;
+    final students = await widget.fs
+        .getHostelStudents(widget.warden.hostel!)
+        .first;
     await ExportHelper.exportStudents(students, widget.warden.hostel ?? 'All');
   }
 
@@ -811,7 +836,9 @@ class _StudentsTabState extends State<_StudentsTab> {
                   : () async {
                       setDialogState(() => isSubmitting = true);
                       try {
-                        String sanitizedRoom = InputSanitizer.sanitize(ctrl.text);
+                        String sanitizedRoom = InputSanitizer.sanitize(
+                          ctrl.text,
+                        );
                         await widget.fs.approveStudent(s.uid, sanitizedRoom);
                         if (context.mounted) Navigator.pop(context);
                       } catch (e) {
@@ -896,15 +923,20 @@ class _StudentsTabState extends State<_StudentsTab> {
 
   bool _isStudentOnLeave(String uid, List<LeaveRequest> approvedLeaves) {
     final now = DateTime.now();
-    return approvedLeaves.any(
-      (l) =>
-          l.studentId == uid &&
-          l.fromDate.isBefore(now) &&
-          l.toDate.isAfter(now),
-    );
+    return approvedLeaves.any((l) {
+      if (l.studentId != uid) return false;
+      // If student has checked in from leave, they are no longer on leave
+      if (l.checkInTime != null && !now.isBefore(l.checkInTime!)) {
+        return false;
+      }
+      return l.fromDate.isBefore(now) && l.toDate.isAfter(now);
+    });
   }
 
-  bool _isStudentOnShortStay(String uid, List<ShortStayRequest> approvedShortStays) {
+  bool _isStudentOnShortStay(
+    String uid,
+    List<ShortStayRequest> approvedShortStays,
+  ) {
     final now = DateTime.now();
     return approvedShortStays.any(
       (ss) =>
@@ -993,10 +1025,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                                   ConnectionState.waiting &&
                               pendingSnap.connectionState ==
                                   ConnectionState.waiting) {
-                            return const Center(
-                              child:
-                                  CircularProgressIndicator(color: _kPrimary),
-                            );
+                            return const StudentListSkeleton();
                           }
 
                           final allMembers = memberSnap.data ?? [];
@@ -1005,14 +1034,21 @@ class _StudentsTabState extends State<_StudentsTab> {
 
                           // Filtering logic
                           var filtered = allMembers.where((m) {
-                            // Check for inactive short stay students
-                            if (m.hasUsedShortStay) {
-                              final hasActiveStay = approvedShortStays.any(
-                                (ss) =>
-                                    ss.studentId == m.uid &&
-                                    ss.status == 'Approved',
-                              );
-                              if (!hasActiveStay) return false;
+                            // Check if student has an active short stay (Approved and within dates)
+                            final now = DateTime.now();
+                            final hasActiveShortStay = approvedShortStays.any(
+                              (ss) =>
+                                  ss.studentId == m.uid &&
+                                  ss.status == 'Approved' &&
+                                  ss.actualCheckOutTime == null &&
+                                  !now.isBefore(ss.checkInDate) &&
+                                  !now.isAfter(ss.checkOutDate),
+                            );
+                            // For day scholars (identified by isDayScholar or legacy hasUsedShortStay),
+                            // only show if they have an active approved short stay
+                            if ((m.isDayScholar || m.hasUsedShortStay) &&
+                                !hasActiveShortStay) {
+                              return false;
                             }
 
                             final matchesSearch =
@@ -1034,347 +1070,378 @@ class _StudentsTabState extends State<_StudentsTab> {
                                 approvedShortStays,
                               );
                             } else if (_statusFilter == 'In Campus') {
-                              matchesFilter = !_isStudentOnLeave(
-                                m.uid,
-                                approvedLeaves,
-                              ) &&
-                              !_isStudentOnShortStay(
-                                m.uid,
-                                approvedShortStays,
-                              );
+                              matchesFilter =
+                                  !_isStudentOnLeave(m.uid, approvedLeaves) &&
+                                  !_isStudentOnShortStay(
+                                    m.uid,
+                                    approvedShortStays,
+                                  );
                             }
                             return matchesSearch && matchesFilter;
                           }).toList();
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Pending Alert Banner ──
-                          if (pending.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                0,
-                                16,
-                                12,
-                              ),
-                                child: Column(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => setState(
-                                        () => _showRequests = !_showRequests,
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 14,
+                          // Determine empty state message
+                          String emptyTitle = 'No Students Registered';
+                          String emptySubtitle =
+                              'Approve registration requests from the banner above to add students.';
+                          IconData emptyIcon = Icons.people_outline;
+
+                          if (_searchQuery.isNotEmpty) {
+                            emptyTitle = 'No Results Found';
+                            emptySubtitle =
+                                'We couldn\'t find any student matching "$_searchQuery".';
+                            emptyIcon = Icons.search_off_rounded;
+                          } else {
+                            switch (_statusFilter) {
+                              case 'In Campus':
+                                emptyTitle = 'Quiet Corridor';
+                                emptySubtitle =
+                                    'All our students seem to be away or on leave right now.';
+                                emptyIcon = Icons.nightlife_rounded;
+                                break;
+                              case 'On Leave':
+                                emptyTitle = 'All Students Present';
+                                emptySubtitle =
+                                    'It looks like everyone is currently on campus. No active leaves!';
+                                emptyIcon = Icons.home_rounded;
+                                break;
+                              case 'Short Stay':
+                                emptyTitle = 'No Active Short Stays';
+                                emptySubtitle =
+                                    'There are no visiting day scholars at the moment.';
+                                emptyIcon = Icons.timer_off_rounded;
+                                break;
+                            }
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ── Pending Alert Banner ──
+                              if (pending.isNotEmpty)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                  child: Column(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () => setState(
+                                          () => _showRequests = !_showRequests,
                                         ),
-                                        decoration: BoxDecoration(
-                                          color: _kPrimary,
-                                          borderRadius: BorderRadius.circular(
-                                            16,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 14,
                                           ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: _kPrimary.withValues(
-                                                alpha: 0.3,
-                                              ),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.15,
+                                          decoration: BoxDecoration(
+                                            color: _kPrimary,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: _kPrimary.withValues(
+                                                  alpha: 0.3,
                                                 ),
-                                                shape: BoxShape.circle,
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 4),
                                               ),
-                                              child: const Icon(
-                                                Icons
-                                                    .notifications_active_rounded,
-                                                color: Colors.white,
-                                                size: 16,
+                                            ],
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.15),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons
+                                                      .notifications_active_rounded,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    '${pending.length} Registration Request${pending.length > 1 ? 's' : ''}',
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      fontSize: 14,
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      '${pending.length} Registration Request${pending.length > 1 ? 's' : ''}',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        fontSize: 14,
+                                                      ),
                                                     ),
-                                                  ),
-                                                  Text(
-                                                    _showRequests
-                                                        ? 'Tap to hide detail'
-                                                        : 'Tap to review and approve',
-                                                    style: TextStyle(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                            alpha: 0.7,
-                                                          ),
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w500,
+                                                    Text(
+                                                      _showRequests
+                                                          ? 'Tap to hide detail'
+                                                          : 'Tap to review and approve',
+                                                      style: TextStyle(
+                                                        color: Colors.white
+                                                            .withValues(
+                                                          alpha: 0.7,
+                                                        ),
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
                                                     ),
-                                                  ),
-                                                ],
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                            Icon(
-                                              _showRequests
-                                                  ? Icons
-                                                        .keyboard_arrow_up_rounded
-                                                  : Icons
-                                                        .keyboard_arrow_down_rounded,
-                                              color: Colors.white70,
-                                            ),
-                                          ],
+                                              Icon(
+                                                _showRequests
+                                                    ? Icons
+                                                          .keyboard_arrow_up_rounded
+                                                    : Icons
+                                                          .keyboard_arrow_down_rounded,
+                                                color: Colors.white70,
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    if (_showRequests)
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          border: Border.all(
-                                            color: _kPrimary.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.04,
+                                      if (_showRequests)
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            border: Border.all(
+                                              color: _kPrimary.withValues(
+                                                alpha: 0.1,
                                               ),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
                                             ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          children: pending.map((s) {
-                                            return Column(
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 14,
-                                                        vertical: 10,
-                                                      ),
-                                                  child: Row(
-                                                    children: [
-                                                      CircleAvatar(
-                                                        radius: 20,
-                                                        backgroundColor:
-                                                            _kPrimary
-                                                                .withValues(
-                                                                  alpha: 0.1,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.04,
+                                                ),
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Column(
+                                            children: pending.map((s) {
+                                              return Column(
+                                                children: [
+                                                  Padding(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 10,
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        CircleAvatar(
+                                                          radius: 20,
+                                                          backgroundColor:
+                                                              _kPrimary
+                                                                  .withValues(
+                                                                    alpha: 0.1,
+                                                                  ),
+                                                          child: Text(
+                                                            s.name.isNotEmpty
+                                                                ? s.name[0]
+                                                                      .toUpperCase()
+                                                                : 'S',
+                                                            style:
+                                                                const TextStyle(
+                                                              color: _kPrimary,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Text(
+                                                                s.name,
+                                                                style:
+                                                                    const TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  fontSize: 14,
                                                                 ),
-                                                        child: Text(
-                                                          s.name.isNotEmpty
-                                                              ? s.name[0]
-                                                                    .toUpperCase()
-                                                              : 'S',
-                                                          style:
-                                                              const TextStyle(
-                                                                color:
-                                                                    _kPrimary,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
                                                               ),
+                                                              Text(
+                                                                s.email,
+                                                                style:
+                                                                    const TextStyle(
+                                                                  color: Colors
+                                                                      .black45,
+                                                                  fontSize: 11,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
                                                         ),
-                                                      ),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(
-                                                        child: Column(
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .start,
+                                                        Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
                                                           children: [
-                                                            Text(
-                                                              s.name,
-                                                              style: const TextStyle(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w700,
-                                                                fontSize: 14,
-                                                              ),
-                                                            ),
-                                                            Text(
-                                                              s.email,
-                                                              style:
-                                                                  const TextStyle(
-                                                                    color: Colors
-                                                                        .black45,
-                                                                    fontSize:
-                                                                        11,
+                                                            GestureDetector(
+                                                              onTap: () async =>
+                                                                  widget.fs
+                                                                      .denyStudent(
+                                                                    s.uid,
                                                                   ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      Row(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                          GestureDetector(
-                                                            onTap: () async =>
-                                                                widget.fs
-                                                                    .denyStudent(
-                                                                      s.uid,
-                                                                    ),
-                                                            child: Container(
-                                                              padding:
-                                                                  const EdgeInsets.all(
-                                                                    10,
-                                                                  ),
-                                                              decoration: BoxDecoration(
-                                                                color: Colors
-                                                                    .red
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.08,
-                                                                    ),
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      12,
-                                                                    ),
-                                                                border: Border.all(
+                                                              child: Container(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                        .all(
+                                                                  10,
+                                                                ),
+                                                                decoration:
+                                                                    BoxDecoration(
                                                                   color: Colors
                                                                       .red
                                                                       .withValues(
-                                                                        alpha:
-                                                                            0.15,
-                                                                      ),
+                                                                    alpha: 0.08,
+                                                                  ),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                    12,
+                                                                  ),
+                                                                  border: Border
+                                                                      .all(
+                                                                    color: Colors
+                                                                        .red
+                                                                        .withValues(
+                                                                      alpha:
+                                                                          0.15,
+                                                                    ),
+                                                                  ),
                                                                 ),
-                                                              ),
-                                                              child: const Icon(
-                                                                Icons
-                                                                    .close_rounded,
-                                                                color:
-                                                                    Colors.red,
-                                                                size: 18,
+                                                                child:
+                                                                    const Icon(
+                                                                  Icons
+                                                                      .close_rounded,
+                                                                  color: Colors
+                                                                      .red,
+                                                                  size: 18,
+                                                                ),
                                                               ),
                                                             ),
-                                                          ),
-                                                          const SizedBox(
-                                                            width: 10,
-                                                          ),
-                                                          GestureDetector(
-                                                            onTap: () =>
-                                                                _approveDialog(
-                                                                  context,
-                                                                  s,
+                                                            const SizedBox(
+                                                              width: 10,
+                                                            ),
+                                                            GestureDetector(
+                                                              onTap: () =>
+                                                                  _approveDialog(
+                                                                context,
+                                                                s,
+                                                              ),
+                                                              child: Container(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                        .all(
+                                                                  10,
                                                                 ),
-                                                            child: Container(
-                                                              padding:
-                                                                  const EdgeInsets.all(
-                                                                    10,
-                                                                  ),
-                                                              decoration: BoxDecoration(
-                                                                color: Colors
-                                                                    .green
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.08,
-                                                                    ),
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      12,
-                                                                    ),
-                                                                border: Border.all(
+                                                                decoration:
+                                                                    BoxDecoration(
                                                                   color: Colors
                                                                       .green
                                                                       .withValues(
-                                                                        alpha:
-                                                                            0.15,
-                                                                      ),
+                                                                    alpha: 0.08,
+                                                                  ),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                    12,
+                                                                  ),
+                                                                  border: Border
+                                                                      .all(
+                                                                    color: Colors
+                                                                        .green
+                                                                        .withValues(
+                                                                      alpha:
+                                                                          0.15,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                child:
+                                                                    const Icon(
+                                                                  Icons
+                                                                      .check_rounded,
+                                                                  color: Colors
+                                                                      .green,
+                                                                  size: 18,
                                                                 ),
                                                               ),
-                                                              child: const Icon(
-                                                                Icons
-                                                                    .check_rounded,
-                                                                color: Colors
-                                                                    .green,
-                                                                size: 18,
-                                                              ),
                                                             ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
-                                                ),
-                                                if (s != pending.last)
-                                                  const Divider(
-                                                    height: 1,
-                                                    indent: 14,
-                                                    endIndent: 14,
-                                                  ),
-                                              ],
-                                            );
-                                          }).toList(),
+                                                  if (s != pending.last)
+                                                    const Divider(
+                                                      height: 1,
+                                                      indent: 14,
+                                                      endIndent: 14,
+                                                    ),
+                                                ],
+                                              );
+                                            }).toList(),
+                                          ),
                                         ),
-                                      ),
-                                    const SizedBox(height: 8),
-                                  ],
+                                      const SizedBox(height: 8),
+                                    ],
+                                  ),
                                 ),
+
+                              // ── Hostel Students List ──
+                              _SectionLabel(
+                                'Hostel Students',
+                                count: filtered.length,
                               ),
 
-                          // ── Hostel Students List ──
-                          _SectionLabel(
-                            'Hostel Students',
-                            count: filtered.length,
-                          ),
-
-                          if (filtered.isEmpty)
-                            Expanded(
-                              child: _EmptyState(
-                                icon: Icons.people_outline,
-                                title: _searchQuery.isEmpty
-                                    ? 'No Students Yet'
-                                    : 'No Results Found',
-                                subtitle: _searchQuery.isEmpty
-                                    ? 'Approve registration requests to add students'
-                                    : 'Try searching with a different name',
-                              ),
-                            )
-                          else
-                            Expanded(
-                              child: ListView.builder(
-                                itemCount: filtered.length,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                itemBuilder: (context, i) {
-                                  final m = filtered[i];
-                                  final onLeave = _isStudentOnLeave(
-                                    m.uid,
-                                    approvedLeaves,
-                                  );
-                                  final onShortStay = _isStudentOnShortStay(
-                                    m.uid,
-                                    approvedShortStays,
-                                  );
-                                  return _Card(
+                              if (filtered.isEmpty)
+                                Expanded(
+                                  child: _EmptyState(
+                                    icon: emptyIcon,
+                                    title: emptyTitle,
+                                    subtitle: emptySubtitle,
+                                  ),
+                                )
+                              else
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: filtered.length,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    itemBuilder: (context, i) {
+                                      final m = filtered[i];
+                                      final onLeave = _isStudentOnLeave(
+                                        m.uid,
+                                        approvedLeaves,
+                                      );
+                                      final onShortStay = _isStudentOnShortStay(
+                                        m.uid,
+                                        approvedShortStays,
+                                      );
+                                      return _Card(
                                         child: Row(
                                           children: [
                                             Stack(
@@ -1406,8 +1473,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                       color: onLeave
                                                           ? Colors.orange
                                                           : (onShortStay
-                                                              ? Colors.blue
-                                                              : Colors.green),
+                                                                ? Colors.blue
+                                                                : Colors.green),
                                                       shape: BoxShape.circle,
                                                       border: Border.all(
                                                         color: Colors.white,
@@ -1517,14 +1584,14 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                   onLeave
                                                       ? 'ON LEAVE'
                                                       : (onShortStay
-                                                          ? 'SHORT STAY'
-                                                          : 'IN CAMPUS'),
+                                                            ? 'SHORT STAY'
+                                                            : 'IN CAMPUS'),
                                                   style: TextStyle(
                                                     color: onLeave
                                                         ? Colors.orange
                                                         : (onShortStay
-                                                            ? Colors.blue
-                                                            : Colors.green),
+                                                              ? Colors.blue
+                                                              : Colors.green),
                                                     fontWeight: FontWeight.w800,
                                                     fontSize: 10,
                                                     letterSpacing: 0.5,
@@ -1535,11 +1602,11 @@ class _StudentsTabState extends State<_StudentsTab> {
                                           ],
                                         ),
                                       );
-                                },
-                              ),
-                            ),
-                        ],
-                      );
+                                    },
+                                  ),
+                                ),
+                            ],
+                          );
                         },
                       );
                     },
@@ -1591,6 +1658,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   late Stream<List<VistaUser>> _studentStream;
   late Stream<List<LeaveRequest>> _leaveStream;
   late Stream<List<Attendance>> _attendanceStream;
+  late Stream<List<ShortStayRequest>> _shortStayStream;
 
   DateTime _selectedDate = DateTime.now();
 
@@ -1599,6 +1667,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     super.initState();
     _studentStream = widget.fs.getHostelStudents(widget.warden.hostel);
     _leaveStream = widget.fs.getApprovedLeaves(widget.warden.hostel!);
+    _shortStayStream = widget.fs.getApprovedShortStays(widget.warden.hostel!);
 
     _updateAttendanceStream();
 
@@ -1751,6 +1820,16 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     final checkDate = DateTime(date.year, date.month, date.day);
     return approvedLeaves.any((leave) {
       if (leave.studentId != studentId) return false;
+      // If student has checked in from leave, they are no longer on leave
+      if (leave.checkInTime != null) {
+        final checkInDate = DateTime(
+          leave.checkInTime!.year,
+          leave.checkInTime!.month,
+          leave.checkInTime!.day,
+        );
+        // If checking for a date on or after check-in, they're not on leave
+        if (!checkDate.isBefore(checkInDate)) return false;
+      }
       final from = DateTime(
         leave.fromDate.year,
         leave.fromDate.month,
@@ -1949,7 +2028,6 @@ class _AttendanceTabState extends State<_AttendanceTab> {
           ),
         ),
 
-        // ── DATA SECTION ──
         Expanded(
           child: StreamBuilder<List<VistaUser>>(
             stream: _studentStream,
@@ -1960,252 +2038,291 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                   return StreamBuilder<List<Attendance>>(
                     stream: _attendanceStream,
                     builder: (context, attendanceSnap) {
-                      if (studentSnap.connectionState ==
-                              ConnectionState.waiting ||
-                          leaveSnap.connectionState ==
-                              ConnectionState.waiting ||
-                          attendanceSnap.connectionState ==
-                              ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: _kPrimary,
-                            strokeWidth: 2,
-                          ),
-                        );
-                      }
+                      return StreamBuilder<List<ShortStayRequest>>(
+                        stream: _shortStayStream,
+                        builder: (context, ssSnap) {
+                          if (studentSnap.connectionState ==
+                                  ConnectionState.waiting ||
+                              leaveSnap.connectionState ==
+                                  ConnectionState.waiting ||
+                              attendanceSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                            return const AttendanceListSkeleton();
+                          }
 
-                      final students = studentSnap.data ?? [];
-                      final leaveRequests = leaveSnap.data ?? [];
-                      final attendanceLists = attendanceSnap.data ?? [];
+                          final studentsData = studentSnap.data ?? [];
+                          final leaveRequests = leaveSnap.data ?? [];
+                          final attendanceLists = attendanceSnap.data ?? [];
+                          final approvedShortStays = ssSnap.data ?? [];
 
-                      final approvedLeaves = leaveRequests
-                          .where((l) => l.status == 'Approved')
-                          .toList();
+                          // Initial filtering: Show permanent hostellers OR day scholars with active short stay
+                          final students = studentsData.where((m) {
+                            final now = DateTime.now();
+                            final hasActiveShortStay = approvedShortStays.any(
+                              (ss) =>
+                                  ss.studentId == m.uid &&
+                                  ss.status == 'Approved' &&
+                                  ss.actualCheckOutTime == null &&
+                                  !now.isBefore(ss.checkInDate) &&
+                                  !now.isAfter(ss.checkOutDate),
+                            );
+                            if ((m.isDayScholar || m.hasUsedShortStay) &&
+                                !hasActiveShortStay) {
+                              return false;
+                            }
+                            return true;
+                          }).toList();
 
-                      final Map<String, Attendance> attendanceMap = {
-                        for (var a in attendanceLists) a.studentId: a,
-                      };
+                          final approvedLeaves = leaveRequests
+                              .where((l) => l.status == 'Approved')
+                              .toList();
 
-                      List<_AttendanceRecord> records = students.map((s) {
-                        final onLeave = _isStudentOnLeave(
-                          s.uid,
-                          approvedLeaves,
-                          _selectedDate,
-                        );
-                        return _AttendanceRecord(
-                          s,
-                          attendanceMap[s.uid],
-                          onLeave: onLeave,
-                        );
-                      }).toList();
+                          final Map<String, Attendance> attendanceMap = {
+                            for (var a in attendanceLists) a.studentId: a,
+                          };
 
-                      final defaulters = records
-                          .where((r) => r.status == 'Absent')
-                          .toList();
+                          List<_AttendanceRecord> records = students.map((s) {
+                            final onLeave = _isStudentOnLeave(
+                              s.uid,
+                              approvedLeaves,
+                              _selectedDate,
+                            );
+                            return _AttendanceRecord(
+                              s,
+                              attendanceMap[s.uid],
+                              onLeave: onLeave,
+                            );
+                          }).toList();
 
-                      if (_statusFilter != 'All') {
-                        records = records
-                            .where((r) => r.status == _statusFilter)
-                            .toList();
-                      }
+                          final defaulters = records
+                              .where((r) => r.status == 'Absent')
+                              .toList();
 
-                      if (_searchQuery.isNotEmpty) {
-                        records = records
-                            .where(
-                              (r) =>
-                                  r.student.name.toLowerCase().contains(
-                                    _searchQuery.toLowerCase(),
-                                  ) ||
-                                  (r.student.roomNumber ?? '')
-                                      .toLowerCase()
-                                      .contains(_searchQuery.toLowerCase()),
-                            )
-                            .toList();
-                      }
+                          if (_statusFilter != 'All') {
+                            records = records
+                                .where((r) => r.status == _statusFilter)
+                                .toList();
+                          }
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (isLateWindow && defaulters.isNotEmpty)
-                            Container(
-                              margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                border: Border.all(color: Colors.red.shade200),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.warning_amber,
-                                    color: Colors.red.shade700,
-                                    size: 20,
+                          if (_searchQuery.isNotEmpty) {
+                            records = records
+                                .where(
+                                  (r) =>
+                                      r.student.name.toLowerCase().contains(
+                                        _searchQuery.toLowerCase(),
+                                      ) ||
+                                      (r.student.roomNumber ?? '')
+                                          .toLowerCase()
+                                          .contains(_searchQuery.toLowerCase()),
+                                )
+                                .toList();
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (isLateWindow && defaulters.isNotEmpty)
+                                Container(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      '${defaulters.length} pending attendance',
-                                      style: TextStyle(
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    border:
+                                        Border.all(color: Colors.red.shade200),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.warning_amber,
                                         color: Colors.red.shade700,
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 13,
+                                        size: 20,
                                       ),
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        _showDefaultersList(defaulters),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.red.shade700,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: const Text(
-                                      'View List',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                            child: Text(
-                              "DAILY LOG (${records.length})",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                                letterSpacing: 0.8,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: records.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      'No records found.',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade500,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  )
-                                : ListView.separated(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    itemCount: records.length,
-                                    separatorBuilder: (context, index) =>
-                                        const SizedBox(height: 8),
-                                    itemBuilder: (context, i) {
-                                      final r = records[i];
-                                      final isAbsent = r.status == 'Absent';
-                                      final isLate = r.status == 'Late';
-                                      final isOnLeave = r.status == 'On Leave';
-
-                                      Color statusColor = Colors.green.shade600;
-                                      if (isAbsent) {
-                                        statusColor = Colors.red.shade600;
-                                      } else if (isLate) {
-                                        statusColor = Colors.orange.shade700;
-                                      } else if (isOnLeave) {
-                                        statusColor = Colors.blue.shade600;
-                                      }
-
-                                      return InkWell(
-                                        onTap: () =>
-                                            _showStudentAttendanceHistory(
-                                              r.student,
-                                            ),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.grey.shade200,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      r.student.name,
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color: Colors.black87,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      'Room ${r.student.roomNumber ?? 'N/A'}',
-                                                      style: const TextStyle(
-                                                        color: Colors.black54,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.end,
-                                                children: [
-                                                  Text(
-                                                    r.status.toUpperCase(),
-                                                    style: TextStyle(
-                                                      color: statusColor,
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      letterSpacing: 0.5,
-                                                    ),
-                                                  ),
-                                                  if (r.attendance != null) ...[
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      DateFormat(
-                                                        'HH:mm',
-                                                      ).format(
-                                                        r.attendance!.timestamp,
-                                                      ),
-                                                      style: const TextStyle(
-                                                        color: Colors.black45,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            ],
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          '${defaulters.length} pending attendance',
+                                          style: TextStyle(
+                                            color: Colors.red.shade700,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 13,
                                           ),
                                         ),
-                                      );
-                                    },
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            _showDefaultersList(defaulters),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.red.shade700,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize
+                                              .shrinkWrap,
+                                        ),
+                                        child: const Text(
+                                          'View List',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                          ),
-                        ],
+                                ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                child: Text(
+                                  "DAILY LOG (${records.length})",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    letterSpacing: 0.8,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: records.isEmpty
+                                    ? Center(
+                                        child: Text(
+                                          'No records found.',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade500,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      )
+                                    : ListView.separated(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 8,
+                                        ),
+                                        itemCount: records.length,
+                                        separatorBuilder: (context, index) =>
+                                            const SizedBox(height: 8),
+                                        itemBuilder: (context, i) {
+                                          final r = records[i];
+                                          final isAbsent = r.status == 'Absent';
+                                          final isLate = r.status == 'Late';
+                                          final isOnLeave =
+                                              r.status == 'On Leave';
+
+                                          Color statusColor =
+                                              Colors.green.shade600;
+                                          if (isAbsent) {
+                                            statusColor = Colors.red.shade600;
+                                          } else if (isLate) {
+                                            statusColor =
+                                                Colors.orange.shade700;
+                                          } else if (isOnLeave) {
+                                            statusColor = Colors.blue.shade600;
+                                          }
+
+                                          return InkWell(
+                                            onTap: () =>
+                                                _showStudentAttendanceHistory(
+                                              r.student,
+                                            ),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(16),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                  8,
+                                                ),
+                                                border: Border.all(
+                                                  color: Colors.grey.shade200,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          r.student.name,
+                                                          style:
+                                                              const TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            fontSize: 14,
+                                                            color:
+                                                                Colors.black87,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(
+                                                          'Room ${r.student.roomNumber ?? 'N/A'}',
+                                                          style:
+                                                              const TextStyle(
+                                                            color:
+                                                                Colors.black54,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.end,
+                                                    children: [
+                                                      Text(
+                                                        r.status.toUpperCase(),
+                                                        style: TextStyle(
+                                                          color: statusColor,
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          letterSpacing: 0.5,
+                                                        ),
+                                                      ),
+                                                      if (r.attendance !=
+                                                          null) ...[
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(
+                                                          DateFormat(
+                                                            'HH:mm',
+                                                          ).format(
+                                                            r.attendance!
+                                                                .timestamp,
+                                                          ),
+                                                          style:
+                                                              const TextStyle(
+                                                            color:
+                                                                Colors.black45,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
+                          );
+                        },
                       );
                     },
                   );
@@ -2308,7 +2425,6 @@ class _LeavesTabState extends State<_LeavesTab> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -2333,7 +2449,9 @@ class _LeavesTabState extends State<_LeavesTab> {
                     ],
                   ),
                   child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = InputSanitizer.sanitize(v)),
+                    onChanged: (v) => setState(
+                      () => _searchQuery = InputSanitizer.sanitize(v),
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Search student name...',
                       hintStyle: const TextStyle(
@@ -2431,10 +2549,22 @@ class _LeavesTabState extends State<_LeavesTab> {
                   tooltip: 'Filter by Status',
                   onSelected: (val) => setState(() => _statusFilter = val),
                   itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'All', child: Text('All Status')),
-                    const PopupMenuItem(value: 'Pending', child: Text('Pending')),
-                    const PopupMenuItem(value: 'Approved', child: Text('Approved')),
-                    const PopupMenuItem(value: 'Rejected', child: Text('Rejected')),
+                    const PopupMenuItem(
+                      value: 'All',
+                      child: Text('All Status'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'Pending',
+                      child: Text('Pending'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'Approved',
+                      child: Text('Approved'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'Rejected',
+                      child: Text('Rejected'),
+                    ),
                   ],
                 ),
               ),
@@ -2442,15 +2572,12 @@ class _LeavesTabState extends State<_LeavesTab> {
           ),
         ),
 
-
         Expanded(
           child: StreamBuilder<List<LeaveRequest>>(
             stream: widget.fs.getHostelLeaves(widget.warden.hostel!),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: _kPrimary),
-                );
+                return const AttendanceListSkeleton();
               }
 
               var list = snap.data ?? [];
@@ -2898,7 +3025,9 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
                     ],
                   ),
                   child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = InputSanitizer.sanitize(v)),
+                    onChanged: (v) => setState(
+                      () => _searchQuery = InputSanitizer.sanitize(v),
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Search complaint...',
                       hintStyle: const TextStyle(
@@ -2985,9 +3114,7 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
             ),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: _kPrimary),
-                );
+                return const ComplaintListSkeleton();
               }
               var list = snap.data ?? [];
 
@@ -3044,7 +3171,8 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemBuilder: (context, i) {
                         final c = list[i];
-                        final resolved = c.status == 'Resolved' || c.status == 'Confirmed';
+                        final resolved =
+                            c.status == 'Resolved' || c.status == 'Confirmed';
                         return _Card(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3187,27 +3315,27 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
                                               ),
                                               child: const Text('Resolve'),
                                             ),
-                                          ],
                                         ],
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ],
+              );
+            },
           ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
   }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHORT STAYS TAB
@@ -3257,7 +3385,7 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
   void _showApproveDialog(ShortStayRequest request) {
     final roomCtrl = TextEditingController();
     String? selectedHostel = widget.warden.hostel ?? 'BH1';
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -3298,7 +3426,8 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (roomCtrl.text.trim().isEmpty || selectedHostel == null) return;
+                if (roomCtrl.text.trim().isEmpty || selectedHostel == null)
+                  return;
                 widget.fs.updateShortStayStatus(
                   request.id,
                   'Approved',
@@ -3341,9 +3470,9 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
 
     if (range != null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preparing Export...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Preparing Export...')));
 
       final stays = await widget.fs
           .getHostelShortStaysRange(
@@ -3353,10 +3482,7 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
           )
           .first;
 
-      await ExportHelper.exportShortStays(
-        stays,
-        widget.warden.hostel ?? 'All',
-      );
+      await ExportHelper.exportShortStays(stays, widget.warden.hostel ?? 'All');
     }
   }
 
@@ -3420,9 +3546,11 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
               }
               if (_searchQuery.isNotEmpty) {
                 list = list
-                    .where((r) => r.studentName.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ))
+                    .where(
+                      (r) => r.studentName.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ),
+                    )
                     .toList();
               }
 
@@ -3435,7 +3563,10 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 itemCount: list.length,
                 itemBuilder: (context, i) {
                   final r = list[i];
@@ -3448,7 +3579,11 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.person, color: _kPrimary, size: 18),
+                            const Icon(
+                              Icons.person,
+                              color: _kPrimary,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -3486,12 +3621,13 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: (r.status == 'Approved'
-                                          ? Colors.green
-                                          : (r.status == 'Rejected'
-                                              ? Colors.red
-                                              : Colors.orange))
-                                      .withValues(alpha: 0.1),
+                                  color:
+                                      (r.status == 'Approved'
+                                              ? Colors.green
+                                              : (r.status == 'Rejected'
+                                                    ? Colors.red
+                                                    : Colors.orange))
+                                          .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -3500,8 +3636,8 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                                     color: r.status == 'Approved'
                                         ? Colors.green
                                         : (r.status == 'Rejected'
-                                            ? Colors.red
-                                            : Colors.orange),
+                                              ? Colors.red
+                                              : Colors.orange),
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -3528,7 +3664,9 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                         if (isExtending)
                           _buildReadOnlyInput(
                             'Requested Extension',
-                            DateFormat('dd MMM yyyy hh:mm a').format(r.pendingToDate!),
+                            DateFormat(
+                              'dd MMM yyyy hh:mm a',
+                            ).format(r.pendingToDate!),
                             icon: Icons.more_time,
                           ),
                         _buildReadOnlyInput(
@@ -3548,7 +3686,8 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                             children: [
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed: () => widget.fs.updateShortStayStatus(r.id, 'Rejected'),
+                                  onPressed: () => widget.fs
+                                      .updateShortStayStatus(r.id, 'Rejected'),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.red,
                                     side: const BorderSide(color: Colors.red),
@@ -3575,7 +3714,11 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                             children: [
                               Expanded(
                                 child: ElevatedButton(
-                                  onPressed: () => widget.fs.approveShortStayExtension(r.id, r.pendingToDate!),
+                                  onPressed: () =>
+                                      widget.fs.approveShortStayExtension(
+                                        r.id,
+                                        r.pendingToDate!,
+                                      ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: _kPrimary,
                                     foregroundColor: Colors.white,
@@ -3651,7 +3794,6 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
     );
   }
 }
-
 
 class _StudentAttendanceCalendar extends StatefulWidget {
   final VistaUser student;
