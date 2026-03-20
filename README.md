@@ -1,94 +1,77 @@
-# 🏰 VISTA - Advanced Hostel Management System
+# VISTA - Virtual Intelligent Student Tracking & Attendance
 
-VISTA (Virtual Intelligent Student Tracking & Attendance) is a professional, secure, and fully automated Flutter application designed for university hostel management. It streamlines student registrations, leave requests, complaint management, and attendance using cutting-edge AI and real-time cloud technology.
+VISTA is a secure, automated university hostel management system developed with Flutter. The platform facilitates campus living by centralizing student registrations, leave permission workflows, grievance management, and attendance verification through advanced biometric integration and real-time cloud services.
 
----
+## Core Functionality
 
-## 🌟 Key Features
+### Role-Based Access Control
+- **Student Portal**: Enables students to apply for hostel membership, submit leave requests, and report complaints.
+- **Warden Portal**: Provides administrative oversight for specific hostel blocks (BH1, BH2, GH1, GH2). Wardens review student applications and manage daily operations.
+- **Head Warden/Chief Warden**: Offers high-level administrative governance, including escalated complaint resolution and system-wide monitoring.
 
-### 👤 Multi-Role Ecosystem
-- **Students**: Apply for hostel membership, request leaves, and track complaints.
-- **Wardens**: Manage specific hostel blocks (BH1, BH2, GH1, GH2), approve students, and manage requests.
-- **Head Warden**: High-level oversight with escalated complaint management.
+### Biometric Attendance System
+- **Face Recognition**: Integrates MobileFaceNet via TFLite for high-precision identity verification.
+- **Liveness Verification**: Incorporates an anti-spoofing mechanism requiring active Blink Detection to ensure physical presence.
+- **Data Security**: Biometric data is strictly protected using production-grade Firestore Security Rules, ensuring privacy and compliance.
 
-### 🎭 AI Face Recognition Attendance
-- **MobileFaceNet Integration**: Uses high-performance TFLite models for precise face matching.
-- **Liveness Detection**: Anti-spoofing mechanism requires a **blink** to verify the user is physically present.
-- **Biometric Security**: Face embeddings are shielded by strict Firestore production-grade rules.
+### Automated Notification System
+- **Monitoring Service**: A background service (Node.js) monitors database changes via GitHub Actions.
+- **Real-Time Alerts**: Utilizes Firebase Cloud Messaging (FCM) to deliver push notifications for critical events, including:
+  - Registration approvals and status updates.
+  - Leave and complaint resolution milestones.
+  - Nightly attendance reminders (scheduled for 10:00 PM and 10:20 PM IST).
 
-### 🔔 Automated Notification Engine
-- **GitHub Watcher**: A serverless Node.js engine that monitors Firestore every 10 minutes (running on GitHub Actions).
-- **Push Notifications (FCM)**: Students and Wardens get real-time alerts for:
-    - New registration applications.
-    - Leave/Complaint status updates.
-    - **Nightly Attendance Reminders** at 10:00 PM and 10:20 PM IST.
-- **Zero-Cost Design**: Operates without the need for expensive Firebase paid plans.
+### System Security
+- **Data Privacy**: Role-Based Access Control (RBAC) is enforced at the database level to protect sensitive student records.
+- **Application Hardening**: Release builds utilize Dart code obfuscation to prevent reverse-engineering.
+- **Integrity**: Standardized keystore management ensures the authenticity of production binaries.
 
-### 🔒 Hardened Security
-- **Production Firestore Rules**: Role-Based Access Control (RBAC) specifically protects biometric data and student privacy.
-- **Code Obfuscation**: Release builds are hardened against reverse-engineering.
-- **Secure Signing**: Uses a professional Keystore management system for release integrity.
+## Technology Stack
 
----
+- **Frontend**: Flutter (Dart) using MVVM architecture and Provider state management.
+- **Backend**: Firebase suite (Authentication, Cloud Firestore, Cloud Messaging, Cloud Storage, App Check).
+- **Artificial Intelligence**: Google ML Kit (Face Detection) and TensorFlow Lite (Inference Engine).
+- **DevOps**: GitHub Actions for automated background services and Node.js for specialized monitoring scripts.
 
-## 🛠️ Technology Stack
+## Installation and Configuration
 
-- **Frontend**: Flutter (Dart)
-- **State Management**: Provider (MVVM Architecture)
-- **Backend**: Firebase (Auth, Firestore, FCM, Storage)
-- **AI/ML**: Google ML Kit (Face Detection), TFLite (MobileFaceNet)
-- **Automation**: GitHub Actions (Node.js Watcher)
-- **Animations**: Flutter Animate
-
----
-
-## 🚀 Setup & Installation
-
-### 1. Prerequisites
-- Flutter SDK (latest version)
-- Java JDK 17
+### Prerequisites
+- Flutter SDK (Stable channel)
+- Java Development Kit (JDK) 17
 - Firebase CLI (`npm install -g firebase-tools`)
 
-### 2. Basic Configuration
-- Download `google-services.json` from Firebase and place it in `android/app/`.
-- Download `GoogleService-Info.plist` and place it in `ios/Runner/`.
-- Initialize Firebase options: `flutterfire configure`.
+### Initial Setup
+1. **Firebase Integration**:
+   - Place `google-services.json` in `android/app/`.
+   - Place `GoogleService-Info.plist` in `ios/Runner/`.
+   - Run `flutterfire configure` to synchronize environment settings.
+2. **Automated Tasks (GitHub Actions)**:
+   - Configure a `FIREBASE_SERVICE_ACCOUNT` secret in the GitHub repository settings.
+   - Populate this secret with the JSON key from the Firebase Service Account.
+3. **Database Security**:
+   Deploy the defined security rules:
+   ```powershell
+   firebase deploy --only firestore:rules
+   ```
 
-### 3. Automated Notifications (GitHub Action)
-- Go to your GitHub Repository -> **Settings** -> **Secrets and variables** -> **Actions**.
-- Create a secret named `FIREBASE_SERVICE_ACCOUNT`.
-- Paste the entire content of your Firebase Service Account JSON key.
-
-### 4. Database Security
-Deploy the production rules to lock down the database:
-```powershell
-firebase deploy --only firestore:rules
-```
-
----
-
-## 📦 Production Deployment
+## Production Deployment
 
 ### Android Release
-To generate a secure, obfuscated, and signed APK:
-1. Ensure your `android/key.properties` and `.jks` file are correctly configured.
-2. Run the hardening command:
+To generate an optimized and secure production build, execute the following command:
 ```powershell
 flutter build apk --release --obfuscate --split-debug-info=build/app/outputs/symbols
 ```
+*Note: Ensure that `android/key.properties` and the associated keystore are correctly configured before building.*
 
----
+## Directory Structure
 
-## 📂 Project Structure
+- `lib/models/`: Implementation of data schemas for users, leave requests, and complaints.
+- `lib/services/`: Core logic for Firebase integration, biometric processing, and notification handling.
+- `lib/screens/`: User interface components for authentication and role-specific dashboards.
+- `scripts/`: Node.js implementation for backend synchronization tasks.
+- `.github/workflows/`: Configuration for automated notification scheduling.
 
-- `lib/models/`: Data structures (User, Leave, Complaint).
-- `lib/services/`: Firebase, Face Recognition, and Notification logic.
-- `lib/screens/`: UI for Auth, Student, and Warden Dashboards.
-- `scripts/`: Node.js watcher for automated background tasks.
-- `.github/workflows/`: Automated scheduling for notifications.
+## Licensing
 
----
+Developed exclusively for the VISTA Hostel Management System. All rights reserved.
 
-## 📄 License
-
-This project is developed for **VISTA Hostel Management**. All rights reserved.
