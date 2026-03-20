@@ -6,7 +6,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Comprehensive hostel management for JKLU students, wardens, and head wardens.",
+    "description": "VISTA (Virtual Intelligent Student Tracking & Attendance) is JKLU's advanced hostel management system.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

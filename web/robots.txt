@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /assets/ # Optional: hide internal assets if needed
+
+Sitemap: https://vista-jklu.web.app/sitemap.xml
