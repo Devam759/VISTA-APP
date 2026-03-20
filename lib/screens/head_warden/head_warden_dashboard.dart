@@ -1133,8 +1133,9 @@ class _StudentsTabState extends State<_StudentsTab> {
                                 'We couldn\'t find any student matching "$_searchQuery".';
                             emptyIcon = Icons.search_off_rounded;
                           } else {
-                            String hostelPart =
-                                _hostelFilter == 'All' ? '' : ' from $_hostelFilter';
+                            String hostelPart = _hostelFilter == 'All'
+                                ? ''
+                                : ' from $_hostelFilter';
                             switch (_statusFilter) {
                               case 'In Campus':
                                 emptyTitle = 'Quiet Corridor';
@@ -1169,8 +1170,12 @@ class _StudentsTabState extends State<_StudentsTab> {
                               // ── Pending Alert Banner ──
                               if (pending.isNotEmpty)
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    12,
+                                  ),
                                   child: Column(
                                     children: [
                                       GestureDetector(
@@ -1184,8 +1189,9 @@ class _StudentsTabState extends State<_StudentsTab> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: _kPrimary,
-                                            borderRadius:
-                                                BorderRadius.circular(16),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
                                             boxShadow: [
                                               BoxShadow(
                                                 color: _kPrimary.withValues(
@@ -1199,8 +1205,9 @@ class _StudentsTabState extends State<_StudentsTab> {
                                           child: Row(
                                             children: [
                                               Container(
-                                                padding:
-                                                    const EdgeInsets.all(8),
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
                                                 decoration: BoxDecoration(
                                                   color: Colors.white
                                                       .withValues(alpha: 0.15),
@@ -1235,8 +1242,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                       style: TextStyle(
                                                         color: Colors.white
                                                             .withValues(
-                                                          alpha: 0.7,
-                                                        ),
+                                                              alpha: 0.7,
+                                                            ),
                                                         fontSize: 11,
                                                         fontWeight:
                                                             FontWeight.w500,
@@ -1262,8 +1269,9 @@ class _StudentsTabState extends State<_StudentsTab> {
                                           margin: const EdgeInsets.only(top: 8),
                                           decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(16),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
                                             border: Border.all(
                                               color: _kPrimary.withValues(
                                                 alpha: 0.1,
@@ -1284,11 +1292,11 @@ class _StudentsTabState extends State<_StudentsTab> {
                                               return Column(
                                                 children: [
                                                   Padding(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                      horizontal: 14,
-                                                      vertical: 10,
-                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 14,
+                                                          vertical: 10,
+                                                        ),
                                                     child: Row(
                                                       children: [
                                                         CircleAvatar(
@@ -1305,11 +1313,12 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                                 : 'S',
                                                             style:
                                                                 const TextStyle(
-                                                              color: _kPrimary,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
+                                                                  color:
+                                                                      _kPrimary,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
                                                           ),
                                                         ),
                                                         const SizedBox(
@@ -1323,8 +1332,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                             children: [
                                                               Text(
                                                                 s.name,
-                                                                style:
-                                                                    const TextStyle(
+                                                                style: const TextStyle(
                                                                   fontWeight:
                                                                       FontWeight
                                                                           .w700,
@@ -1333,8 +1341,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                               ),
                                                               Text(
                                                                 s.email,
-                                                                style:
-                                                                    const TextStyle(
+                                                                style: const TextStyle(
                                                                   color: Colors
                                                                       .black45,
                                                                   fontSize: 11,
@@ -1351,38 +1358,34 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                               onTap: () async =>
                                                                   widget.fs
                                                                       .denyStudent(
-                                                                    s.uid,
-                                                                  ),
+                                                                        s.uid,
+                                                                      ),
                                                               child: Container(
                                                                 padding:
-                                                                    const EdgeInsets
-                                                                        .all(
-                                                                  10,
-                                                                ),
-                                                                decoration:
-                                                                    BoxDecoration(
+                                                                    const EdgeInsets.all(
+                                                                      10,
+                                                                    ),
+                                                                decoration: BoxDecoration(
                                                                   color: Colors
                                                                       .red
                                                                       .withValues(
-                                                                    alpha: 0.08,
-                                                                  ),
+                                                                        alpha:
+                                                                            0.08,
+                                                                      ),
                                                                   borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                    12,
-                                                                  ),
-                                                                  border: Border
-                                                                      .all(
+                                                                      BorderRadius.circular(
+                                                                        12,
+                                                                      ),
+                                                                  border: Border.all(
                                                                     color: Colors
                                                                         .red
                                                                         .withValues(
-                                                                      alpha:
-                                                                          0.15,
-                                                                    ),
+                                                                          alpha:
+                                                                              0.15,
+                                                                        ),
                                                                   ),
                                                                 ),
-                                                                child:
-                                                                    const Icon(
+                                                                child: const Icon(
                                                                   Icons
                                                                       .close_rounded,
                                                                   color: Colors
@@ -1397,39 +1400,35 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                             GestureDetector(
                                                               onTap: () =>
                                                                   _approveDialog(
-                                                                context,
-                                                                s,
-                                                              ),
+                                                                    context,
+                                                                    s,
+                                                                  ),
                                                               child: Container(
                                                                 padding:
-                                                                    const EdgeInsets
-                                                                        .all(
-                                                                  10,
-                                                                ),
-                                                                decoration:
-                                                                    BoxDecoration(
+                                                                    const EdgeInsets.all(
+                                                                      10,
+                                                                    ),
+                                                                decoration: BoxDecoration(
                                                                   color: Colors
                                                                       .green
                                                                       .withValues(
-                                                                    alpha: 0.08,
-                                                                  ),
+                                                                        alpha:
+                                                                            0.08,
+                                                                      ),
                                                                   borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                    12,
-                                                                  ),
-                                                                  border: Border
-                                                                      .all(
+                                                                      BorderRadius.circular(
+                                                                        12,
+                                                                      ),
+                                                                  border: Border.all(
                                                                     color: Colors
                                                                         .green
                                                                         .withValues(
-                                                                      alpha:
-                                                                          0.15,
-                                                                    ),
+                                                                          alpha:
+                                                                              0.15,
+                                                                        ),
                                                                   ),
                                                                 ),
-                                                                child:
-                                                                    const Icon(
+                                                                child: const Icon(
                                                                   Icons
                                                                       .check_rounded,
                                                                   color: Colors
@@ -2207,16 +2206,21 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                             children: [
                               if (isLateWindow && defaulters.isNotEmpty)
                                 Container(
-                                  margin:
-                                      const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                                  margin: const EdgeInsets.fromLTRB(
+                                    16,
+                                    16,
+                                    16,
+                                    0,
+                                  ),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.red.shade50,
-                                    border:
-                                        Border.all(color: Colors.red.shade200),
+                                    border: Border.all(
+                                      color: Colors.red.shade200,
+                                    ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Row(
@@ -2247,8 +2251,8 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                             vertical: 8,
                                           ),
                                           minimumSize: Size.zero,
-                                          tapTargetSize: MaterialTapTargetSize
-                                              .shrinkWrap,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
                                         ),
                                         child: const Text(
                                           'View List',
@@ -2262,8 +2266,12 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                 ),
 
                               Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  8,
+                                ),
                                 child: Text(
                                   "DAILY LOG (${records.length})",
                                   style: TextStyle(
@@ -2315,16 +2323,14 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                           return InkWell(
                                             onTap: () =>
                                                 _showStudentAttendanceHistory(
-                                              r.student,
-                                            ),
+                                                  r.student,
+                                                ),
                                             child: Container(
                                               padding: const EdgeInsets.all(16),
                                               decoration: BoxDecoration(
                                                 color: Colors.white,
                                                 borderRadius:
-                                                    BorderRadius.circular(
-                                                  8,
-                                                ),
+                                                    BorderRadius.circular(8),
                                                 border: Border.all(
                                                   color: Colors.grey.shade200,
                                                 ),
@@ -2341,12 +2347,13 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                                           r.student.name,
                                                           style:
                                                               const TextStyle(
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            fontSize: 14,
-                                                            color:
-                                                                Colors.black87,
-                                                          ),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                fontSize: 14,
+                                                                color: Colors
+                                                                    .black87,
+                                                              ),
                                                         ),
                                                         const SizedBox(
                                                           height: 4,
@@ -2355,10 +2362,10 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                                           '(${r.student.hostel ?? 'N/A'}) Room ${r.student.roomNumber ?? 'N/A'}',
                                                           style:
                                                               const TextStyle(
-                                                            color:
-                                                                Colors.black54,
-                                                            fontSize: 12,
-                                                          ),
+                                                                color: Colors
+                                                                    .black54,
+                                                                fontSize: 12,
+                                                              ),
                                                         ),
                                                       ],
                                                     ),
@@ -2386,15 +2393,16 @@ class _AttendanceTabState extends State<_AttendanceTab> {
                                                           DateFormat(
                                                             'HH:mm',
                                                           ).format(
-                                                            r.attendance!
+                                                            r
+                                                                .attendance!
                                                                 .timestamp,
                                                           ),
                                                           style:
                                                               const TextStyle(
-                                                            color:
-                                                                Colors.black45,
-                                                            fontSize: 12,
-                                                          ),
+                                                                color: Colors
+                                                                    .black45,
+                                                                fontSize: 12,
+                                                              ),
                                                         ),
                                                       ],
                                                     ],
@@ -3379,7 +3387,9 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
                                           child: Text(
                                             (!resolved && c.isEscalated)
                                                 ? 'ESCALATED'
-                                                : c.status.toUpperCase(),
+                                                : (c.status == 'Confirmed'
+                                                      ? 'RESOLVED'
+                                                      : c.status.toUpperCase()),
                                             style: TextStyle(
                                               color:
                                                   (!resolved && c.isEscalated)

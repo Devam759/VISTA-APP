@@ -14,10 +14,8 @@ class FirebaseService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
   // The Firestore database was created with ID 'default' (not the standard '(default)').
   // Using a lazy getter so Firebase.app() is only called after initializeApp() is done.
-  FirebaseFirestore get _db => FirebaseFirestore.instanceFor(
-    app: Firebase.app(),
-    databaseId: 'default',
-  );
+  FirebaseFirestore get _db =>
+      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
 
   FirebaseFirestore get db => _db;
 
@@ -205,25 +203,25 @@ class FirebaseService {
   Future<void> submitLeaveRequest(LeaveRequest request) async {
     return RateLimiter.run('submitLeave_${request.studentId}', () async {
       final seqId = await _getNextSequence('LA');
-    final updatedRequest = LeaveRequest(
-      id: request.id,
-      studentId: request.studentId,
-      studentName: request.studentName,
-      hostel: request.hostel,
-      fromDate: request.fromDate,
-      toDate: request.toDate,
-      reason: request.reason,
-      address: request.address,
-      parentName: request.parentName,
-      parentRelation: request.parentRelation,
-      parentContact: request.parentContact,
-      studentContact: request.studentContact,
-      status: request.status,
-      createdAt: DateTime.now(),
-      checkInTime: request.checkInTime,
-      seqId: seqId,
-    );
-    await _db.collection('leave_requests').add(updatedRequest.toMap());
+      final updatedRequest = LeaveRequest(
+        id: request.id,
+        studentId: request.studentId,
+        studentName: request.studentName,
+        hostel: request.hostel,
+        fromDate: request.fromDate,
+        toDate: request.toDate,
+        reason: request.reason,
+        address: request.address,
+        parentName: request.parentName,
+        parentRelation: request.parentRelation,
+        parentContact: request.parentContact,
+        studentContact: request.studentContact,
+        status: request.status,
+        createdAt: DateTime.now(),
+        checkInTime: request.checkInTime,
+        seqId: seqId,
+      );
+      await _db.collection('leave_requests').add(updatedRequest.toMap());
     });
   }
 
@@ -372,15 +370,20 @@ class FirebaseService {
         .where('studentId', isEqualTo: uid)
         .snapshots()
         .map((snapshot) {
-      final list = snapshot.docs
-          .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
-          .toList();
-      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return list;
-    });
+          final list = snapshot.docs
+              .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
-  Future<void> updateShortStayStatus(String id, String status, {String? roomNumber, String? allotmentHostel}) async {
+  Future<void> updateShortStayStatus(
+    String id,
+    String status, {
+    String? roomNumber,
+    String? allotmentHostel,
+  }) async {
     final updates = <String, dynamic>{'status': status};
     if (roomNumber != null) updates['roomNumber'] = roomNumber;
     if (allotmentHostel != null) updates['appliedHostel'] = allotmentHostel;
@@ -431,23 +434,23 @@ class FirebaseService {
   Future<void> submitComplaint(Complaint complaint) async {
     return RateLimiter.run('submitComplaint_${complaint.studentId}', () async {
       final seqId = await _getNextSequence('CA');
-    final updatedComplaint = Complaint(
-      id: complaint.id,
-      studentId: complaint.studentId,
-      studentName: complaint.studentName,
-      title: complaint.title,
-      description: complaint.description,
-      hostel: complaint.hostel,
-      targetRole: complaint.targetRole,
-      targetRoles: complaint.targetRoles,
-      status: complaint.status,
-      isAnonymous: complaint.isAnonymous,
-      studentConfirmed: complaint.studentConfirmed,
-      isEscalated: complaint.isEscalated,
-      createdAt: complaint.createdAt,
-      seqId: seqId,
-    );
-    await _db.collection('complaints').add(updatedComplaint.toMap());
+      final updatedComplaint = Complaint(
+        id: complaint.id,
+        studentId: complaint.studentId,
+        studentName: complaint.studentName,
+        title: complaint.title,
+        description: complaint.description,
+        hostel: complaint.hostel,
+        targetRole: complaint.targetRole,
+        targetRoles: complaint.targetRoles,
+        status: complaint.status,
+        isAnonymous: complaint.isAnonymous,
+        studentConfirmed: complaint.studentConfirmed,
+        isEscalated: complaint.isEscalated,
+        createdAt: complaint.createdAt,
+        seqId: seqId,
+      );
+      await _db.collection('complaints').add(updatedComplaint.toMap());
     });
   }
 
@@ -490,13 +493,28 @@ class FirebaseService {
     return _db.collection('complaints').doc(id).update({'status': status});
   }
 
-  Future<void> escalateComplaint(String id) {
-    return _db.collection('complaints').doc(id).update({
+  Future<void> escalateComplaint(Complaint complaint) {
+    if (complaint.targetRoles.contains('Chief Warden')) {
+      return Future.value();
+    }
+
+    List<String> nextRoles = List.from(complaint.targetRoles);
+    String nextRole;
+
+    if (complaint.targetRoles.contains('Head Warden')) {
+      if (!nextRoles.contains('Chief Warden')) nextRoles.add('Chief Warden');
+      nextRole = 'Chief Warden';
+    } else {
+      if (!nextRoles.contains('Head Warden')) nextRoles.add('Head Warden');
+      nextRole = 'Head Warden';
+    }
+
+    return _db.collection('complaints').doc(complaint.id).update({
       'status': 'Pending',
       'isEscalated': true,
-      'studentConfirmed': false,
-      'targetRole': 'Head Warden', // Keep for compatibility
-      'targetRoles': ['Head Warden', 'Chief Warden'],
+      'studentConfirmed': null,
+      'targetRole': nextRole,
+      'targetRoles': nextRoles,
     });
   }
 
@@ -610,7 +628,8 @@ class FirebaseService {
       (snapshot) => snapshot.docs
           .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
           .where((s) {
-            return !s.checkInDate.isAfter(end) && !s.checkOutDate.isBefore(start);
+            return !s.checkInDate.isAfter(end) &&
+                !s.checkOutDate.isBefore(start);
           })
           .toList(),
     );

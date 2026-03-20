@@ -1765,6 +1765,29 @@ class _ComplaintsTab extends StatelessWidget {
                           ),
                         ),
                       )
+                    else if (c.status == 'Pending' &&
+                        DateTime.now().difference(c.createdAt).inDays >= 3 &&
+                        !c.targetRoles.contains('Chief Warden'))
+                      TextButton(
+                        onPressed: () => _confirmEscalation(context, c, fs),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          backgroundColor: Colors.redAccent.withValues(
+                            alpha: 0.1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'ESCALATE',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                          ),
+                        ),
+                      )
                     else
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -1802,7 +1825,7 @@ class _ComplaintsTab extends StatelessWidget {
     );
   }
 
-  void _confirmResolution(
+  void _confirmEscalation(
     BuildContext context,
     Complaint c,
     FirebaseService fs,
@@ -1810,9 +1833,44 @@ class _ComplaintsTab extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Verify Resolution'),
+        title: const Text('Escalate Issue'),
         content: const Text(
-          'Is the issue resolved to your satisfaction? Escalating will move it to the Head Warden.',
+          'It has been more than 3 days without a resolution. Do you want to escalate this issue to the higher authorities?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              fs.escalateComplaint(c);
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'Yes, Escalate',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmResolution(
+    BuildContext context,
+    Complaint c,
+    FirebaseService fs,
+  ) {
+    final isChiefWarden = c.targetRoles.contains('Chief Warden');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Verify Resolution'),
+        content: Text(
+          isChiefWarden
+              ? 'Is the issue resolved to your satisfaction?'
+              : 'Is the issue resolved to your satisfaction? Escalating will move it to the ${c.targetRoles.contains('Head Warden') ? 'Chief Warden' : 'Head Warden'}.',
         ),
         actions: [
           TextButton(
@@ -1822,16 +1880,17 @@ class _ComplaintsTab extends StatelessWidget {
             },
             child: const Text('Yes, Solved'),
           ),
-          TextButton(
-            onPressed: () {
-              fs.escalateComplaint(c.id);
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'No, Escalate',
-              style: TextStyle(color: Colors.redAccent),
+          if (!isChiefWarden)
+            TextButton(
+              onPressed: () {
+                fs.escalateComplaint(c);
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'No, Escalate',
+                style: TextStyle(color: Colors.redAccent),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -1844,8 +1903,6 @@ class _ComplaintsTab extends StatelessWidget {
   ) {
     final titleController = TextEditingController();
     final descController = TextEditingController();
-    List<String> selectedTargets = ['Warden'];
-    final authorities = ['Warden', 'Head Warden', 'Chief Warden'];
 
     bool isSubmitting = false;
 
@@ -1900,57 +1957,6 @@ class _ComplaintsTab extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'TARGET AUTHORITIES',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: _kPrimary.withValues(alpha: 0.5),
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: authorities.map((a) {
-                      final isSelected = selectedTargets.contains(a);
-                      return FilterChip(
-                        label: Text(
-                          a,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: isSelected ? Colors.white : Colors.black54,
-                          ),
-                        ),
-                        selected: isSelected,
-                        onSelected: (val) {
-                          setModalState(() {
-                            if (val) {
-                              selectedTargets.add(a);
-                            } else {
-                              if (selectedTargets.length > 1) {
-                                selectedTargets.remove(a);
-                              }
-                            }
-                          });
-                        },
-                        selectedColor: _kPrimary,
-                        checkmarkColor: Colors.white,
-                        backgroundColor: _kBg.withValues(alpha: 0.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(
-                            color: isSelected ? _kPrimary : Colors.black12,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: isSubmitting
@@ -1971,7 +1977,7 @@ class _ComplaintsTab extends StatelessWidget {
                                   descController.text.trim(),
                                 ),
                                 hostel: user.hostel!,
-                                targetRoles: selectedTargets,
+                                targetRoles: ['Warden'],
                                 status: 'Pending',
                                 isAnonymous: true,
                                 createdAt: DateTime.now(),
