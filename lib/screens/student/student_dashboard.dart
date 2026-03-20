@@ -2453,6 +2453,7 @@ class _StudentAttendanceCalendarState
     IconData statusIcon;
     switch (status) {
       case 'Present':
+      case 'Marked':
         statusColor = _kSuccess;
         statusIcon = Icons.check_circle_rounded;
         break;
@@ -2465,7 +2466,7 @@ class _StudentAttendanceCalendarState
         statusIcon = Icons.cancel_rounded;
         break;
       case 'On Leave':
-        statusColor = Colors.orangeAccent;
+        statusColor = Colors.grey;
         statusIcon = Icons.beach_access_rounded;
         break;
       case 'Not in Stay':
@@ -2556,7 +2557,9 @@ class _StudentAttendanceCalendarState
     if (day.isAfter(DateTime.now())) return null;
 
     final att = attendance.firstWhereOrNull((a) => isSameDay(a.timestamp, day));
-    if (att != null) return att.status;
+    if (att != null) {
+      return (att.status == 'Marked') ? 'Present' : att.status;
+    }
 
     if (widget.student.hostel == 'Short Stay') {
       final hasApprovedStay = stays.any(
@@ -2605,6 +2608,7 @@ class _StudentAttendanceCalendarState
     Color color;
     switch (status) {
       case 'Present':
+      case 'Marked':
         color = _kSuccess;
         break;
       case 'Late':
@@ -2614,7 +2618,7 @@ class _StudentAttendanceCalendarState
         color = Colors.redAccent;
         break;
       case 'On Leave':
-        color = Colors.orangeAccent;
+        color = Colors.grey;
         break;
       case 'Not in Stay':
         color = Colors.grey;
@@ -2664,7 +2668,7 @@ class _StudentAttendanceCalendarState
               children: [
                 Expanded(child: _legendItem('Absent', Colors.redAccent)),
                 if (widget.student.hostel != 'Short Stay')
-                  Expanded(child: _legendItem('On Leave', Colors.orangeAccent))
+                  Expanded(child: _legendItem('On Leave', Colors.grey))
                 else
                   Expanded(child: _legendItem('Not in Stay', Colors.grey)),
               ],

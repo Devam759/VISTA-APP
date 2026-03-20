@@ -3639,6 +3639,7 @@ class _StudentAttendanceCalendarState
     IconData statusIcon;
     switch (status) {
       case 'Present':
+      case 'Marked':
         statusColor = Colors.green;
         statusIcon = Icons.check_circle;
         break;
@@ -3651,7 +3652,7 @@ class _StudentAttendanceCalendarState
         statusIcon = Icons.cancel;
         break;
       case 'On Leave':
-        statusColor = Colors.orange;
+        statusColor = Colors.grey;
         statusIcon = Icons.beach_access;
         break;
       default:
@@ -3723,7 +3724,9 @@ class _StudentAttendanceCalendarState
 
     // Check attendance
     final att = attendance.firstWhereOrNull((a) => isSameDay(a.timestamp, day));
-    if (att != null) return att.status; // Present, Late
+    if (att != null) {
+      return (att.status == 'Marked') ? 'Present' : att.status;
+    }
 
     // Check leave
     final onLeave = leaves.any(
@@ -3749,6 +3752,7 @@ class _StudentAttendanceCalendarState
     Color color;
     switch (status) {
       case 'Present':
+      case 'Marked':
         color = Colors.green;
         break;
       case 'Late':
@@ -3758,7 +3762,7 @@ class _StudentAttendanceCalendarState
         color = Colors.red;
         break;
       case 'On Leave':
-        color = Colors.orange;
+        color = Colors.grey;
         break;
       default:
         color = Colors.transparent;
@@ -3800,7 +3804,7 @@ class _StudentAttendanceCalendarState
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _legendItem('Absent', Colors.red),
-              _legendItem('On Leave', Colors.orange),
+              _legendItem('On Leave', Colors.grey),
             ],
           ),
         ],

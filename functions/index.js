@@ -46,11 +46,11 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
         leavesSnapshot.forEach(doc => {
             const data = doc.data();
             try {
-                const outDate = data.outDate.toDate ? data.outDate.toDate() : new Date(data.outDate);
-                const inDate = data.inDate.toDate ? data.inDate.toDate() : new Date(data.inDate);
-                outDate.setHours(0, 0, 0, 0);
-                inDate.setHours(23, 59, 59, 999);
-                if (today >= outDate && today <= inDate) {
+                const fromDate = data.fromDate.toDate ? data.fromDate.toDate() : new Date(data.fromDate);
+                const toDate = data.toDate.toDate ? data.toDate.toDate() : new Date(data.toDate);
+                fromDate.setHours(0, 0, 0, 0);
+                toDate.setHours(23, 59, 59, 999);
+                if (today >= fromDate && today <= toDate) {
                     onLeaveStudentIds.add(data.studentId);
                 }
             } catch (e) {
@@ -167,7 +167,7 @@ exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.databas
             await messaging.sendEachForMulticast({
                 notification: {
                     title: 'New Leave Request',
-                    body: `${leave.studentName} has requested leave from ${leave.outDate}.`,
+                    body: `${leave.studentName} has requested leave from ${leave.fromDate}.`,
                 },
                 tokens: tokens,
             });
@@ -201,7 +201,7 @@ exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.dat
             await messaging.sendEachForMulticast({
                 notification: {
                     title: 'New Complaint Received',
-                    body: `A new complaint has been filed for ${complaint.hostel}: ${complaint.subject}`,
+                    body: `A new complaint has been filed for ${complaint.hostel}: ${complaint.title}`,
                 },
                 tokens: [...new Set(tokens)],
             });
