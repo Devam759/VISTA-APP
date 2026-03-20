@@ -17,7 +17,8 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         request.auth.uid == userId || 
         getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden'
+        getUserRole() == 'headWarden' ||
+        getUserRole() == 'chiefWarden'
       );
       
       allow create: if isSignedIn();
@@ -27,12 +28,12 @@ service cloud.firestore {
         (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isApproved', 'roomNumber'])) ||
         // Warden can approve students
         (getUserRole() == 'warden' && request.resource.data.diff(resource.data).affectedKeys().hasAny(['isApproved', 'roomNumber'])) ||
-        // Head Warden admin
-        (getUserRole() == 'headWarden')
+        // Head Warden & Chief Warden admin
+        (getUserRole() == 'headWarden' || getUserRole() == 'chiefWarden')
       );
       
       // Face embeddings: only owner or warden can access
-      allow get: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'warden');
+      allow get: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'warden' || getUserRole() == 'headWarden' || getUserRole() == 'chiefWarden');
     }
 
     // ── ATTENDANCE ───────────────────────────────────────────────────────────
@@ -41,7 +42,8 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden'
+        getUserRole() == 'headWarden' ||
+        getUserRole() == 'chiefWarden'
       );
     }
 
@@ -51,11 +53,13 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden'
+        getUserRole() == 'headWarden' ||
+        getUserRole() == 'chiefWarden'
       );
       allow update: if isSignedIn() && (
         getUserRole() == 'warden' || 
         getUserRole() == 'headWarden' ||
+        getUserRole() == 'chiefWarden' ||
         (resource.data.studentId == request.auth.uid && (
           request.resource.data.status == 'Cancelled' || 
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkInTime'])
@@ -69,11 +73,13 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden'
+        getUserRole() == 'headWarden' ||
+        getUserRole() == 'chiefWarden'
       );
       allow update: if isSignedIn() && (
         getUserRole() == 'warden' || 
         getUserRole() == 'headWarden' ||
+        getUserRole() == 'chiefWarden' ||
         resource.data.studentId == request.auth.uid
       );
     }
@@ -96,11 +102,13 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden'
+        getUserRole() == 'headWarden' ||
+        getUserRole() == 'chiefWarden'
       );
       allow update: if isSignedIn() && (
         getUserRole() == 'warden' || 
         getUserRole() == 'headWarden' ||
+        getUserRole() == 'chiefWarden' ||
         resource.data.studentId == request.auth.uid
       );
     }
