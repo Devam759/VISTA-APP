@@ -21,13 +21,16 @@ service cloud.firestore {
         getUserRole() == 'chiefWarden'
       );
       
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && 
+        request.auth.uid == userId && 
+        request.resource.data.role == 'student' && 
+        request.resource.data.isApproved == false;
       
       allow update: if isSignedIn() && (
         // Student can update their own profile basic info
-        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isApproved', 'roomNumber'])) ||
-        // Warden can approve students
-        (getUserRole() == 'warden' && request.resource.data.diff(resource.data).affectedKeys().hasAny(['isApproved', 'roomNumber'])) ||
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isApproved', 'roomNumber', 'hostel'])) ||
+        // Warden can approve students (but absolutely cannot change their role, uid, or email)
+        (getUserRole() == 'warden' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid', 'email'])) ||
         // Head Warden & Chief Warden admin
         (getUserRole() == 'headWarden' || getUserRole() == 'chiefWarden')
       );
@@ -39,6 +42,7 @@ service cloud.firestore {
     // ── ATTENDANCE ───────────────────────────────────────────────────────────
     match /attendance/{id} {
       allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      
       allow read: if isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         getUserRole() == 'warden' || 
@@ -49,7 +53,11 @@ service cloud.firestore {
 
     // ── LEAVE REQUESTS ───────────────────────────────────────────────────────
     match /leave_requests/{id} {
-      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow create: if isSignedIn() && 
+        request.resource.data.studentId == request.auth.uid &&
+        request.resource.data.status == 'Pending' &&
+        !request.resource.data.keys().hasAny(['approvedBy', 'rejectedBy', 'actualCheckOutTime', 'checkInTime']);
+        
       allow read: if isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         getUserRole() == 'warden' || 
@@ -61,15 +69,19 @@ service cloud.firestore {
         getUserRole() == 'headWarden' ||
         getUserRole() == 'chiefWarden' ||
         (resource.data.studentId == request.auth.uid && (
-          request.resource.data.status == 'Cancelled' || 
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkInTime'])
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'Cancelled') || 
+          (resource.data.status == 'Pending' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'studentId', 'approvedBy', 'rejectedBy', 'checkInTime']))
         ))
       );
     }
 
     // ── COMPLAINTS ───────────────────────────────────────────────────────────
     match /complaints/{id} {
-      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow create: if isSignedIn() && 
+        request.resource.data.studentId == request.auth.uid &&
+        request.resource.data.status == 'Pending' &&
+        !request.resource.data.keys().hasAny(['resolvedBy', 'remarks', 'resolvedAt']);
+        
       allow read: if isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         getUserRole() == 'warden' || 
@@ -80,25 +92,39 @@ service cloud.firestore {
         getUserRole() == 'warden' || 
         getUserRole() == 'headWarden' ||
         getUserRole() == 'chiefWarden' ||
-        resource.data.studentId == request.auth.uid
+        (resource.data.studentId == request.auth.uid && 
+         resource.data.status == 'Pending' && 
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'studentId', 'resolvedBy', 'remarks', 'resolvedAt']))
       );
     }
 
     // ── COUNTERS ─────────────────────────────────────────────────────────────
     match /counters/{id} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.current == 1;
+      allow update: if isSignedIn() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['current']) &&
+        request.resource.data.current == resource.data.current + 1;
+      allow delete: if false; // Only admins via Firebase Console can delete
     }
 
     // ── PHONE MAPPINGS (Secure Lookup) ───────────────────────────────────────
     match /phone_mappings/{phone} {
       allow get: if true;
       allow list: if false;
-      allow write: if isSignedIn();
+      allow write: if isSignedIn() && 
+        (!exists(/databases/$(database)/documents/phone_mappings/$(phone)) || 
+         resource.data.email == request.auth.token.email) &&
+        request.resource.data.email == request.auth.token.email;
     }
 
     // ── SHORT STAY REQUESTS ──────────────────────────────────────────────────
     match /short_stay_requests/{id} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && 
+        request.resource.data.studentId == request.auth.uid &&
+        request.resource.data.status == 'Pending' &&
+        !request.resource.data.keys().hasAny(['approvedBy', 'rejectedBy', 'actualCheckOutTime']);
+        
       allow read: if isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         getUserRole() == 'warden' || 
@@ -109,7 +135,10 @@ service cloud.firestore {
         getUserRole() == 'warden' || 
         getUserRole() == 'headWarden' ||
         getUserRole() == 'chiefWarden' ||
-        resource.data.studentId == request.auth.uid
+        (resource.data.studentId == request.auth.uid && (
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'Cancelled') || 
+          (resource.data.status == 'Pending' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'studentId', 'approvedBy', 'rejectedBy', 'actualCheckOutTime']))
+        ))
       );
     }
   }

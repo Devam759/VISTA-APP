@@ -409,10 +409,10 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   }
 
   Future<void> _checkDevice() async {
-    final isReal = await SecurityService.isRealDevice();
+    final isSecure = await SecurityService.checkSecurity();
     if (mounted) {
       setState(() {
-        _isRealDevice = isReal;
+        _isRealDevice = isSecure;
       });
     }
   }
@@ -432,6 +432,10 @@ class _AttendanceTabState extends State<_AttendanceTab> {
         return;
       }
       Position position = await Geolocator.getCurrentPosition();
+      if (position.isMocked) {
+        _showError('Mock location detected! Please disable fake GPS apps to check in.');
+        return;
+      }
       bool inside = _isPointInGeofence(position.latitude, position.longitude);
       if (!inside) {
         _showError('You must be inside the campus to check-in from leave.');
@@ -487,7 +491,10 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb || !_isRealDevice) {
+    final bool isMobileDevice = !kIsWeb && 
+        (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+        
+    if (!isMobileDevice || !_isRealDevice) {
       return Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1021,6 +1028,11 @@ class _AttendanceTabState extends State<_AttendanceTab> {
             accuracy: LocationAccuracy.high,
           ),
         );
+        if (position.isMocked) {
+          _showError('Mock location detected! Please disable fake GPS apps to mark attendance.');
+          if (mounted) setState(() => _isMarking = false);
+          return;
+        }
         bool inside = _isPointInGeofence(position.latitude, position.longitude);
         if (!inside) {
           _showError(
