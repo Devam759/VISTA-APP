@@ -193,9 +193,11 @@ class FirebaseService {
       int nextVal = currentVal + 1;
       transaction.set(counterRef, {'current': nextVal});
 
-      // Format as 3-digit with padding (e.g., CA001)
-      String padded = nextVal.toString().padLeft(3, '0');
-      return '$prefix$padded';
+      // Get last 2 digits of current year (e.g., 2024 -> 24)
+      final year = DateTime.now().year % 100;
+      
+      // Return Prefix + Year + Counter (e.g., CA241)
+      return '$prefix$year$nextVal';
     });
   }
 
@@ -383,11 +385,21 @@ class FirebaseService {
     String status, {
     String? roomNumber,
     String? allotmentHostel,
+    String? actionBy,
   }) async {
-    final updates = <String, dynamic>{'status': status};
-    if (roomNumber != null) updates['roomNumber'] = roomNumber;
-    if (allotmentHostel != null) updates['appliedHostel'] = allotmentHostel;
-    await _db.collection('short_stay_requests').doc(id).update(updates);
+    final Map<String, dynamic> data = {'status': status};
+    if (roomNumber != null) data['roomNumber'] = roomNumber;
+    if (allotmentHostel != null) data['appliedHostel'] = allotmentHostel;
+    
+    if (actionBy != null) {
+      if (status == 'Approved') {
+        data['approvedBy'] = actionBy;
+      } else if (status == 'Rejected') {
+        data['rejectedBy'] = actionBy;
+      }
+    }
+
+    await _db.collection('short_stay_requests').doc(id).update(data);
 
     if (status == 'Approved') {
       final snap = await _db.collection('short_stay_requests').doc(id).get();

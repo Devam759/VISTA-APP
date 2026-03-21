@@ -206,14 +206,23 @@ class _StudentDashboardState extends State<StudentDashboard> {
       );
     }
 
-    final user = Provider.of<AuthProvider>(context).userProfile!;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.userProfile;
+
+    // Safety check for null user during logout transition
+    if (user == null) {
+      return const Scaffold(
+        backgroundColor: _kBg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context, user),
+            _buildHeader(context, user, authProvider),
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
@@ -308,7 +317,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, VistaUser user) {
+  Widget _buildHeader(BuildContext context, VistaUser user, AuthProvider authProvider) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       child: Column(
@@ -331,7 +340,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                onPressed: () => _firebaseService.signOut(),
+                onPressed: () => authProvider.signOut(),
                 icon: const Icon(
                   Icons.power_settings_new_rounded,
                   color: Colors.black26,
@@ -2715,7 +2724,7 @@ class _ShortStayTab extends StatelessWidget {
       children: [
         _TabHeader(
           title: 'Hostel Stays',
-          subtitle: 'Apply for temporary stay',
+          subtitle: 'Apply for short stay',
           onAction: () => _showShortStayDialog(context),
           actionLabel: 'Apply Now',
           actionIcon: Icons.add_home_work_rounded,

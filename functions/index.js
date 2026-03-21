@@ -1,6 +1,6 @@
 const functions = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
@@ -9,14 +9,19 @@ const db = getFirestore('default');
 const messaging = getMessaging();
 
 /**
+ * Helper to get current Date in Asia/Kolkata
+ */
+function getISTDate() {
+    const now = new Date();
+    return new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+}
+
+/**
  * Helper to get current date in YYYY-M-D format (matching Dart's format)
  */
 function getCurrentDateString() {
-    const date = new Date();
-    const options = { timeZone: 'Asia/Kolkata' };
-    const formatterString = date.toLocaleString('en-US', { ...options, year: 'numeric', month: 'numeric', day: 'numeric' });
-    const parts = formatterString.split('/'); // M/D/YYYY
-    return `${parts[2]}-${parts[0]}-${parts[1]}`;
+    const ist = getISTDate();
+    return `${ist.getFullYear()}-${ist.getMonth() + 1}-${ist.getDate()}`;
 }
 
 /**
@@ -24,9 +29,11 @@ function getCurrentDateString() {
  */
 async function sendNotificationToEligibleStudents(isMissedReminder = false) {
     const dateStr = getCurrentDateString();
+    const nowIST = getISTDate();
     console.log(`Starting reminder run for date: ${dateStr}, isMissed: ${isMissedReminder}`);
 
     try {
+        // 1. Get all approved students
         const studentsSnapshot = await db.collection('users')
             .where('role', '==', 'student')
             .where('isApproved', '==', true)
@@ -37,7 +44,25 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             return;
         }
 
-        const today = new Date();
+        // 2. Get active approved short stays (for day scholars)
+        const activeShortStays = await db.collection('short_stay_requests')
+            .where('status', '==', 'Approved')
+            .get();
+        
+        const activeShortStayUids = new Set();
+        activeShortStays.forEach(doc => {
+            const data = doc.data();
+            const start = data.checkInDate.toDate();
+            const end = data.checkOutDate.toDate();
+            // Reset times for date-only comparison or keep as is if they are midnight
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+            if (nowIST >= start && nowIST <= end) {
+                activeShortStayUids.add(data.studentId);
+            }
+        });
+
+        // 3. Get active approved leaves
         const leavesSnapshot = await db.collection('leave_requests')
             .where('status', '==', 'Approved')
             .get();
@@ -50,7 +75,7 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
                 const toDate = data.toDate.toDate ? data.toDate.toDate() : new Date(data.toDate);
                 fromDate.setHours(0, 0, 0, 0);
                 toDate.setHours(23, 59, 59, 999);
-                if (today >= fromDate && today <= toDate) {
+                if (nowIST >= fromDate && nowIST <= toDate) {
                     onLeaveStudentIds.add(data.studentId);
                 }
             } catch (e) {
@@ -58,6 +83,7 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             }
         });
 
+        // 4. Get today's attendance (if missed reminder)
         const markedStudentIds = new Set();
         if (isMissedReminder) {
             const attendanceSnapshot = await db.collection('attendance')
@@ -73,10 +99,19 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             const data = doc.data();
             const uid = data.uid || doc.id;
             const fcmToken = data.fcmToken;
-            const isOnLeave = onLeaveStudentIds.has(uid);
+            
+            // Exclude if on leave
+            if (onLeaveStudentIds.has(uid)) return;
+            
+            // Inclusion logic:
+            // - Regular hosteller (not day scholar)
+            // - OR Day Scholar with ACTIVE short stay
+            const isEligibleHosteller = !data.isDayScholar || activeShortStayUids.has(uid);
+            
+            // Exclude if already marked (for 10:20 PM)
             const isMarked = isMissedReminder && markedStudentIds.has(uid);
 
-            if (fcmToken && !isOnLeave && !isMarked) {
+            if (fcmToken && isEligibleHosteller && !isMarked) {
                 tokens.push(fcmToken);
             }
         });
@@ -97,7 +132,7 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
         };
 
         const response = await messaging.sendEachForMulticast(message);
-        console.log(`${response.successCount} messages sent.`);
+        console.log(`${response.successCount} messages sent to ${tokens.length} potential tokens.`);
     } catch (error) {
         console.error('Error in sendNotificationToEligibleStudents:', error);
     }
@@ -127,7 +162,7 @@ exports.notifyWardenNewRegistration = functions.region('asia-south1').firestore.
 
     try {
         const wardens = await db.collection('users')
-            .where('role', '==', 'Warden')
+            .where('role', '==', 'warden')
             .where('hostel', '==', newUser.hostel)
             .get();
 
@@ -154,7 +189,7 @@ exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.databas
     const leave = snapshot.data();
     try {
         const wardens = await db.collection('users')
-            .where('role', '==', 'Warden')
+            .where('role', '==', 'warden')
             .where('hostel', '==', leave.hostel)
             .get();
 
@@ -181,7 +216,7 @@ exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.dat
     const complaint = snapshot.data();
     try {
         const wardens = await db.collection('users')
-            .where('role', '==', 'Warden')
+            .where('role', '==', 'warden')
             .where('hostel', '==', complaint.hostel)
             .get();
 
@@ -190,8 +225,8 @@ exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.dat
             if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
         });
 
-        if (complaint.targetRoles && complaint.targetRoles.includes('Head Warden')) {
-            const headWardens = await db.collection('users').where('role', '==', 'Head Warden').get();
+        if (complaint.targetRoles && (complaint.targetRoles.includes('headWarden') || complaint.targetRoles.includes('Head Warden'))) {
+            const headWardens = await db.collection('users').where('role', '==', 'headWarden').get();
             headWardens.forEach(doc => {
                 if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
             });
@@ -211,12 +246,51 @@ exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.dat
     }
 });
 
+exports.notifyWardenNewShortStay = functions.region('asia-south1').firestore.database('default').document('short_stay_requests/{id}').onCreate(async (snapshot, context) => {
+    const request = snapshot.data();
+    try {
+        // Short stay for boys goes to BH1/BH2 wardens, girls to GH1/GH2
+        const targetHostels = request.gender === 'Male' ? ['BH1', 'BH2'] : ['GH1', 'GH2'];
+        
+        const wardens = await db.collection('users')
+            .where('role', '==', 'warden')
+            .where('hostel', 'in', targetHostels)
+            .get();
+
+        const tokens = [];
+        wardens.forEach(doc => {
+            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+        });
+
+        // Always notify Head Warden for all short stays
+        const headWardens = await db.collection('users').where('role', '==', 'headWarden').get();
+        headWardens.forEach(doc => {
+            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+        });
+
+        if (tokens.length > 0) {
+            await messaging.sendEachForMulticast({
+                notification: {
+                    title: 'New Short Stay Request',
+                    body: `${request.studentName} (${request.gender}) is requesting a short stay for ${request.reason}.`,
+                },
+                tokens: [...new Set(tokens)],
+            });
+        }
+    } catch (error) {
+        console.error('Error in notifyWardenNewShortStay:', error);
+    }
+});
+
 exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.database('default').document('{col}/{id}').onUpdate(async (change, context) => {
     const col = context.params.col;
-    if (!['users', 'leave_requests', 'complaints'].includes(col)) return;
+    if (!['users', 'leave_requests', 'complaints', 'short_stay_requests'].includes(col)) return;
 
     const oldData = change.before.data();
     const newData = change.after.data();
+
+    // Avoid triggering if status hasn't changed
+    if (oldData.status === newData.status && col !== 'users') return;
 
     let title = '';
     let body = '';
@@ -229,17 +303,17 @@ exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.databa
             studentUid = newData.uid;
         }
     } else if (col === 'leave_requests') {
-        if (oldData.status !== newData.status) {
-            title = 'Leave Request Update';
-            body = `Your leave request has been ${newData.status.toLowerCase()}.`;
-            studentUid = newData.studentId;
-        }
+        title = 'Leave Request Update';
+        body = `Your leave request has been ${newData.status.toLowerCase()}.`;
+        studentUid = newData.studentId;
+    } else if (col === 'short_stay_requests') {
+        title = 'Short Stay Update';
+        body = `Your short stay request is now ${newData.status.toLowerCase()}${newData.roomNumber ? '. Allotted Room: ' + newData.roomNumber : ''}.`;
+        studentUid = newData.studentId;
     } else if (col === 'complaints') {
-        if (oldData.status !== newData.status || oldData.isEscalated !== newData.isEscalated) {
-            title = 'Complaint Update';
-            body = newData.isEscalated ? 'Your complaint has been escalated.' : `Status now: ${newData.status}`;
-            studentUid = newData.studentId;
-        }
+        title = 'Complaint Update';
+        body = newData.isEscalated ? 'Your complaint has been escalated.' : `Status now: ${newData.status}`;
+        studentUid = newData.studentId;
     }
 
     if (title && studentUid) {

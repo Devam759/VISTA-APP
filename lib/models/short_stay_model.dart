@@ -22,6 +22,8 @@ class ShortStayRequest {
   final DateTime createdAt;
   final DateTime? actualCheckOutTime;
   final DateTime? pendingToDate; // For extension requests
+  final String? approvedBy;
+  final String? rejectedBy;
 
   ShortStayRequest({
     required this.id,
@@ -45,6 +47,8 @@ class ShortStayRequest {
     required this.createdAt,
     this.actualCheckOutTime,
     this.pendingToDate,
+    this.approvedBy,
+    this.rejectedBy,
   });
 
   Map<String, dynamic> toMap() {
@@ -73,6 +77,8 @@ class ShortStayRequest {
       'pendingToDate': pendingToDate != null 
           ? Timestamp.fromDate(pendingToDate!) 
           : null,
+      'approvedBy': approvedBy,
+      'rejectedBy': rejectedBy,
     };
   }
 
@@ -99,6 +105,8 @@ class ShortStayRequest {
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       actualCheckOutTime: (map['actualCheckOutTime'] as Timestamp?)?.toDate(),
       pendingToDate: (map['pendingToDate'] as Timestamp?)?.toDate(),
+      approvedBy: map['approvedBy'],
+      rejectedBy: map['rejectedBy'],
     );
   }
 }

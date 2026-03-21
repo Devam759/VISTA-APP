@@ -318,6 +318,7 @@ class _WardenDashboardState extends State<WardenDashboard> {
   }
 
   void _onTabTapped(int index) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() {
       _selectedIndex = index;
       if (index == 0) _hasNewRegistrations = false;
@@ -336,7 +337,15 @@ class _WardenDashboardState extends State<WardenDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final warden = Provider.of<AuthProvider>(context).userProfile!;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final warden = authProvider.userProfile;
+
+    if (warden == null) {
+      return const Scaffold(
+        backgroundColor: _kBg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     final pages = [
       _StudentsTab(key: _studentsKey, warden: warden, fs: _fs),
@@ -518,7 +527,7 @@ class _WardenDashboardState extends State<WardenDashboard> {
                               tooltip: 'Export Data',
                             ),
                             IconButton(
-                              onPressed: () => FirebaseService().signOut(),
+                              onPressed: () => authProvider.signOut(),
                               icon: const Icon(
                                 Icons.logout_rounded,
                                 color: Colors.white60,
@@ -2460,7 +2469,7 @@ class _LeavesTabState extends State<_LeavesTab> {
                       () => _searchQuery = InputSanitizer.sanitize(v),
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Search student name...',
+                      hintText: 'Search by student or ID (e.g. LA241)...',
                       hintStyle: const TextStyle(
                         color: Colors.black26,
                         fontSize: 13,
@@ -2593,9 +2602,13 @@ class _LeavesTabState extends State<_LeavesTab> {
               if (_searchQuery.isNotEmpty) {
                 list = list
                     .where(
-                      (l) => l.studentName.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ),
+                      (l) =>
+                          l.studentName.toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ) ||
+                          l.seqId.toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ),
                     )
                     .toList();
               }
@@ -3036,7 +3049,7 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
                       () => _searchQuery = InputSanitizer.sanitize(v),
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Search complaint...',
+                      hintText: 'Search by title or ID (e.g. CA241)...',
                       hintStyle: const TextStyle(
                         color: Colors.black26,
                         fontSize: 13,
@@ -3127,13 +3140,20 @@ class _ComplaintsTabState extends State<_ComplaintsTab> {
 
               // Apply Local Filters
               if (_searchQuery.isNotEmpty) {
-                list = list
-                    .where(
-                      (c) => c.title.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ),
-                    )
-                    .toList();
+                    list = list
+                        .where(
+                          (c) =>
+                              c.title.toLowerCase().contains(
+                                    _searchQuery.toLowerCase(),
+                                  ) ||
+                              c.seqId.toLowerCase().contains(
+                                    _searchQuery.toLowerCase(),
+                                  ) ||
+                              c.studentName.toLowerCase().contains(
+                                    _searchQuery.toLowerCase(),
+                                  ),
+                        )
+                        .toList();
               }
 
               if (_selectedDate != null) {
@@ -3442,6 +3462,7 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                   'Approved',
                   roomNumber: roomCtrl.text.trim(),
                   allotmentHostel: selectedHostel,
+                  actionBy: widget.warden.name,
                 );
                 Navigator.pop(context);
               },
@@ -3507,7 +3528,7 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
               TextField(
                 controller: _searchCtrl,
                 decoration: InputDecoration(
-                  hintText: 'Search by Student Name...',
+                  hintText: 'Search by student or ID (e.g. SS241)...',
                   prefixIcon: const Icon(Icons.search, size: 20),
                   filled: true,
                   fillColor: _kBg,
@@ -3556,9 +3577,16 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
               if (_searchQuery.isNotEmpty) {
                 list = list
                     .where(
-                      (r) => r.studentName.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ),
+                      (r) =>
+                          r.studentName.toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ) ||
+                          r.seqId.toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ) ||
+                          (r.roomNumber ?? '').toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ),
                     )
                     .toList();
               }
@@ -3639,17 +3667,41 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                                           .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(
-                                  r.status.toUpperCase(),
-                                  style: TextStyle(
-                                    color: r.status == 'Approved'
-                                        ? Colors.green
-                                        : (r.status == 'Rejected'
-                                              ? Colors.red
-                                              : Colors.orange),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      r.status.toUpperCase(),
+                                      style: TextStyle(
+                                        color:
+                                            r.status == 'Approved'
+                                                ? Colors.green
+                                                : (r.status == 'Rejected'
+                                                      ? Colors.red
+                                                      : Colors.orange),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (r.approvedBy != null)
+                                      Text(
+                                        'By ${r.approvedBy}',
+                                        style: const TextStyle(
+                                          fontSize: 8,
+                                          color: Colors.black38,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      )
+                                    else if (r.rejectedBy != null)
+                                      Text(
+                                        'By ${r.rejectedBy}',
+                                        style: const TextStyle(
+                                          fontSize: 8,
+                                          color: Colors.black38,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                           ],
@@ -3696,7 +3748,7 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
                               Expanded(
                                 child: OutlinedButton(
                                   onPressed: () => widget.fs
-                                      .updateShortStayStatus(r.id, 'Rejected'),
+                                      .updateShortStayStatus(r.id, 'Rejected', actionBy: widget.warden.name),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.red,
                                     side: const BorderSide(color: Colors.red),
