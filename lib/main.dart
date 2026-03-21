@@ -48,6 +48,18 @@ void main() async {
         providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
         providerApple: const AppleDebugProvider(),
       );
+      // In debug mode, force-fetch the App Check token so it prints in Flutter console
+      if (kDebugMode) {
+        try {
+          final token = await FirebaseAppCheck.instance.getToken(true);
+          debugPrint("\n\n=======================================================");
+          debugPrint("YOUR FIREBASE APP CHECK DEBUG TOKEN IS:");
+          debugPrint(token ?? "Failed to get token");
+          debugPrint("=======================================================\n\n");
+        } catch (e) {
+          debugPrint("Could not fetch App Check debug token: $e");
+        }
+      }
     }
 
     debugPrint("Firebase initialized successfully!");

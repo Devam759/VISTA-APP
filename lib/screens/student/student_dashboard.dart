@@ -410,9 +410,10 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
   Future<void> _checkDevice() async {
     final isSecure = await SecurityService.checkSecurity();
+    final isReal = await SecurityService.isRealDevice();
     if (mounted) {
       setState(() {
-        _isRealDevice = isSecure;
+        _isRealDevice = isSecure && isReal;
       });
     }
   }
