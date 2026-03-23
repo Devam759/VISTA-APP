@@ -52,7 +52,7 @@ class ShortStayRequest {
   });
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = {
       'seqId': seqId,
       'studentId': studentId,
       'studentName': studentName,
@@ -71,15 +71,18 @@ class ShortStayRequest {
       'appliedHostel': appliedHostel,
       'roomNumber': roomNumber,
       'createdAt': Timestamp.fromDate(createdAt),
-      'actualCheckOutTime': actualCheckOutTime != null 
-          ? Timestamp.fromDate(actualCheckOutTime!) 
-          : null,
-      'pendingToDate': pendingToDate != null 
-          ? Timestamp.fromDate(pendingToDate!) 
-          : null,
-      'approvedBy': approvedBy,
-      'rejectedBy': rejectedBy,
     };
+
+    if (actualCheckOutTime != null) {
+      map['actualCheckOutTime'] = Timestamp.fromDate(actualCheckOutTime!);
+    }
+    if (pendingToDate != null) {
+      map['pendingToDate'] = Timestamp.fromDate(pendingToDate!);
+    }
+    if (approvedBy != null) map['approvedBy'] = approvedBy;
+    if (rejectedBy != null) map['rejectedBy'] = rejectedBy;
+
+    return map;
   }
 
   factory ShortStayRequest.fromMap(Map<String, dynamic> map, String id) {

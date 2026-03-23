@@ -4,15 +4,16 @@ import 'package:flutter/foundation.dart';
 // Mobile implementation using the safe_device package.
 class SecurityImplementation {
   static Future<bool> isSecure() async {
-    if (kDebugMode) return true; // Allows you to navigate the app on your emulator while coding
+    // if (kDebugMode) return true; // Removed per user request to block emulators even in debug
     try {
       if (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS) {
         bool isRealDevice = await SafeDevice.isRealDevice;
         bool isJailBroken = await SafeDevice.isJailBroken;
         bool isMock = await SafeDevice.isMockLocation;
+        bool isUsbDebugging = await SafeDevice.isUsbDebuggingEnabled;
 
-        return isRealDevice && !isJailBroken && !isMock;
+        return isRealDevice && !isJailBroken && !isMock && !isUsbDebugging;
       }
     } catch (e) {
       debugPrint("Security check failed on mobile: $e");
@@ -21,7 +22,7 @@ class SecurityImplementation {
   }
 
   static Future<bool> isRealDevice() async {
-    if (kDebugMode) return true; // Temporary bypass so you can test Attendance on Emulator
+    // if (kDebugMode) return true; // Removed per user request
     try {
       if (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS) {

@@ -42,7 +42,7 @@ class LeaveRequest {
   });
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = {
       'studentId': studentId,
       'studentName': studentName,
       'hostel': hostel,
@@ -58,9 +58,12 @@ class LeaveRequest {
       'isNotified': isNotified,
       'lastStatusNotified': lastStatusNotified,
       'createdAt': FieldValue.serverTimestamp(),
-      'checkInTime': checkInTime != null ? Timestamp.fromDate(checkInTime!) : null,
       'seqId': seqId,
     };
+    if (checkInTime != null) {
+      map['checkInTime'] = Timestamp.fromDate(checkInTime!);
+    }
+    return map;
   }
 
   factory LeaveRequest.fromMap(Map<String, dynamic> map, String id) {
