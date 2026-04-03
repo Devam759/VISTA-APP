@@ -91,7 +91,9 @@ flutter:
   assets:
     - assets/images/
     - assets/models/
-    - .env
+    # NOTE: .env is intentionally excluded from the asset bundle.
+    # Secrets must never ship inside the APK (extractable with apktool).
+    # Use environment-specific firebase_options.dart or CI/CD secrets instead.
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

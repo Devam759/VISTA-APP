@@ -2,153 +2,247 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
+
+    // ── Helper functions ───────────────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+
+    function uid() {
+      return request.auth.uid;
     }
 
-    // ── USERS COLLECTION ─────────────────────────────────────────────────────
+    // Reads role from Firestore once per rule evaluation (cached by backend).
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(uid())).data.role;
+    }
+
+    function isWarden() {
+      return getUserRole() == 'warden';
+    }
+
+    function isHeadWarden() {
+      return getUserRole() == 'headWarden';
+    }
+
+    function isChiefWarden() {
+      return getUserRole() == 'chiefWarden';
+    }
+
+    function isStaff() {
+      return isWarden() || isHeadWarden() || isChiefWarden();
+    }
+
+    // True only when a Cloud Function or admin SDK is calling
+    // (firebase-admin sets admin = true in the auth token).
+    function isAdminCaller() {
+      return request.auth.token.get('admin', false) == true;
+    }
+
+    // ── Valid status whitelists ────────────────────────────────────────────
+    function validLeaveStatus() {
+      return request.resource.data.status in
+        ['Pending', 'Approved', 'Rejected', 'Cancelled'];
+    }
+
+    function validShortStayStatus() {
+      return request.resource.data.status in
+        ['Pending', 'Approved', 'Rejected', 'Cancelled', 'Completed'];
+    }
+
+    function validComplaintStatus() {
+      return request.resource.data.status in
+        ['Pending', 'Resolved', 'Confirmed', 'Escalated'];
+    }
+
+    // ── USERS ──────────────────────────────────────────────────────────────
     match /users/{userId} {
+      // Read: own doc, or any staff member.
       allow read: if isSignedIn() && (
-        request.auth.uid == userId || 
+        uid() == userId ||
         resource.data.email == request.auth.token.email ||
         userId == request.auth.token.email ||
-        getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden' ||
-        getUserRole() == 'chiefWarden'
+        isStaff()
       );
-      
-      allow create: if isSignedIn() && 
-        request.auth.uid == userId && 
-        request.resource.data.role == 'student' && 
-        request.resource.data.isApproved == false;
-      
+
+      // Create: only the user themselves, as a student, not pre-approved.
+      allow create: if isSignedIn()
+        && uid() == userId
+        && request.resource.data.role == 'student'
+        && request.resource.data.isApproved == false
+        // Block injection of privileged fields at creation time.
+        && !request.resource.data.keys().hasAny(['fcmToken', 'hasUsedShortStay']);
+
       allow update: if isSignedIn() && (
-        // Student can update their own profile basic info
-        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isApproved', 'roomNumber', 'hostel'])) ||
-        // Warden can approve students (but absolutely cannot change their role, uid, or email)
-        (getUserRole() == 'warden' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid', 'email'])) ||
-        // Head Warden & Chief Warden admin
-        (getUserRole() == 'headWarden' || getUserRole() == 'chiefWarden')
+        // Student updates own non-sensitive fields only.
+        (uid() == userId
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['role', 'isApproved', 'roomNumber', 'hostel',
+                        'uid', 'email', 'hasUsedShortStay'])
+        ) ||
+        // Warden can approve/assign room but cannot touch role or uid or email.
+        (isWarden()
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['role', 'uid', 'email'])
+        ) ||
+        // Head/Chief wardens have full update rights (still cannot change role).
+        (isHeadWarden() || isChiefWarden())
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid'])
       );
-      
-      // Face embeddings: only owner or warden can access
-      allow get: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'warden' || getUserRole() == 'headWarden' || getUserRole() == 'chiefWarden');
-      
-      // Allow deletion of pre-populated email-based profiles during migration
-      allow delete: if isSignedIn() && (request.auth.uid == userId || userId == request.auth.token.email);
+
+      // Face embeddings: only owner or staff.
+      allow get: if isSignedIn() && (uid() == userId || isStaff());
     }
 
-    // ── ATTENDANCE ───────────────────────────────────────────────────────────
+    // ── ATTENDANCE ─────────────────────────────────────────────────────────
     match /attendance/{id} {
-      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
-      
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == uid()
+        // Enforce valid status value on creation.
+        && request.resource.data.status in ['Present', 'Absent']
+        // Timestamp must equal server-request time (within 60 seconds tolerance
+        // accepted by Firestore; client cannot forge a timestamp in the past).
+        && request.resource.data.timestamp == request.time;
+
       allow read: if isSignedIn() && (
-        resource.data.studentId == request.auth.uid || 
-        getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden' ||
-        getUserRole() == 'chiefWarden'
+        resource.data.studentId == uid() ||
+        isStaff()
       );
+
+      // Attendance records are immutable once written — no updates allowed.
+      allow update, delete: if false;
     }
 
-    // ── LEAVE REQUESTS ───────────────────────────────────────────────────────
+    // ── LEAVE REQUESTS ─────────────────────────────────────────────────────
     match /leave_requests/{id} {
-      allow create: if isSignedIn() && 
-        request.resource.data.studentId == request.auth.uid &&
-        request.resource.data.status == 'Pending' &&
-        !request.resource.data.keys().hasAny(['approvedBy', 'rejectedBy', 'actualCheckOutTime', 'checkInTime']);
-        
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == uid()
+        && request.resource.data.status == 'Pending'
+        // Block privilege fields from being injected at creation.
+        && !request.resource.data.keys()
+            .hasAny(['approvedBy', 'rejectedBy', 'actualCheckOutTime', 'checkInTime']);
+
       allow read: if isSignedIn() && (
-        resource.data.studentId == request.auth.uid || 
-        getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden' ||
-        getUserRole() == 'chiefWarden'
+        resource.data.studentId == uid() ||
+        isStaff()
       );
+
       allow update: if isSignedIn() && (
-        (resource.data.studentId == request.auth.uid && (
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'Cancelled') || 
-          (resource.data.status == 'Pending' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'studentId', 'approvedBy', 'rejectedBy', 'checkInTime'])) ||
-          (resource.data.status == 'Approved' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkInTime']))
+        // Student can cancel their own pending leave, or update while Pending,
+        // or mark check-in on an Approved leave.
+        (resource.data.studentId == uid() && (
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status == 'Cancelled') ||
+          (resource.data.status == 'Pending'
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['status', 'studentId', 'approvedBy', 'rejectedBy', 'checkInTime'])) ||
+          (resource.data.status == 'Approved'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkInTime']))
         )) ||
-        getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden' ||
-        getUserRole() == 'chiefWarden'
+        // Staff can update but must keep status in the whitelist.
+        (isStaff() && validLeaveStatus())
       );
+
+      allow delete: if false;
     }
 
-    // ── COMPLAINTS ───────────────────────────────────────────────────────────
+    // ── COMPLAINTS ─────────────────────────────────────────────────────────
     match /complaints/{id} {
-      allow create: if isSignedIn() && 
-        request.resource.data.studentId == request.auth.uid &&
-        request.resource.data.status == 'Pending' &&
-        !request.resource.data.keys().hasAny(['resolvedBy', 'remarks', 'resolvedAt']);
-        
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == uid()
+        && request.resource.data.status == 'Pending'
+        // Students cannot pre-set resolution or escalation fields.
+        && !request.resource.data.keys()
+            .hasAny(['resolvedBy', 'remarks', 'resolvedAt', 'isEscalated'])
+        && validComplaintStatus();
+
       allow read: if isSignedIn() && (
-        resource.data.studentId == request.auth.uid || 
-        getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden' ||
-        getUserRole() == 'chiefWarden'
+        resource.data.studentId == uid() ||
+        isStaff()
       );
+
       allow update: if isSignedIn() && (
-        (resource.data.studentId == request.auth.uid && (
-          (resource.data.status == 'Pending' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'studentId', 'resolvedBy', 'remarks', 'resolvedAt'])) ||
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'studentConfirmed']) && request.resource.data.status == 'Confirmed') ||
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'isEscalated', 'studentConfirmed', 'targetRole', 'targetRoles']) && request.resource.data.isEscalated == true)
+        // Student may: edit while Pending (no sensitive fields), or confirm resolution.
+        // Students CANNOT escalate — only staff can.
+        (resource.data.studentId == uid() && (
+          (resource.data.status == 'Pending'
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['status', 'studentId', 'resolvedBy', 'remarks',
+                          'resolvedAt', 'isEscalated', 'targetRole', 'targetRoles'])) ||
+          (request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'studentConfirmed'])
+            && request.resource.data.status == 'Confirmed')
         )) ||
-        getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden' ||
-        getUserRole() == 'chiefWarden'
+        // Staff can update including escalation, but must use valid status.
+        (isStaff() && validComplaintStatus())
       );
+
+      allow delete: if false;
     }
 
-    // ── COUNTERS ─────────────────────────────────────────────────────────────
+    // ── COUNTERS ───────────────────────────────────────────────────────────
+    // Sequence counters must only be written by Cloud Functions (admin SDK).
+    // Clients have read access so they can display sequence IDs after creation.
     match /counters/{id} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.current == 1;
-      allow update: if isSignedIn() && 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['current']) &&
-        request.resource.data.current == resource.data.current + 1;
-      allow delete: if false; // Only admins via Firebase Console can delete
+      // Only admin callers (Cloud Functions) may write counters.
+      allow write: if isAdminCaller();
     }
 
-    // ── PHONE MAPPINGS (Secure Lookup) ───────────────────────────────────────
+    // ── PHONE MAPPINGS ─────────────────────────────────────────────────────
+    // FIX: was `allow get: if true` — anyone could enumerate emails by phone.
+    // Now requires authentication.
     match /phone_mappings/{phone} {
-      allow get: if true;
-      allow list: if false;
-      allow write: if isSignedIn() && 
-        (!exists(/databases/$(database)/documents/phone_mappings/$(phone)) || 
-         resource.data.email == request.auth.token.email) &&
-        request.resource.data.email == request.auth.token.email;
+      allow get: if isSignedIn();     // ← was: if true (unauthenticated PII leak)
+      allow list: if false;           // no enumeration ever
+      allow write: if isSignedIn()
+        && (!exists(/databases/$(database)/documents/phone_mappings/$(phone))
+          || resource.data.email == request.auth.token.email)
+        && request.resource.data.email == request.auth.token.email;
     }
 
-    // ── SHORT STAY REQUESTS ──────────────────────────────────────────────────
+    // ── SHORT STAY REQUESTS ───────────────────────────────────────────────
     match /short_stay_requests/{id} {
-      allow create: if isSignedIn() && 
-        request.resource.data.studentId == request.auth.uid &&
-        request.resource.data.status == 'Pending' &&
-        !request.resource.data.keys().hasAny(['approvedBy', 'rejectedBy', 'actualCheckOutTime']);
-        
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == uid()
+        && request.resource.data.status == 'Pending'
+        && !request.resource.data.keys()
+            .hasAny(['approvedBy', 'rejectedBy', 'actualCheckOutTime'])
+        && validShortStayStatus();
+
       allow read: if isSignedIn() && (
-        resource.data.studentId == request.auth.uid || 
-        getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden' ||
-        getUserRole() == 'chiefWarden'
+        resource.data.studentId == uid() ||
+        isStaff()
       );
+
       allow update: if isSignedIn() && (
-        (resource.data.studentId == request.auth.uid && (
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'Cancelled') || 
-          (resource.data.status == 'Pending' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'studentId', 'approvedBy', 'rejectedBy', 'actualCheckOutTime'])) ||
-          (resource.data.status == 'Approved' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'actualCheckOutTime']) && request.resource.data.status == 'Completed')
+        (resource.data.studentId == uid() && (
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status == 'Cancelled') ||
+          (resource.data.status == 'Pending'
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['status', 'studentId', 'approvedBy', 'rejectedBy', 'actualCheckOutTime'])) ||
+          (resource.data.status == 'Approved'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'actualCheckOutTime'])
+            && request.resource.data.status == 'Completed')
         )) ||
-        getUserRole() == 'warden' || 
-        getUserRole() == 'headWarden' ||
-        getUserRole() == 'chiefWarden'
+        (isStaff() && validShortStayStatus())
       );
+
+      allow delete: if false;
+    }
+
+    // ── AUDIT LOGS ────────────────────────────────────────────────────────
+    // Append-only security event log.
+    // Only the client can create (its own events), only chief warden can read.
+    // Nobody can update or delete.
+    match /audit_logs/{id} {
+      allow create: if isSignedIn()
+        && request.resource.data.uid == uid()
+        && request.resource.data.keys().hasAll(['uid', 'event', 'timestamp']);
+      allow read: if isSignedIn() && isChiefWarden();
+      allow update, delete: if false;
     }
   }
 }
