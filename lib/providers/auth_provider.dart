@@ -77,7 +77,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchUserProfile(String uid, {int retries = 2}) async {
+  Future<void> fetchUserProfile(String uid, {int retries = 2, bool retryOnNull = true}) async {
     // Prevent redundant fetches for the same UID while one is in progress
     // BUT allow internal recursive retries (indicated by retries < 2)
     if (_isFetchingProfileForUid == uid && retries == 2) {
@@ -86,7 +86,7 @@ class AuthProvider with ChangeNotifier {
     }
 
     
-    debugPrint("VISTA: fetchUserProfile for $uid (Retries remaining: $retries)");
+    debugPrint("VISTA: fetchUserProfile for $uid (Retries remaining: $retries, retryOnNull: $retryOnNull)");
     _isFetchingProfileForUid = uid;
     _isLoading = true;
     _hasProfileLoadError = false;
@@ -99,20 +99,20 @@ class AuthProvider with ChangeNotifier {
         _userProfile = profile;
         _hasProfileLoadError = false;
         debugPrint("VISTA: Profile fetch result: SUCCESS");
-      } else if (retries > 0) {
+      } else if (retryOnNull && retries > 0) {
         debugPrint("VISTA: Profile returned null, retrying in 1s...");
         await Future.delayed(const Duration(seconds: 1));
-        return fetchUserProfile(uid, retries: retries - 1);
+        return fetchUserProfile(uid, retries: retries - 1, retryOnNull: retryOnNull);
       } else {
         _userProfile = null;
-        debugPrint("VISTA: Profile fetch result: NULL (Redirecting to Signup)");
+        debugPrint("VISTA: Profile fetch result: NULL (Directing to Signup/Link)");
       }
     } catch (e) {
       debugPrint("VISTA: Profile fetch error: $e");
       if (retries > 0) {
         debugPrint("VISTA: Error caught, retrying in 2s...");
         await Future.delayed(const Duration(seconds: 2));
-        return fetchUserProfile(uid, retries: retries - 1);
+        return fetchUserProfile(uid, retries: retries - 1, retryOnNull: retryOnNull);
       }
       _userProfile = null;
       _hasProfileLoadError = true;
@@ -318,7 +318,8 @@ class AuthProvider with ChangeNotifier {
     try {
       final credential = await _firebaseService.signInWithMicrosoft();
       if (credential.user != null) {
-        await fetchUserProfile(credential.user!.uid);
+        // Skip retries for Microsoft SSO to ensure instant redirect for new users
+        await fetchUserProfile(credential.user!.uid, retryOnNull: false);
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'account-exists-with-different-credential') {

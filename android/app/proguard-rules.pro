@@ -35,6 +35,9 @@
 # ── Firebase ──────────────────────────────────────────────────────
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
+# Explicitly keep GenericIdpActivity for Microsoft SSO redirects
+-keep class com.google.firebase.auth.internal.GenericIdpActivity { *; }
+-keep public class com.google.firebase.auth.internal.RecaptchaActivity { *; }
 
 # ── Gson ──────────────────────────────────────────────────────────
 -keep class com.google.gson.** { *; }

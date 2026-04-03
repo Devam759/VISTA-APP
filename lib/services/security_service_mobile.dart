@@ -14,7 +14,7 @@ class SecurityImplementation {
         bool isUsbDebugging = await SafeDevice.isUsbDebuggingEnabled;
 
         // Skip USB debugging check for testing purposes
-        return isRealDevice && !isJailBroken && !isMock; // && !isUsbDebugging;
+        return isRealDevice && !isJailBroken && !isMock && !isUsbDebugging;
       }
     } catch (e) {
       debugPrint("Security check failed on mobile: $e");

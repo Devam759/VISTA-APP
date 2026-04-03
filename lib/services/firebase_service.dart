@@ -74,6 +74,7 @@ class FirebaseService {
 
   // Microsoft Sign In
   Future<UserCredential> signInWithMicrosoft() async {
+    final stopwatch = Stopwatch()..start();
     debugPrint("VISTA: signInWithMicrosoft START");
     
     // Check if we have a specific tenant ID, otherwise use common
@@ -83,25 +84,29 @@ class FirebaseService {
       'tenant': tenantId,
     });
 
-    
     try {
+      UserCredential? credential;
       if (kIsWeb) {
         debugPrint("VISTA: Web - Triggering signInWithRedirect...");
         await _auth.signInWithRedirect(_microsoftProvider);
-        // On web, this will redirect the entire page. 
-        // We return a dummy UserCredential or just return null since the page reloads.
         return null as dynamic; 
       } else {
         debugPrint("VISTA: Mobile - Triggering signInWithProvider...");
-        return await _auth.signInWithProvider(_microsoftProvider);
+        credential = await _auth.signInWithProvider(_microsoftProvider);
       }
+      stopwatch.stop();
+      debugPrint("VISTA: signInWithMicrosoft SUCCESS in ${stopwatch.elapsedMilliseconds}ms");
+      return credential;
     } on FirebaseAuthException catch (e) {
-      debugPrint("VISTA: FirebaseAuthException in signInWithMicrosoft: ${e.code}");
+      stopwatch.stop();
+      debugPrint("VISTA: FirebaseAuthException in signInWithMicrosoft (${stopwatch.elapsedMilliseconds}ms): ${e.code}");
       if (e.code == 'account-exists-with-different-credential') {
-        // This is a professional error case where we need to link accounts.
-        // We rethrow it so the AuthProvider/UI can handle the linking flow.
         debugPrint("VISTA: Account exists with different credential. Linking required.");
       }
+      rethrow;
+    } catch (e) {
+      stopwatch.stop();
+      debugPrint("VISTA: Error in signInWithMicrosoft (${stopwatch.elapsedMilliseconds}ms): $e");
       rethrow;
     }
   }
