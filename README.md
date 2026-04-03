@@ -8,6 +8,7 @@ VISTA is a secure, automated university hostel management system developed with 
 - **Student Portal**: Enables students to apply for hostel membership, submit leave requests, and report complaints.
 - **Warden Portal**: Provides administrative oversight for specific hostel blocks (BH1, BH2, GH1, GH2). Wardens review student applications and manage daily operations.
 - **Head Warden/Chief Warden**: Offers high-level administrative governance, including escalated complaint resolution and system-wide monitoring.
+- **Approval Logic**: Strict enforcement of Warden approval for hostellers. New students are held in a **Pending Approval** state until verified by their respective warden.
 
 ### Biometric Attendance System
 - **Face Recognition**: Integrates MobileFaceNet via TFLite for high-precision identity verification.
@@ -15,23 +16,23 @@ VISTA is a secure, automated university hostel management system developed with 
 - **Data Security**: Biometric data is strictly protected using production-grade Firestore Security Rules, ensuring privacy and compliance.
 
 ### Automated Notification System
-- **Monitoring Service**: A background service (Node.js) monitors database changes via GitHub Actions.
-- **Real-Time Alerts**: Utilizes Firebase Cloud Messaging (FCM) to deliver push notifications for critical events, including:
+- **Cloud Functions**: A serverless backend (Firebase Functions v1) monitors database changes and manages scheduled tasks.
+- **Real-Time & Scheduled Alerts**: Utilizes Firebase Cloud Messaging (FCM) to deliver push notifications, including:
   - Registration approvals and status updates.
   - Leave and complaint resolution milestones.
-  - Nightly attendance reminders (scheduled for 10:00 PM and 10:20 PM IST).
+  - **Night Attendance Reminder**: Scheduled for exactly **10:00 PM IST** daily.
+  - **Reliability**: Notifications use **High Priority** delivery to bypass device battery optimizations (Doze mode) on Android and iOS.
 
-### System Security
-- **Data Privacy**: Role-Based Access Control (RBAC) is enforced at the database level to protect sensitive student records.
-- **Application Hardening**: Release builds utilize Dart code obfuscation to prevent reverse-engineering.
-- **Integrity**: Standardized keystore management ensures the authenticity of production binaries.
+### Authentication & Integration
+- **Microsoft SSO**: Integrated Microsoft sign-in for university accounts, with mandatory `intent-filter` configuration in `AndroidManifest.xml` for seamless OAuth redirects.
+- **Identity Anchoring**: Phone number uniqueness is enforced to prevent account duplication.
 
 ## Technology Stack
 
 - **Frontend**: Flutter (Dart) using MVVM architecture and Provider state management.
-- **Backend**: Firebase suite (Authentication, Cloud Firestore, Cloud Messaging, Cloud Storage, App Check).
+- **Backend**: Firebase suite (Authentication, Cloud Firestore, Cloud Functions, Cloud Messaging, Cloud Storage, App Check).
 - **Artificial Intelligence**: Google ML Kit (Face Detection) and TensorFlow Lite (Inference Engine).
-- **DevOps**: GitHub Actions for automated background services and Node.js for specialized monitoring scripts.
+- **Region**: Optimized for `asia-south1` (Mumbai) to minimize latency for users in India.
 
 ## Installation and Configuration
 
@@ -45,9 +46,11 @@ VISTA is a secure, automated university hostel management system developed with 
    - Place `google-services.json` in `android/app/`.
    - Place `GoogleService-Info.plist` in `ios/Runner/`.
    - Run `flutterfire configure` to synchronize environment settings.
-2. **Automated Tasks (GitHub Actions)**:
-   - Configure a `FIREBASE_SERVICE_ACCOUNT` secret in the GitHub repository settings.
-   - Populate this secret with the JSON key from the Firebase Service Account.
+2. **Cloud Functions**:
+   Navigate to the `functions/` directory and install dependencies:
+   ```bash
+   npm install
+   ```
 3. **Database Security**:
    Deploy the defined security rules:
    ```powershell
@@ -57,19 +60,18 @@ VISTA is a secure, automated university hostel management system developed with 
 ## Production Deployment
 
 ### Android Release
-To generate an optimized and secure production build, execute the following command:
+To generate an optimized and secure production build (Current Version: `1.2.5+8`), execute:
 ```powershell
 flutter build apk --release --obfuscate --split-debug-info=build/app/outputs/symbols
 ```
-*Note: Ensure that `android/key.properties` and the associated keystore are correctly configured before building.*
+*Note: Ensure that `android/key.properties` and the associated keystore are correctly configured.*
 
 ## Directory Structure
 
 - `lib/models/`: Implementation of data schemas for users, leave requests, and complaints.
 - `lib/services/`: Core logic for Firebase integration, biometric processing, and notification handling.
 - `lib/screens/`: User interface components for authentication and role-specific dashboards.
-- `scripts/`: Node.js implementation for backend synchronization tasks.
-- `.github/workflows/`: Configuration for automated notification scheduling.
+- `functions/`: Cloud Functions implementation in Node.js for backend automation.
 
 ## Licensing
 
