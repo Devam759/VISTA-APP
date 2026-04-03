@@ -708,13 +708,13 @@ class _EmptyState extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 class _Card extends StatelessWidget {
   final Widget child;
-  const _Card({required this.child});
+  final VoidCallback? onTap;
+  const _Card({required this.child, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -726,7 +726,17 @@ class _Card extends StatelessWidget {
           ),
         ],
       ),
-      child: child,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -778,6 +788,208 @@ class _StudentsTabState extends State<_StudentsTab> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _showStudentDetails(BuildContext context, VistaUser s) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: _kPrimary.withValues(alpha: 0.1),
+                  child: Text(
+                    s.name.isNotEmpty ? s.name[0].toUpperCase() : 'S',
+                    style: const TextStyle(
+                      color: _kPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        s.email,
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const Divider(height: 32),
+            _detailItem(
+              Icons.badge_outlined,
+              'Roll Number',
+              s.rollNo ?? 'Not Set',
+            ),
+            _detailItem(
+              Icons.app_registration_sharp,
+              'Registration Number',
+              s.registrationNo ?? 'Not Set',
+            ),
+            _detailItem(
+              Icons.phone_outlined,
+              'Phone',
+              s.phoneNumber ?? 'Not Set',
+            ),
+            _detailItem(
+              Icons.school_outlined,
+              'Programme',
+              s.programme ?? 'Not Set',
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _kPrimary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _kPrimary.withValues(alpha: 0.1)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mandatory Microsoft Linking',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              'Force student to link their institutional account',
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: s.isMicrosoftLinkRequired,
+                        activeColor: _kPrimary,
+                        onChanged: (bool val) async {
+                          try {
+                            await widget.fs.updateMicrosoftLinkRequirement(
+                              s.uid,
+                              val,
+                            );
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    val
+                                        ? 'Linking mandated successfully'
+                                        : 'Mandatory linking removed',
+                                  ),
+                                  backgroundColor:
+                                      val ? _kPrimary : Colors.black87,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  if (s.isMicrosoftLinked)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Institutional Account Linked',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailItem(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.black45),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: Colors.black38),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   void _approveDialog(BuildContext context, VistaUser s) {
@@ -1449,6 +1661,8 @@ class _StudentsTabState extends State<_StudentsTab> {
                                         approvedShortStays,
                                       );
                                       return _Card(
+                                        onTap: () =>
+                                            _showStudentDetails(context, m),
                                         child: Row(
                                           children: [
                                             Stack(
@@ -1505,6 +1719,18 @@ class _StudentsTabState extends State<_StudentsTab> {
                                                           FontWeight.w700,
                                                       fontSize: 15,
                                                       color: Color(0xFF1E293B),
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    m.rollNo != null &&
+                                                            m.rollNo!.isNotEmpty
+                                                        ? 'Roll: ${m.rollNo}'
+                                                        : 'Reg: ${m.registrationNo ?? "N/A"}',
+                                                    style: const TextStyle(
+                                                      color: _kPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 10,
                                                     ),
                                                   ),
                                                   Text(

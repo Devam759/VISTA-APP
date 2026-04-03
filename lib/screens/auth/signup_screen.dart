@@ -19,11 +19,53 @@ class _SignupScreenState extends State<SignupScreen> {
   final _parentContactController = TextEditingController();
   final _passwordController = TextEditingController();
   String _userType = 'Hosteller';
+  String _idType = 'Roll Number';
   String? _selectedHostel;
   String? _selectedProgramme;
   String? _selectedGender;
-  final _rollNoController = TextEditingController();
+  final _idController = TextEditingController(); // Reusing for both Roll and Reg No
   bool _isSubmitting = false;
+
+  bool get _isCompleteProfileMode {
+    final authProvider = Provider.of<vista.AuthProvider>(context, listen: false);
+    return authProvider.firebaseUser != null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _prefillFromMicrosoft();
+    });
+  }
+
+  void _prefillFromMicrosoft() {
+    final authProvider = Provider.of<vista.AuthProvider>(context, listen: false);
+    final user = authProvider.firebaseUser;
+    if (user != null) {
+      String fullName = user.displayName ?? "";
+      if (fullName.isNotEmpty) {
+        // Sanitize and Capitalize using our utility
+        fullName = InputSanitizer.capitalize(fullName);
+        final names = fullName.trim().split(RegExp(r'\s+'));
+        if (names.length > 1) {
+          _firstNameController.text = names.first;
+          _lastNameController.text = names.sublist(1).join(' ');
+        } else {
+          _firstNameController.text = names.first;
+        }
+      }
+      if (user.email != null && user.email!.isNotEmpty) {
+        // If email is already full JKLU email, strip it for the controller if possible or keep as is
+        if (user.email!.endsWith('@jklu.edu.in')) {
+          _emailController.text = user.email!.split('@').first;
+        } else {
+          _emailController.text = user.email!;
+        }
+      }
+      setState(() {});
+    }
+  }
 
   final List<String> _permanentHostels = ['BH1', 'BH2', 'GH1', 'GH2'];
   final List<String> _programmes = ['BTECH', 'BBA', 'BDES', 'MDES', 'MBA'];
@@ -100,8 +142,8 @@ class _SignupScreenState extends State<SignupScreen> {
         _phoneController.text.trim().isEmpty ||
         _parentNameController.text.trim().isEmpty ||
         _parentContactController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty ||
-        _rollNoController.text.trim().isEmpty ||
+        (!_isCompleteProfileMode && _passwordController.text.trim().isEmpty) ||
+        _idController.text.trim().isEmpty ||
         _selectedProgramme == null ||
         _selectedGender == null) {
       ScaffoldMessenger.of(
@@ -118,31 +160,53 @@ class _SignupScreenState extends State<SignupScreen> {
     );
 
     try {
-      debugPrint('[Signup] Attempting signup for $finalEmail...');
-      await authProvider.signUp(
-        nameInput,
-        finalEmail,
-        _passwordController.text.trim(),
-        _userType == 'Day Scholar' ? 'Short Stay' : _selectedHostel!,
-        phoneInput,
-        _rollNoController.text.trim().toUpperCase(),
-        _selectedProgramme!,
-        _selectedGender!,
-        parentName: _parentNameController.text.trim(),
-        parentContact: _parentContactController.text.trim(),
-        isApproved: _userType == 'Day Scholar',
-        staySignedIn: _userType == 'Day Scholar', // Auto-login for Day Scholar
-        isDayScholar: _userType == 'Day Scholar',
+      debugPrint(
+        '[Signup] Attempting ${_isCompleteProfileMode ? "profile completion" : "signup"} for $finalEmail...',
       );
+      final String? rollNo = _idType == 'Roll Number' ? _idController.text.trim().toUpperCase() : null;
+      final String? registrationNo = _idType == 'Registration Number' ? _idController.text.trim().toUpperCase() : null;
+
+      if (_isCompleteProfileMode) {
+        await authProvider.completeProfile(
+          name: nameInput,
+          email: finalEmail,
+          hostel: _userType == 'Day Scholar' ? 'Short Stay' : _selectedHostel!,
+          phoneNumber: phoneInput,
+          rollNo: rollNo ?? '',
+          registrationNo: registrationNo,
+          programme: _selectedProgramme!,
+          gender: _selectedGender!,
+          parentName: _parentNameController.text.trim(),
+          parentContact: _parentContactController.text.trim(),
+          isApproved: _userType == 'Day Scholar',
+          staySignedIn: _userType == 'Day Scholar',
+          isDayScholar: _userType == 'Day Scholar',
+          isMicrosoftLinked: true,
+        );
+      } else {
+        await authProvider.signUp(
+          nameInput,
+          finalEmail,
+          _passwordController.text.trim(),
+          _userType == 'Day Scholar' ? 'Short Stay' : _selectedHostel!,
+          phoneInput,
+          rollNo ?? '',
+          _selectedProgramme!,
+          _selectedGender!,
+          registrationNo: registrationNo,
+          parentName: _parentNameController.text.trim(),
+          parentContact: _parentContactController.text.trim(),
+          isApproved: _userType == 'Day Scholar',
+          staySignedIn: _userType == 'Day Scholar',
+          isDayScholar: _userType == 'Day Scholar',
+          isMicrosoftLinked: false,
+        );
+      }
 
       debugPrint('[Signup] Signup succeeded. Finalizing flow...');
 
       if (mounted) {
         setState(() => _isSubmitting = false);
-        if (_userType != 'Day Scholar') {
-          // Permanent students need approval and should be signed out
-          await authProvider.signOut();
-        }
         _showSuccessDialog();
       }
     } catch (e, s) {
@@ -262,19 +326,18 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                             elevation: 0,
                           ),
-                          onPressed: () {
-                            if (isDayScholar) {
-                              // For Day Scholars, go to the Student Dashboard
-                              Navigator.of(context).pushNamedAndRemoveUntil(
-                                '/student',
-                                (route) => false,
-                              );
-                            } else {
-                              // For Hostellers, return to login screen
-                              Navigator.of(context).pop(); // Close dialog
-                              Navigator.of(context).pop(); // Go back to login
-                            }
+                          onPressed: () async {
+                            _performSuccessRedirect(isDayScholar);
                           },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Redirecting automatically...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black38,
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                     ],
@@ -286,6 +349,39 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       ),
     );
+
+    // Auto-redirect after 2 seconds
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      if (mounted) {
+        // Only redirect if the dialog is still the top-most route (not closed manually)
+        Navigator.of(context, rootNavigator: true).pop(); // Close dialog first
+        _performSuccessRedirect(isDayScholar);
+      }
+    });
+  }
+
+  void _performSuccessRedirect(bool isDayScholar) async {
+    if (isDayScholar) {
+      // For Day Scholars, go to the Student Dashboard
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/student',
+          (route) => false,
+        );
+      }
+    } else {
+      // For Hostellers, we need to sign out and go to Login
+      final authProvider = Provider.of<vista.AuthProvider>(context, listen: false);
+      
+      await authProvider.signOut();
+      
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/',
+          (route) => false,
+        );
+      }
+    }
   }
 
   void _showErrorDialog(String message) {
@@ -491,29 +587,47 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: _passwordController,
-                          autofillHints: const [AutofillHints.newPassword],
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: Icon(Icons.lock_outline),
+                        if (!_isCompleteProfileMode) ...[
+                          const SizedBox(height: 20),
+                          TextField(
+                            controller: _passwordController,
+                            autofillHints: const [AutofillHints.newPassword],
+                            decoration: const InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: Icon(Icons.lock_outline),
+                            ),
+                            obscureText: true,
                           ),
-                          obscureText: true,
-                        ),
+                        ],
+                        // ID Type Toggle and Input
                         const SizedBox(height: 20),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          padding: const EdgeInsets.all(4),
+                          child: Row(
+                            children: [
+                              _buildIDTypeButton('Roll Number', _idType == 'Roll Number'),
+                              _buildIDTypeButton('Registration Number', _idType == 'Registration Number'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         TextField(
-                          controller: _rollNoController,
-                          decoration: const InputDecoration(
-                            labelText: 'Roll Number',
-                            prefixIcon: Icon(Icons.numbers_outlined),
-                            hintText: 'e.g. 2025BTECH195',
+                          controller: _idController,
+                          decoration: InputDecoration(
+                            labelText: _idType,
+                            prefixIcon: const Icon(Icons.numbers_outlined),
+                            hintText: _idType == 'Roll Number' ? 'e.g. 2025BTECH195' : 'e.g. REG12345',
                           ),
                           textCapitalization: TextCapitalization.characters,
                         ),
                         const SizedBox(height: 20),
                         DropdownButtonFormField<String>(
-                          initialValue: _selectedProgramme,
+                          value: _selectedProgramme,
                           items: _programmes
                               .map(
                                 (p) =>
@@ -606,13 +720,53 @@ class _SignupScreenState extends State<SignupScreen> {
                     children: [
                       const Text('Already have an account?'),
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.pop(context);
+                          } else {
+                            // This case happens during SSO profile completion (where SignupScreen is the root)
+                            context.read<vista.AuthProvider>().signOut();
+                          }
+                        },
                         child: const Text('Login'),
                       ),
                     ],
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIDTypeButton(String type, bool isSelected) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _idType = type),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : null,
+          ),
+          child: Text(
+            type,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
             ),
           ),
         ),

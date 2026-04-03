@@ -20,8 +20,12 @@ class VistaUser {
   final String? address;
   final bool hasUsedShortStay;
   final bool isDayScholar;
+  final bool isAccountActive;
   final String? parentName;
   final String? parentContact;
+  final String? registrationNo;
+  final bool isMicrosoftLinked;
+  final bool isMicrosoftLinkRequired;
 
   VistaUser({
     required this.uid,
@@ -41,8 +45,12 @@ class VistaUser {
     this.address,
     this.hasUsedShortStay = false,
     this.isDayScholar = false,
+    this.isAccountActive = true,
     this.parentName,
     this.parentContact,
+    this.registrationNo,
+    this.isMicrosoftLinked = false,
+    this.isMicrosoftLinkRequired = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -66,6 +74,10 @@ class VistaUser {
       'parentContact': parentContact,
       'hasUsedShortStay': hasUsedShortStay,
       'isDayScholar': isDayScholar,
+      'isAccountActive': isAccountActive,
+      'registrationNo': registrationNo,
+      'isMicrosoftLinked': isMicrosoftLinked,
+      'isMicrosoftLinkRequired': isMicrosoftLinkRequired,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -94,6 +106,10 @@ class VistaUser {
       parentContact: map['parentContact'],
       hasUsedShortStay: map['hasUsedShortStay'] ?? false,
       isDayScholar: map['isDayScholar'] ?? false,
+      isAccountActive: map['isAccountActive'] ?? true,
+      registrationNo: map['registrationNo'],
+      isMicrosoftLinked: map['isMicrosoftLinked'] ?? false,
+      isMicrosoftLinkRequired: map['isMicrosoftLinkRequired'] ?? false,
     );
   }
 }

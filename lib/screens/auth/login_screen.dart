@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../providers/auth_provider.dart';
 
 import '../../utils/sanitizer.dart';
@@ -30,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Handle cases where user might have typed the full email
       String finalIdentifier = identifier;
-      if (!identifier.contains('@') && !RegExp(r'^[0-9+\s-]+$').hasMatch(identifier)) {
+      if (!identifier.contains('@')) {
         finalIdentifier = '$identifier@jklu.edu.in';
       }
 
@@ -56,6 +57,15 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    debugPrint("VISTA: LoginScreen build (v2). Loading: ${authProvider.isLoading}");
+
+    // Reactive Linking Dialog Trigger
+    if (authProvider.pendingEmail != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint("VISTA: Reactive Trigger - Calling _showAccountLinkingDialog...");
+        _showAccountLinkingDialog(context);
+      });
+    }
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -95,6 +105,95 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                         const SizedBox(height: 50),
+                        OutlinedButton(
+                          onPressed: authProvider.isLoading
+                              ? null
+                              : () async {
+                                  debugPrint("VISTA: Microsoft Login button CLICKED");
+                                  try {
+                                    await authProvider.signInWithMicrosoft();
+                                    debugPrint("VISTA: signInWithMicrosoft completion - Pending: ${authProvider.pendingEmail != null}");
+                                  } on FirebaseAuthException catch (e) {
+                                    if (mounted) {
+                                      setState(() => _errorMessage =
+                                          'Microsoft Login failed: ${e.message}');
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      setState(() => _errorMessage =
+                                          'An unexpected error occurred: ${e.toString()}');
+                                    }
+                                  }
+                                },
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            side: BorderSide.none,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 16,
+                              horizontal: 20,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Custom Microsoft 4-color square logo
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Expanded(child: Container(color: const Color(0xFFF25022))),
+                                          const SizedBox(width: 1.5),
+                                          Expanded(child: Container(color: const Color(0xFF7FBA00))),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 1.5),
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Expanded(child: Container(color: const Color(0xFF00A4EF))),
+                                          const SizedBox(width: 1.5),
+                                          Expanded(child: Container(color: const Color(0xFFFFB900))),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              const Text(
+                                'Sign in with Microsoft',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        const Row(
+                          children: [
+                            Expanded(child: Divider()),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Text('OR', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                            ),
+                            Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: 30),
                         AutofillGroup(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,11 +205,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       AutofillHints.username,
                                     ],
                                     decoration: InputDecoration(
-                                      labelText: 'Email or Mobile Number',
+                                      labelText: 'Email',
                                       prefixIcon: const Icon(Icons.person_outline),
-                                      suffix: _emailController.text.contains('@') ||
-                                              RegExp(r'^[0-9+\s-]+$')
-                                                  .hasMatch(_emailController.text)
+                                      suffix: _emailController.text.contains('@')
                                           ? null
                                           : const Text(
                                               '@jklu.edu.in',
@@ -202,8 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 )
                               : const Text('Login'),
                         ),
-                        const SizedBox(height: 40),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -222,6 +318,80 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               );
           },
+        ),
+      ),
+    );
+  }
+
+  void _showAccountLinkingDialog(BuildContext context) {
+    debugPrint("VISTA: Inside _showAccountLinkingDialog");
+    final passwordController = TextEditingController();
+    String? localError;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Consumer<AuthProvider>(
+        builder: (context, authProvider, _) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Account Link Found'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'We found an existing account for your university email. To securely link it to your Microsoft login, please verify your identity by entering your old password once.',
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Old Password',
+                    errorText: localError,
+                    prefixIcon: const Icon(Icons.lock_outline),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: authProvider.isLoading ? null : () {
+                  authProvider.clearPendingCredential();
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: authProvider.isLoading ? null : () async {
+                  try {
+                    setDialogState(() => localError = null);
+                    await authProvider.linkAccountWithPassword(passwordController.text);
+                    if (context.mounted) Navigator.pop(context);
+                  } catch (e) {
+                    debugPrint("VISTA: Linking error in dialog: $e");
+                    setDialogState(() {
+                      if (e is FirebaseAuthException) {
+                        localError = e.message;
+                      } else {
+                        localError = 'Linking failed: ${e.toString()}';
+                      }
+                    });
+                  }
+                },
+                child: authProvider.isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Link & Log In'),
+              ),
+            ],
+          ),
         ),
       ),
     );

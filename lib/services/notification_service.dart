@@ -36,7 +36,23 @@ class NotificationService {
       }
 
       // Get the token
-      String? token = await _firebaseMessaging.getToken();
+      String? token;
+      try {
+        if (kIsWeb) {
+          token = await _firebaseMessaging.getToken(
+            vapidKey: 'BPv3v95YplmaFgY5nYIWd65njj_uWjUu1GBmYrcRu108x6ue7ACeu57JCu5V7PaHq7wlMXxVfzElpWAWHIuM4pk',
+          );
+        } else {
+          token = await _firebaseMessaging.getToken();
+        }
+      } catch (e) {
+        if (kIsWeb && e.toString().contains('service-worker-registration')) {
+          debugPrint('VISTA: Web Notification Service Worker error (likely local dev browser state). Continuing...');
+        } else {
+          debugPrint('Error getting FCM token: $e');
+        }
+      }
+
       if (token != null) {
         if (kDebugMode) {
           debugPrint('FCM Token: $token');

@@ -646,13 +646,20 @@ class _EmptyState extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 class _Card extends StatelessWidget {
   final Widget child;
-  const _Card({required this.child});
+  final EdgeInsetsGeometry? margin;
+  final EdgeInsetsGeometry? padding;
+
+  const _Card({
+    required this.child,
+    this.margin,
+    this.padding,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: margin ?? const EdgeInsets.only(bottom: 12),
+      padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -937,6 +944,161 @@ class _StudentsTabState extends State<_StudentsTab> {
           ss.status == 'Approved' &&
           ss.checkInDate.isBefore(now) &&
           ss.checkOutDate.isAfter(now),
+    );
+  }
+
+  void _showStudentDetails(VistaUser student) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: _kPrimary.withValues(alpha: 0.1),
+              child: Text(
+                student.name.isNotEmpty ? student.name[0].toUpperCase() : 'S',
+                style: const TextStyle(
+                  color: _kPrimary,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              student.name,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            Text(
+              student.email,
+              style: const TextStyle(color: Colors.black45, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                children: [
+                  _detailItem(Icons.badge_outlined, 'Roll Number', student.rollNo ?? 'Not Assigned'),
+                  _detailItem(Icons.numbers_outlined, 'Registration No', student.registrationNo ?? 'Not Assigned'),
+                  _detailItem(Icons.school_outlined, 'Programme', student.programme ?? 'Not Specified'),
+                  _detailItem(Icons.meeting_room_outlined, 'Room Number', student.roomNumber ?? 'Not Assigned'),
+                  _detailItem(Icons.phone_outlined, 'Phone', student.phoneNumber ?? 'Not Provided'),
+                  _detailItem(Icons.location_on_outlined, 'Address', student.address ?? 'Not Provided'),
+                  const Divider(height: 32),
+                  const Text(
+                    'Administrative Controls',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black54,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  StatefulBuilder(
+                    builder: (context, setModalState) {
+                      return SwitchListTile(
+                        title: const Text(
+                          'Force Microsoft Linking',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Forces student to link their Microsoft account and update roll number on next login.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        value: student.isMicrosoftLinkRequired,
+                        activeColor: _kPrimary,
+                        onChanged: (val) async {
+                          try {
+                            await widget.fs.updateUser(student.uid, {'isMicrosoftLinkRequired': val});
+                            setModalState(() {
+                              // We don't have direct access to the parent stream's student object here
+                              // but updating the state will re-render the toggle.
+                              // The stream will eventually update the whole UI.
+                            });
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Update failed: $e')),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailItem(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _kPrimary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: _kPrimary),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.black38,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Color(0xFF1E293B),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1298,166 +1460,170 @@ class _StudentsTabState extends State<_StudentsTab> {
                                           ),
                                           child: Column(
                                             children: pending.map((s) {
-                                              return Column(
-                                                children: [
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 14,
-                                                          vertical: 10,
-                                                        ),
-                                                    child: Row(
-                                                      children: [
-                                                        CircleAvatar(
-                                                          radius: 20,
-                                                          backgroundColor:
-                                                              _kPrimary
-                                                                  .withValues(
-                                                                    alpha: 0.1,
-                                                                  ),
-                                                          child: Text(
-                                                            s.name.isNotEmpty
-                                                                ? s.name[0]
-                                                                      .toUpperCase()
-                                                                : 'S',
-                                                            style:
-                                                                const TextStyle(
-                                                                  color:
-                                                                      _kPrimary,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                ),
+                                              return GestureDetector(
+                                                onTap: () => _showStudentDetails(s),
+                                                child: Column(
+                                                  children: [
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 14,
+                                                            vertical: 10,
                                                           ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 10,
-                                                        ),
-                                                        Expanded(
-                                                          child: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              Text(
-                                                                s.name,
-                                                                style: const TextStyle(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w700,
-                                                                  fontSize: 14,
-                                                                ),
-                                                              ),
-                                                              Text(
-                                                                s.email,
-                                                                style: const TextStyle(
-                                                                  color: Colors
-                                                                      .black45,
-                                                                  fontSize: 11,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                        Row(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            GestureDetector(
-                                                              onTap: () async =>
-                                                                  widget.fs
-                                                                      .denyStudent(
-                                                                        s.uid,
-                                                                      ),
-                                                              child: Container(
-                                                                padding:
-                                                                    const EdgeInsets.all(
-                                                                      10,
+                                                      child: Row(
+                                                        children: [
+                                                          CircleAvatar(
+                                                            radius: 20,
+                                                            backgroundColor:
+                                                                _kPrimary
+                                                                    .withValues(
+                                                                      alpha: 0.1,
                                                                     ),
-                                                                decoration: BoxDecoration(
-                                                                  color: Colors
-                                                                      .red
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.08,
+                                                            child: Text(
+                                                              s.name.isNotEmpty
+                                                                  ? s.name[0]
+                                                                        .toUpperCase()
+                                                                  : 'S',
+                                                              style:
+                                                                  const TextStyle(
+                                                                    color:
+                                                                        _kPrimary,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 10,
+                                                          ),
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                Text(
+                                                                  s.name,
+                                                                  style: const TextStyle(
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w700,
+                                                                    fontSize: 14,
+                                                                  ),
+                                                                ),
+                                                                Text(
+                                                                  s.email,
+                                                                  style: const TextStyle(
+                                                                    color: Colors
+                                                                        .black45,
+                                                                    fontSize: 11,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          Row(
+                                                            mainAxisSize:
+                                                                MainAxisSize.min,
+                                                            children: [
+                                                              GestureDetector(
+                                                                onTap: () async =>
+                                                                    widget.fs
+                                                                        .denyStudent(
+                                                                          s.uid,
+                                                                        ),
+                                                                child: Container(
+                                                                  padding:
+                                                                      const EdgeInsets.all(
+                                                                        10,
                                                                       ),
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        12,
-                                                                      ),
-                                                                  border: Border.all(
+                                                                  decoration: BoxDecoration(
                                                                     color: Colors
                                                                         .red
                                                                         .withValues(
                                                                           alpha:
-                                                                              0.15,
+                                                                              0.08,
                                                                         ),
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          12,
+                                                                        ),
+                                                                    border: Border.all(
+                                                                      color: Colors
+                                                                          .red
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.15,
+                                                                          ),
+                                                                    ),
                                                                   ),
-                                                                ),
-                                                                child: const Icon(
-                                                                  Icons
-                                                                      .close_rounded,
-                                                                  color: Colors
-                                                                      .red,
-                                                                  size: 18,
+                                                                  child: const Icon(
+                                                                    Icons
+                                                                        .close_rounded,
+                                                                    color: Colors
+                                                                        .red,
+                                                                    size: 18,
+                                                                  ),
                                                                 ),
                                                               ),
-                                                            ),
-                                                            const SizedBox(
-                                                              width: 10,
-                                                            ),
-                                                            GestureDetector(
-                                                              onTap: () =>
-                                                                  _approveDialog(
-                                                                    context,
-                                                                    s,
-                                                                  ),
-                                                              child: Container(
-                                                                padding:
-                                                                    const EdgeInsets.all(
-                                                                      10,
-                                                                    ),
-                                                                decoration: BoxDecoration(
-                                                                  color: Colors
-                                                                      .green
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.08,
+                                                              const SizedBox(
+                                                                width: 8,
+                                                              ),
+                                                              GestureDetector(
+                                                                onTap: () async =>
+                                                                    _approveDialog(context, s),
+                                                                child: Container(
+                                                                  padding:
+                                                                      const EdgeInsets.all(
+                                                                        10,
                                                                       ),
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        12,
-                                                                      ),
-                                                                  border: Border.all(
+                                                                  decoration: BoxDecoration(
                                                                     color: Colors
                                                                         .green
                                                                         .withValues(
                                                                           alpha:
-                                                                              0.15,
+                                                                              0.08,
                                                                         ),
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          12,
+                                                                        ),
+                                                                    border: Border.all(
+                                                                      color: Colors
+                                                                          .green
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.15,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  child: const Icon(
+                                                                    Icons
+                                                                        .check_rounded,
+                                                                    color: Colors
+                                                                        .green,
+                                                                    size: 18,
                                                                   ),
                                                                 ),
-                                                                child: const Icon(
-                                                                  Icons
-                                                                      .check_rounded,
-                                                                  color: Colors
-                                                                      .green,
-                                                                  size: 18,
-                                                                ),
                                                               ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    if (pending.indexOf(s) !=
+                                                        pending.length - 1)
+                                                      Divider(
+                                                        height: 1,
+                                                        color: Colors.black
+                                                            .withValues(
+                                                              alpha: 0.05,
                                                             ),
-                                                          ],
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  if (s != pending.last)
-                                                    const Divider(
-                                                      height: 1,
-                                                      indent: 14,
-                                                      endIndent: 14,
-                                                    ),
-                                                ],
+                                                        indent: 64,
+                                                      ),
+                                                  ],
+                                                ),
                                               );
                                             }).toList(),
                                           ),
@@ -1497,167 +1663,172 @@ class _StudentsTabState extends State<_StudentsTab> {
                                         m.uid,
                                         approvedShortStays,
                                       );
-                                      return _Card(
-                                        child: Row(
-                                          children: [
-                                            Stack(
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 24,
-                                                  backgroundColor: _kPrimary
-                                                      .withValues(alpha: 0.1),
-                                                  child: Text(
-                                                    m.name.isNotEmpty
-                                                        ? m.name[0]
-                                                              .toUpperCase()
-                                                        : 'S',
-                                                    style: const TextStyle(
-                                                      color: _kPrimary,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 18,
-                                                    ),
-                                                  ),
-                                                ),
-                                                Positioned(
-                                                  right: 0,
-                                                  bottom: 0,
-                                                  child: Container(
-                                                    width: 14,
-                                                    height: 14,
-                                                    decoration: BoxDecoration(
-                                                      color: onLeave
-                                                          ? Colors.orange
-                                                          : (onShortStay
-                                                                ? Colors.blue
-                                                                : Colors.green),
-                                                      shape: BoxShape.circle,
-                                                      border: Border.all(
-                                                        color: Colors.white,
-                                                        width: 2,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                      return GestureDetector(
+                                        onTap: () => _showStudentDetails(m),
+                                        child: _Card(
+                                          margin: const EdgeInsets.only(bottom: 12),
+                                          padding: const EdgeInsets.all(12),
+                                          child: Row(
+                                            children: [
+                                              Stack(
                                                 children: [
-                                                  Text(
-                                                    m.name,
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 15,
-                                                      color: Color(0xFF1E293B),
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    m.email,
-                                                    style: const TextStyle(
-                                                      color: Colors.black45,
-                                                      fontSize: 11,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Row(
-                                                    children: [
-                                                      const Icon(
-                                                        Icons.phone_outlined,
-                                                        size: 11,
-                                                        color: Colors.black38,
+                                                  CircleAvatar(
+                                                    radius: 24,
+                                                    backgroundColor: _kPrimary
+                                                        .withValues(alpha: 0.1),
+                                                    child: Text(
+                                                      m.name.isNotEmpty
+                                                          ? m.name[0]
+                                                                .toUpperCase()
+                                                          : 'S',
+                                                      style: const TextStyle(
+                                                        color: _kPrimary,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 18,
                                                       ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        m.phoneNumber ??
-                                                            'No Phone',
-                                                        style: const TextStyle(
-                                                          color: Colors.black38,
-                                                          fontSize: 11,
+                                                    ),
+                                                  ),
+                                                  Positioned(
+                                                    right: 0,
+                                                    bottom: 0,
+                                                    child: Container(
+                                                      width: 14,
+                                                      height: 14,
+                                                      decoration: BoxDecoration(
+                                                        color: onLeave
+                                                            ? Colors.orange
+                                                            : (onShortStay
+                                                                  ? Colors.blue
+                                                                  : Colors.green),
+                                                        shape: BoxShape.circle,
+                                                        border: Border.all(
+                                                          color: Colors.white,
+                                                          width: 2,
                                                         ),
                                                       ),
-                                                    ],
+                                                    ),
                                                   ),
                                                 ],
                                               ),
-                                            ),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.end,
-                                              children: [
-                                                if (m.roomNumber != null &&
-                                                    m.roomNumber!.isNotEmpty)
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 5,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: _kPrimary
-                                                          .withValues(
-                                                            alpha: 0.08,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      m.name,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 15,
+                                                        color: Color(0xFF1E293B),
+                                                      ),
                                                     ),
-                                                    child: Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
+                                                    Text(
+                                                      m.email,
+                                                      style: const TextStyle(
+                                                        color: Colors.black45,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Row(
                                                       children: [
                                                         const Icon(
-                                                          Icons
-                                                              .meeting_room_outlined,
-                                                          size: 13,
-                                                          color: _kPrimary,
+                                                          Icons.phone_outlined,
+                                                          size: 11,
+                                                          color: Colors.black38,
                                                         ),
-                                                        const SizedBox(
-                                                          width: 4,
-                                                        ),
+                                                        const SizedBox(width: 4),
                                                         Text(
-                                                          'Room ${m.roomNumber}',
-                                                          style:
-                                                              const TextStyle(
-                                                                color:
-                                                                    _kPrimary,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w700,
-                                                                fontSize: 12,
-                                                              ),
+                                                          m.phoneNumber ??
+                                                              'No Phone',
+                                                          style: const TextStyle(
+                                                            color: Colors.black38,
+                                                            fontSize: 11,
+                                                          ),
                                                         ),
                                                       ],
                                                     ),
-                                                  ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  onLeave
-                                                      ? 'ON LEAVE'
-                                                      : (onShortStay
-                                                            ? 'SHORT STAY'
-                                                            : 'IN CAMPUS'),
-                                                  style: TextStyle(
-                                                    color: onLeave
-                                                        ? Colors.orange
-                                                        : (onShortStay
-                                                              ? Colors.blue
-                                                              : Colors.green),
-                                                    fontWeight: FontWeight.w800,
-                                                    fontSize: 10,
-                                                    letterSpacing: 0.5,
-                                                  ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
+                                                children: [
+                                                  if (m.roomNumber != null &&
+                                                      m.roomNumber!.isNotEmpty)
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 5,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: _kPrimary
+                                                            .withValues(
+                                                              alpha: 0.08,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          const Icon(
+                                                            Icons
+                                                                .meeting_room_outlined,
+                                                            size: 13,
+                                                            color: _kPrimary,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 4,
+                                                          ),
+                                                          Text(
+                                                            'Room ${m.roomNumber}',
+                                                            style:
+                                                                const TextStyle(
+                                                                  color:
+                                                                      _kPrimary,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontSize: 12,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  const SizedBox(height: 6),
+                                                    Text(
+                                                      onLeave
+                                                          ? 'ON LEAVE'
+                                                          : (onShortStay
+                                                                ? 'SHORT STAY'
+                                                                : 'IN CAMPUS'),
+                                                      style: TextStyle(
+                                                        color: onLeave
+                                                            ? Colors.orange
+                                                            : (onShortStay
+                                                                  ? Colors.blue
+                                                                  : Colors.green),
+                                                        fontWeight: FontWeight.w800,
+                                                        fontSize: 10,
+                                                        letterSpacing: 0.5,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
-                                          ],
-                                        ),
-                                      );
+                                          ),
+                                        );
                                     },
                                   ),
                                 ),
@@ -3932,10 +4103,11 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
               onPressed: () => Navigator.pop(context),
               child: const Text('CANCEL'),
             ),
-            ElevatedButton(
+              ElevatedButton(
               onPressed: () {
-                if (roomCtrl.text.trim().isEmpty || selectedHostel == null)
+                if (roomCtrl.text.trim().isEmpty || selectedHostel == null) {
                   return;
+                }
                 widget.fs.updateShortStayStatus(
                   request.id,
                   'Approved',

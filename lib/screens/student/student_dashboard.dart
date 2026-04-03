@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -43,6 +44,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   bool _checkingPermissions = true;
   bool _permissionsGranted = false;
   final List<StreamSubscription> _subscriptions = [];
+  final TextEditingController _rollNoController = TextEditingController();
 
   @override
   void initState() {
@@ -58,6 +60,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     for (var sub in _subscriptions) {
       sub.cancel();
     }
+    _rollNoController.dispose();
     super.dispose();
   }
 
@@ -217,101 +220,279 @@ class _StudentDashboardState extends State<StudentDashboard> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: _kBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context, user, authProvider),
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
-                  child: IndexedStack(
-                    index: _selectedIndex,
-                    children: [
-                      _AttendanceTab(
-                        user: user,
-                        fs: _firebaseService,
-                        isActive: _selectedIndex == 0,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: _kBg,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context, user, authProvider),
+                Expanded(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
                       ),
-                      if (user.hostel != 'Short Stay')
-                        _LeaveTab(user: user, fs: _firebaseService),
-                      if (user.hostel != 'Short Stay')
-                        _ComplaintsTab(user: user, fs: _firebaseService),
-                      if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
-                        _ShortStayTab(user: user, fs: _firebaseService),
-                    ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(32),
+                        topRight: Radius.circular(32),
+                      ),
+                      child: IndexedStack(
+                        index: _selectedIndex,
+                        children: [
+                          _AttendanceTab(
+                            user: user,
+                            fs: _firebaseService,
+                            isActive: _selectedIndex == 0,
+                          ),
+                          if (user.hostel != 'Short Stay')
+                            _LeaveTab(user: user, fs: _firebaseService),
+                          if (user.hostel != 'Short Stay')
+                            _ComplaintsTab(user: user, fs: _firebaseService),
+                          if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
+                            _ShortStayTab(user: user, fs: _firebaseService),
+                        ],
+                      ),
+                    ),
                   ),
+                ),
+              ],
+            ),
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: _kPrimary.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) => setState(() => _selectedIndex = index),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              selectedItemColor: _kPrimary,
+              unselectedItemColor: Colors.black26,
+              showUnselectedLabels: true,
+              type: BottomNavigationBarType.fixed,
+              selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+              items: [
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.assignment_ind_outlined),
+                  activeIcon: Icon(Icons.assignment_ind_rounded),
+                  label: 'Attendance',
+                ),
+                if (user.hostel != 'Short Stay')
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.event_note_outlined),
+                    activeIcon: Icon(Icons.event_note_rounded),
+                    label: 'Leaves',
+                  ),
+                if (user.hostel != 'Short Stay')
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.assignment_late_outlined),
+                    activeIcon: Icon(Icons.assignment_late_rounded),
+                    label: 'Complaints',
+                  ),
+                if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.hotel_outlined),
+                    activeIcon: Icon(Icons.hotel_rounded),
+                    label: 'Short Stay',
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (user.isMicrosoftLinkRequired && !user.isMicrosoftLinked)
+          _buildMandatoryLinkingOverlay(context, user, authProvider),
+      ],
+    );
+  }
+
+  Widget _buildMandatoryLinkingOverlay(
+    BuildContext context,
+    VistaUser user,
+    AuthProvider authProvider,
+  ) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.8),
+      width: double.infinity,
+      height: double.infinity,
+      child: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: _kPrimary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.verified_user_rounded,
+                        color: _kPrimary,
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Verification Required',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: _kPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Your account requires institutional verification. Please link your Microsoft account and provide your Roll Number.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    TextField(
+                      controller: _rollNoController,
+                      decoration: InputDecoration(
+                        labelText: 'Roll Number',
+                        hintText: 'e.g. 2021BTECH001',
+                        prefixIcon: const Icon(Icons.badge_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                      onChanged: (val) => setState(() {}),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        onPressed: _rollNoController.text.trim().isEmpty || authProvider.isLoading
+                            ? null
+                            : () async {
+                                try {
+                                  await authProvider.linkInstitutionalAccount(
+                                    rollNo: _rollNoController.text.trim(),
+                                  );
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        icon: authProvider.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.link, color: Colors.white),
+                        label: const Text(
+                          'Link Microsoft Account',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _kPrimary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('No Microsoft Account?'),
+                            content: const Text(
+                              'If you haven\'t received your JKLU email ID yet, please contact the Warden or IT department. Access is restricted until verification.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'I don\'t have a JKLU email yet',
+                        style: TextStyle(
+                          color: _kPrimary.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Divider(),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => authProvider.signOut(),
+                      icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                      label: const Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: _kPrimary.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          selectedItemColor: _kPrimary,
-          unselectedItemColor: Colors.black26,
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.assignment_ind_outlined),
-              activeIcon: Icon(Icons.assignment_ind_rounded),
-              label: 'Attendance',
-            ),
-            if (user.hostel != 'Short Stay')
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.event_note_outlined),
-                activeIcon: Icon(Icons.event_note_rounded),
-                label: 'Leaves',
-              ),
-            if (user.hostel != 'Short Stay')
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.assignment_late_outlined),
-                activeIcon: Icon(Icons.assignment_late_rounded),
-                label: 'Complaints',
-              ),
-            if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.hotel_outlined),
-                activeIcon: Icon(Icons.hotel_rounded),
-                label: 'Short Stay',
-              ),
-          ],
         ),
       ),
     );
@@ -469,8 +650,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     // 10:30 PM to 12:00 AM (midnight)
     return (now.hour == 22 && now.minute >= 30) || (now.hour == 23);
   }
-
-  bool _isStudentOnLeave(List<LeaveRequest> approvedLeaves) {
+bool _isStudentOnLeave(List<LeaveRequest> approvedLeaves) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return approvedLeaves.any((leave) {
@@ -495,87 +675,147 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     final bool isMobileDevice = !kIsWeb && 
         (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
         
-    if (!isMobileDevice || !_isRealDevice) {
+    if (kIsWeb || !isMobileDevice || !_isRealDevice) {
       return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.white, _kPrimary.withValues(alpha: 0.02)],
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(40),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.mobile_friendly_rounded,
-                      size: 80,
-                      color: _kPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Text(
-                    'Mobile Only Feature',
-                    style: GoogleFonts.outfit(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: _kPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: Text(
-                      'For security and accurate location verification, attendance marking is exclusively available on the VISTA mobile app.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        color: Colors.black54,
-                        fontSize: 16,
-                        height: 1.6,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  Text(
-                    'Download the App',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black38,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      _buildDownloadButton(Icons.apple, 'App Store'),
-                      _buildDownloadButton(Icons.android_rounded, 'Play Store'),
-                    ],
-                  ),
-                ],
+        width: double.infinity,
+        height: double.infinity,
+        color: const Color(0xFFF0F4FF),
+        child: Stack(
+          children: [
+            // Decorative background elements
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _kPrimary.withValues(alpha: 0.05),
+                ),
               ),
             ),
-          ),
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Glassmorphic Card (Light)
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 500),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _kPrimary.withValues(alpha: 0.1),
+                            blurRadius: 40,
+                            offset: const Offset(0, 20),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Padding(
+                            padding: const EdgeInsets.all(40),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Security Icon Holder
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _kPrimary.withValues(alpha: 0.05),
+                                  ),
+                                  child: Center(
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        const Text(
+                                          "📱",
+                                          style: TextStyle(fontSize: 50),
+                                        ),
+                                        Positioned(
+                                          bottom: 12,
+                                          right: 12,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: const BoxDecoration(
+                                              color: _kPrimary,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.security_rounded,
+                                              size: 16,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+                                Text(
+                                  "Mobile App Only",
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w800,
+                                    color: _kPrimary,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  "For security and location verification, attendance marking is only available on the VISTA mobile application.",
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    color: _kPrimary.withValues(alpha: 0.7),
+                                    height: 1.5,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 48),
+                                // Download Buttons
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildDownloadButton(
+                                        Icons.android_rounded,
+                                        "Android App",
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: _buildDownloadButton(
+                                        Icons.apple_rounded,
+                                        "iOS App",
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -895,29 +1135,34 @@ class _AttendanceTabState extends State<_AttendanceTab> {
 
   Widget _buildDownloadButton(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: _kPrimary,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: _kPrimary.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.05),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
+          Icon(icon, color: Colors.white, size: 24),
+          const SizedBox(width: 12),
           Text(
             label,
-            style: const TextStyle(
+            style: GoogleFonts.inter(
               color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -2050,7 +2295,7 @@ class _ComplaintsTab extends StatelessWidget {
                             ),
                           )
                         : const Text(
-                            'SUBMIT ANONYMOUS REPORT',
+                            'SUBMIT',
                             style: TextStyle(
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,

@@ -1,51 +1,146 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/vista_user.dart';
 import '../services/firebase_service.dart';
 import '../services/notification_service.dart';
-import '../utils/sanitizer.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
   VistaUser? _userProfile;
   bool _isLoading = false;
-  // When true, the auth state listener will not update _userProfile.
-  // Used during signup to prevent AuthWrapper from navigating away
-  // before the success dialog is shown.
+  bool _hasProfileLoadError = false;
+  
+  // Account Linking State
+  AuthCredential? _pendingMicrosoftCredential;
+  String? _pendingEmail;
+
   bool _suppressAuthChanges = false;
+  bool _isInitialized = false;
+  String? _isFetchingProfileForUid;
 
   VistaUser? get userProfile => _userProfile;
-  bool get isLoading => _isLoading;
+  bool get isLoading => _isLoading || !_isInitialized;
+  bool get hasProfileLoadError => _hasProfileLoadError;
+  AuthCredential? get pendingMicrosoftCredential => _pendingMicrosoftCredential;
+  String? get pendingEmail => _pendingEmail;
+  User? get firebaseUser => _firebaseService.currentUser;
 
   AuthProvider() {
     _init();
   }
 
-  void _init() {
+  void clearPendingCredential() {
+    _pendingMicrosoftCredential = null;
+    _pendingEmail = null;
+    notifyListeners();
+  }
+
+  Future<void> _init() async {
+    debugPrint("VISTA: AuthProvider initializing...");
+    // 1. Check for current user first
+    if (_firebaseService.currentUser != null) {
+      debugPrint("VISTA: Found existing user: ${_firebaseService.currentUser!.email}. Fetching profile...");
+      await fetchUserProfile(_firebaseService.currentUser!.uid);
+    }
+
+    // 2. Wait for redirect result (Web only)
+    await _firebaseService.handleRedirectResult();
+
+    // 3. Start listening to auth changes
     _firebaseService.userStream.listen((user) async {
-      if (_suppressAuthChanges) return;
+      debugPrint("VISTA: Auth state changed. User: ${user?.email ?? 'null'}");
+      if (_suppressAuthChanges) {
+        debugPrint("VISTA: Auth changes suppressed.");
+        return;
+      }
       if (user != null) {
-        await fetchUserProfile(user.uid);
+        // If we already have a profile for this user, don't re-fetch unless it's a different UID
+        if (_userProfile?.uid != user.uid) {
+           _hasProfileLoadError = false; // Reset error on new user
+           await fetchUserProfile(user.uid);
+        }
       } else {
+        debugPrint("VISTA: User is null, clearing profile.");
         _userProfile = null;
+        _hasProfileLoadError = false;
+        _isInitialized = true;
         notifyListeners();
       }
     });
+
+    // 4. Final safety check: if we are still not initialized after redirect/initial check, mark it.
+    if (!_isInitialized) {
+       _isInitialized = true;
+       notifyListeners();
+    }
   }
 
-  Future<void> fetchUserProfile(String uid) async {
+  Future<void> fetchUserProfile(String uid, {int retries = 2}) async {
+    // Prevent redundant fetches for the same UID while one is in progress
+    // BUT allow internal recursive retries (indicated by retries < 2)
+    if (_isFetchingProfileForUid == uid && retries == 2) {
+      debugPrint("VISTA: Profile fetch already in progress for $uid. Skipping redundant call.");
+      return;
+    }
+
+    
+    debugPrint("VISTA: fetchUserProfile for $uid (Retries remaining: $retries)");
+    _isFetchingProfileForUid = uid;
     _isLoading = true;
+    _hasProfileLoadError = false;
     notifyListeners();
-    _userProfile = await _firebaseService.getUserProfile(uid);
-    if (_userProfile != null) {
-      try {
-        await NotificationService().init(uid);
-      } catch (e) {
-        debugPrint('Error initializing notifications: $e');
+
+    
+    try {
+      final profile = await _firebaseService.getUserProfile(uid);
+      if (profile != null) {
+        _userProfile = profile;
+        _hasProfileLoadError = false;
+        debugPrint("VISTA: Profile fetch result: SUCCESS");
+      } else if (retries > 0) {
+        debugPrint("VISTA: Profile returned null, retrying in 1s...");
+        await Future.delayed(const Duration(seconds: 1));
+        return fetchUserProfile(uid, retries: retries - 1);
+      } else {
+        _userProfile = null;
+        debugPrint("VISTA: Profile fetch result: NULL (Redirecting to Signup)");
+      }
+    } catch (e) {
+      debugPrint("VISTA: Profile fetch error: $e");
+      if (retries > 0) {
+        debugPrint("VISTA: Error caught, retrying in 2s...");
+        await Future.delayed(const Duration(seconds: 2));
+        return fetchUserProfile(uid, retries: retries - 1);
+      }
+      _userProfile = null;
+      _hasProfileLoadError = true;
+    } finally {
+      if (_isFetchingProfileForUid == uid) {
+        _isFetchingProfileForUid = null;
+      }
+      _isInitialized = true;
+      _isLoading = false;
+      notifyListeners();
+
+      
+      if (_userProfile != null) {
+        try {
+          await NotificationService().init(uid);
+        } catch (e) {
+          debugPrint('Error initializing notifications: $e');
+        }
       }
     }
-    _isLoading = false;
-    notifyListeners();
+  }
+
+  String _normalizeName(String name) {
+    if (name.isEmpty) return name;
+    return name.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
   }
 
   Future<void> signUp(
@@ -57,6 +152,8 @@ class AuthProvider with ChangeNotifier {
     String rollNo,
     String programme,
     String gender, {
+    String? registrationNo,
+    bool isMicrosoftLinked = false,
     String? parentName,
     String? parentContact,
     bool isApproved = false,
@@ -68,37 +165,45 @@ class AuthProvider with ChangeNotifier {
     _suppressAuthChanges = true;
     notifyListeners();
     try {
+      // Check phone uniqueness first
+      final ownerEmail = await _firebaseService.getPhoneNumberOwner(phoneNumber);
+      if (ownerEmail != null && ownerEmail != email) {
+        throw Exception('This phone number is already registered with another account ($ownerEmail).');
+      }
+
       final credential = await _firebaseService.signUp(email, password);
       final newUser = VistaUser(
         uid: credential.user!.uid,
-        name: name,
+        name: _normalizeName(name),
         email: email,
         role: UserRole.student,
         hostel: hostel,
         phoneNumber: phoneNumber,
         isApproved: isApproved,
         rollNo: rollNo,
+        registrationNo: registrationNo,
         programme: programme,
         gender: gender,
         parentName: parentName,
         parentContact: parentContact,
         isDayScholar: isDayScholar,
+        isMicrosoftLinked: isMicrosoftLinked,
+        isMicrosoftLinkRequired: false,
       );
-      // Write Firestore profile with a timeout — if Firestore is slow/unavailable
-      // on web, we still consider signup successful since the Auth account exists.
+      
       try {
         await _firebaseService
-            .createUserProfile(newUser)
-            .timeout(const Duration(seconds: 10));
+            .createUserProfile(newUser);
       } catch (firestoreError) {
         debugPrint(
-          '[Auth] Firestore profile write failed (non-fatal): $firestoreError',
+          '[Auth] Firestore profile write failed: $firestoreError',
         );
+        rethrow; // If profile creation fails, we should probably know
       }
 
-      if (staySignedIn) {
-        _userProfile = newUser;
-      }
+      // Always set the profile locally so AuthWrapper can see the change
+      // before potentially redirection OR fetchUserProfile handles it.
+      _userProfile = newUser;
     } catch (e) {
       rethrow;
     } finally {
@@ -113,51 +218,74 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // OTP Verification
-  String? _verificationId;
-
-  Future<void> sendOTP(
-    String phoneNumber, {
-    required Function(String, int?) onCodeSent,
-    required Function(String) onError,
-    Object? webVerifier,
+  Future<void> completeProfile({
+    required String name,
+    required String email,
+    required String hostel,
+    required String phoneNumber,
+    required String rollNo,
+    required String programme,
+    required String gender,
+    String? registrationNo,
+    bool isMicrosoftLinked = false,
+    String? parentName,
+    String? parentContact,
+    bool isApproved = false,
+    bool staySignedIn = false,
+    bool isDayScholar = false,
   }) async {
+    final user = _firebaseService.currentUser;
+    if (user == null) throw Exception("No authenticated user found.");
+
+    _isLoading = true;
+    _suppressAuthChanges = true;
+    notifyListeners();
+
     try {
-      await _firebaseService.verifyPhoneNumber(
+      // Check phone uniqueness
+      final ownerEmail = await _firebaseService.getPhoneNumberOwner(phoneNumber);
+      if (ownerEmail != null && ownerEmail != email) {
+        throw Exception('This phone number is already registered with another account ($ownerEmail).');
+      }
+
+      final newUser = VistaUser(
+        uid: user.uid,
+        name: _normalizeName(name),
+        email: email,
+        role: UserRole.student,
+        hostel: hostel,
         phoneNumber: phoneNumber,
-        webVerifier: webVerifier,
-        onCodeSent: (verId, forceResend) {
-          _verificationId = verId;
-          onCodeSent(verId, forceResend);
-        },
-        onVerificationFailed: (e) =>
-            onError(e.message ?? 'Verification failed'),
-        onVerificationCompleted: (credential) async {
-          // If auto-retrieval works, we might need a way to pass this back.
-          // For now, focus on manual code entry.
-        },
+        isApproved: isApproved,
+        rollNo: rollNo,
+        registrationNo: registrationNo,
+        programme: programme,
+        gender: gender,
+        parentName: parentName,
+        parentContact: parentContact,
+        isDayScholar: isDayScholar,
+        isMicrosoftLinked: isMicrosoftLinked,
+        isMicrosoftLinkRequired: false,
       );
+
+      await _firebaseService
+          .createUserProfile(newUser);
+
+      // Always set the profile locally so AuthWrapper can see the change
+      // before a potential signOut() or redirection.
+      _userProfile = newUser;
     } catch (e) {
-      onError(e.toString());
+      rethrow;
+    } finally {
+      _isLoading = false;
+      _suppressAuthChanges = false;
+      notifyListeners();
+    }
+
+    if (staySignedIn && _userProfile != null) {
+      await fetchUserProfile(_userProfile!.uid);
     }
   }
 
-  Future<void> verifyOTP(String smsCode) async {
-    if (_verificationId == null) throw Exception('No verification ID found');
-    final credential = PhoneAuthProvider.credential(
-      verificationId: _verificationId!,
-      smsCode: smsCode,
-    );
-
-    final currentUser = _firebaseService.currentUser;
-    if (currentUser != null) {
-      // Link the phone number to the existing email account
-      await currentUser.linkWithCredential(credential);
-    } else {
-      // Fallback: If no user (should not happen in our flow), sign in with phone
-      await FirebaseAuth.instance.signInWithCredential(credential);
-    }
-  }
 
   Future<void> sendPasswordReset(String email) async {
     _isLoading = true;
@@ -174,21 +302,7 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      String email = identifier;
-      // If identifier looks like a phone number
-      if (RegExp(r'^[0-9+\s-]+$').hasMatch(identifier) &&
-          identifier.length >= 10) {
-        final normalizedPhone = InputSanitizer.normalizePhone(identifier);
-        final resolvedEmail = await _firebaseService.getUserEmailByPhone(
-          normalizedPhone,
-        );
-        if (resolvedEmail == null) {
-          throw Exception('No account found with this phone number.');
-        }
-        email = resolvedEmail;
-      }
-
-      final credential = await _firebaseService.signIn(email, password);
+      final credential = await _firebaseService.signIn(identifier, password);
       await fetchUserProfile(credential.user!.uid);
     } catch (e) {
       _isLoading = false;
@@ -197,15 +311,173 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> signInWithMicrosoft() async {
+    _isLoading = true;
+    notifyListeners();
+    clearPendingCredential();
+    try {
+      final credential = await _firebaseService.signInWithMicrosoft();
+      if (credential.user != null) {
+        await fetchUserProfile(credential.user!.uid);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'account-exists-with-different-credential') {
+        _pendingMicrosoftCredential = e.credential;
+        _pendingEmail = e.email;
+        debugPrint('VISTA: Account exists with different credential. Linking required. Email: ${_pendingEmail}, Credential: ${_pendingMicrosoftCredential != null ? "FOUND" : "NULL"}');
+        _isLoading = false;
+        notifyListeners();
+        return; // Don't rethrow, handled via state
+      }
+      rethrow;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> linkAccountWithPassword(String password) async {
+    if (_pendingMicrosoftCredential == null || _pendingEmail == null) {
+      throw Exception("No pending Microsoft account to link.");
+    }
+
+    _isLoading = true;
+    _suppressAuthChanges = true; // Essential: stop AuthWrapper from redirecting mid-link
+    notifyListeners();
+
+    try {
+      // 1. Sign in with the original password to prove ownership
+      debugPrint('VISTA: Signing in with email/pass to prove ownership...');
+      final credential = await _firebaseService.signIn(_pendingEmail!, password);
+      
+      try {
+        // 2. Link the Microsoft credential to this signed-in user
+        if (kIsWeb) {
+          debugPrint('VISTA: Web - Triggering linkWithPopup...');
+          await _firebaseService.linkWithMicrosoftPopup();
+        } else if (_pendingMicrosoftCredential != null) {
+          await _firebaseService.linkWithMicrosoftCredential(_pendingMicrosoftCredential!);
+        }
+        
+        debugPrint('VISTA: Linking SUCCESS. Finalizing login...');
+        // 3. Success! Now allow auth changes and refresh profile
+        _suppressAuthChanges = false;
+        final uid = credential.user!.uid;
+        clearPendingCredential();
+        await fetchUserProfile(uid);
+      } catch (linkingError) {
+        debugPrint('VISTA: Linking step failed: $linkingError. Signing out.');
+        _suppressAuthChanges = false;
+        await _firebaseService.signOut();
+        rethrow;
+      }
+    } catch (e) {
+      debugPrint('VISTA: Error in linkAccountWithPassword: $e');
+      _suppressAuthChanges = false;
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> linkInstitutionalAccount({String? rollNo}) async {
+    final user = _firebaseService.currentUser;
+    if (user == null) throw Exception("No user signed in to link.");
+
+    _isLoading = true;
+    _suppressAuthChanges = true;
+    notifyListeners();
+
+    try {
+      if (kIsWeb) {
+        await _firebaseService.linkWithMicrosoftPopup();
+      } else {
+        final credential = await _firebaseService.signInWithMicrosoft();
+        if (credential.credential != null) {
+          await _firebaseService.linkWithMicrosoftCredential(
+            credential.credential!,
+          );
+        }
+      }
+
+      // Refresh Firebase User to get the new email/provider info
+      final updatedUser = _firebaseService.currentUser;
+      final linkedEmail = updatedUser?.email;
+
+      if (rollNo != null && linkedEmail != null) {
+        // use the specialized method that also updates roll number
+        await _firebaseService.linkInstitutionalAccount(
+          uid: user.uid,
+          rollNo: rollNo,
+          institutionalEmail: linkedEmail,
+        );
+      } else {
+        // Just update the linked status
+        await _firebaseService.setMicrosoftLinkedStatus(user.uid, true);
+      }
+
+      // Refresh local profile
+      await fetchUserProfile(user.uid);
+
+      _suppressAuthChanges = false;
+    } catch (e) {
+      _suppressAuthChanges = false;
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> linkMicrosoftAccount(String rollNo) async {
+    final user = _firebaseService.currentUser;
+    if (user == null) throw Exception("No authenticated user found.");
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // 1. Link if not already linked
+      bool alreadyLinked = user.providerData.any((p) => p.providerId == 'microsoft.com');
+      if (!alreadyLinked) {
+        if (kIsWeb) {
+          await _firebaseService.linkWithMicrosoftPopup();
+        } else {
+          await _firebaseService.linkWithMicrosoftPopup(); // Mobile uses linkWithProvider inside this
+        }
+      }
+
+      // 2. Update Firestore profile
+      await _firebaseService.db.collection('users').doc(user.uid).update({
+        'rollNo': rollNo.toUpperCase(),
+        'isMicrosoftLinked': true,
+        'isMicrosoftLinkRequired': false,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 3. Refresh user profile
+      await fetchUserProfile(user.uid);
+    } catch (e) {
+      debugPrint('[Auth] Account linking failed: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+
   Future<void> signOut() async {
     final uid = _firebaseService.currentUser?.uid;
     if (uid != null) {
       try {
-        // Clear FCM token from Firestore first so the server stops sending
-        // notifications to this device for the previous user.
         await _firebaseService.clearFcmToken(uid);
-        // Delete the token on the device so a fresh one is generated for
-        // the next user who logs in.
         await NotificationService().deleteToken();
       } catch (e) {
         debugPrint('Error clearing FCM token on logout: $e');

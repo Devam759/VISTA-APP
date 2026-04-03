@@ -17,6 +17,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         request.auth.uid == userId || 
         resource.data.email == request.auth.token.email ||
+        userId == request.auth.token.email ||
         getUserRole() == 'warden' || 
         getUserRole() == 'headWarden' ||
         getUserRole() == 'chiefWarden'
@@ -38,6 +39,9 @@ service cloud.firestore {
       
       // Face embeddings: only owner or warden can access
       allow get: if isSignedIn() && (request.auth.uid == userId || getUserRole() == 'warden' || getUserRole() == 'headWarden' || getUserRole() == 'chiefWarden');
+      
+      // Allow deletion of pre-populated email-based profiles during migration
+      allow delete: if isSignedIn() && (request.auth.uid == userId || userId == request.auth.token.email);
     }
 
     // ── ATTENDANCE ───────────────────────────────────────────────────────────

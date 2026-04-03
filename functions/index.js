@@ -27,10 +27,10 @@ function getCurrentDateString() {
 /**
  * Common logic to send notifications to students
  */
-async function sendNotificationToEligibleStudents(isMissedReminder = false) {
+async function sendNotificationToEligibleStudents() {
     const dateStr = getCurrentDateString();
     const nowIST = getISTDate();
-    console.log(`Starting reminder run for date: ${dateStr}, isMissed: ${isMissedReminder}`);
+    console.log(`Starting reminder run for date: ${dateStr}`);
 
     try {
         // 1. Get all approved students
@@ -83,17 +83,7 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             }
         });
 
-        // 4. Get today's attendance (if missed reminder)
-        const markedStudentIds = new Set();
-        if (isMissedReminder) {
-            const attendanceSnapshot = await db.collection('attendance')
-                .where('date', '==', dateStr)
-                .get();
-            attendanceSnapshot.forEach(doc => {
-                markedStudentIds.add(doc.data().studentId);
-            });
-        }
-
+        // 4. Note: No longer checking "already marked" (removed 10:20 PM reminder)
         const tokens = [];
         studentsSnapshot.forEach(doc => {
             const data = doc.data();
@@ -108,10 +98,7 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
             // - OR Day Scholar with ACTIVE short stay
             const isEligibleHosteller = !data.isDayScholar || activeShortStayUids.has(uid);
             
-            // Exclude if already marked (for 10:20 PM)
-            const isMarked = isMissedReminder && markedStudentIds.has(uid);
-
-            if (fcmToken && isEligibleHosteller && !isMarked) {
+            if (fcmToken && isEligibleHosteller) {
                 tokens.push(fcmToken);
             }
         });
@@ -123,10 +110,18 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
 
         const message = {
             notification: {
-                title: isMissedReminder ? 'Attendance Reminder!' : 'Time for Night Attendance!',
-                body: isMissedReminder
-                    ? "You haven't marked your night attendance yet. Please do it immediately."
-                    : 'It is 10:00 PM. Please mark your night attendance now.',
+                title: 'Time for Night Attendance!',
+                body: 'It is 10:00 PM. Please mark your night attendance now.',
+            },
+            android: {
+                priority: 'high',
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        contentAvailable: true,
+                    },
+                },
             },
             tokens: tokens,
         };
@@ -139,18 +134,14 @@ async function sendNotificationToEligibleStudents(isMissedReminder = false) {
 }
 
 /**
- * Scheduled function for 10:00 PM IST daily (16:30 UTC)
+ * Scheduled function for 10:00 PM IST daily
  */
-exports.nightAttendanceReminder = functions.region('asia-south1').pubsub.schedule('30 16 * * *').onRun(async (context) => {
-    await sendNotificationToEligibleStudents(false);
-});
-
-/**
- * Scheduled function for 10:20 PM IST daily (16:50 UTC)
- */
-exports.nightAttendanceMissedReminder = functions.region('asia-south1').pubsub.schedule('50 16 * * *').onRun(async (context) => {
-    await sendNotificationToEligibleStudents(true);
-});
+exports.nightAttendanceReminder = functions.region('asia-south1')
+    .pubsub.schedule('00 22 * * *')
+    .timeZone('Asia/Kolkata')
+    .onRun(async (context) => {
+        await sendNotificationToEligibleStudents();
+    });
 
 /**
  * Real-time Triggers

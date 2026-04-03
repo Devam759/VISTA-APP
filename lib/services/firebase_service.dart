@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/vista_user.dart';
@@ -8,6 +9,8 @@ import '../models/leave_request_model.dart';
 import '../models/complaint_model.dart';
 import '../models/short_stay_model.dart';
 import '../utils/rate_limiter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 
 class FirebaseService {
   // Using lazy getters for all Firebase instances.
@@ -18,6 +21,37 @@ class FirebaseService {
       FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
 
   FirebaseFirestore get db => _db;
+
+  FirebaseService() {
+    // We will now handle redirect explicitly from AuthProvider for better sync
+  }
+
+  final MicrosoftAuthProvider _microsoftProvider = MicrosoftAuthProvider();
+  MicrosoftAuthProvider get microsoftProvider => _microsoftProvider;
+
+  Future<void> handleRedirectResult() async {
+    if (!kIsWeb) return;
+    try {
+      debugPrint("VISTA: Checking for Microsoft redirect result...");
+      
+      // Delay to allow Firebase JS SDK to initialize and pick up the redirect state
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
+      final result = await _auth.getRedirectResult();
+      if (result.user != null) {
+        debugPrint("VISTA: Redirect result found for: ${result.user!.email}");
+      } else {
+        debugPrint("VISTA: No redirect result found. checking current user...");
+        if (_auth.currentUser != null) {
+           debugPrint("VISTA: Current user is already synced: ${_auth.currentUser!.email}");
+        } else {
+           debugPrint("VISTA: No current user found (Still Null).");
+        }
+      }
+    } catch (e) {
+      debugPrint("VISTA: Redirect result error: $e");
+    }
+  }
 
   // Auth State Stream
   Stream<User?> get userStream => _auth.authStateChanges();
@@ -38,27 +72,67 @@ class FirebaseService {
     return _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
-  // Phone Verification
-  Future<void> verifyPhoneNumber({
-    required String phoneNumber,
-    required Function(String, int?) onCodeSent,
-    required Function(FirebaseAuthException) onVerificationFailed,
-    required Function(PhoneAuthCredential) onVerificationCompleted,
-    Object? webVerifier, // RecaptchaVerifier for web
-  }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: onVerificationCompleted,
-      verificationFailed: onVerificationFailed,
-      codeSent: onCodeSent,
-      codeAutoRetrievalTimeout: (String verificationId) {},
-      timeout: const Duration(seconds: 60),
-    );
+  // Microsoft Sign In
+  Future<UserCredential> signInWithMicrosoft() async {
+    debugPrint("VISTA: signInWithMicrosoft START");
+    
+    // Check if we have a specific tenant ID, otherwise use common
+    final tenantId = dotenv.env['MICROSOFT_TENANT_ID'] ?? 'common';
+    
+    _microsoftProvider.setCustomParameters({
+      'tenant': tenantId,
+    });
+
+    
+    try {
+      if (kIsWeb) {
+        debugPrint("VISTA: Web - Triggering signInWithRedirect...");
+        await _auth.signInWithRedirect(_microsoftProvider);
+        // On web, this will redirect the entire page. 
+        // We return a dummy UserCredential or just return null since the page reloads.
+        return null as dynamic; 
+      } else {
+        debugPrint("VISTA: Mobile - Triggering signInWithProvider...");
+        return await _auth.signInWithProvider(_microsoftProvider);
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint("VISTA: FirebaseAuthException in signInWithMicrosoft: ${e.code}");
+      if (e.code == 'account-exists-with-different-credential') {
+        // This is a professional error case where we need to link accounts.
+        // We rethrow it so the AuthProvider/UI can handle the linking flow.
+        debugPrint("VISTA: Account exists with different credential. Linking required.");
+      }
+      rethrow;
+    }
   }
+
 
   // Sign Out
   Future<void> signOut() {
     return _auth.signOut();
+  }
+
+  // Account Linking Methods
+  Future<UserCredential> linkWithMicrosoftCredential(AuthCredential credential) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception("No user logged in to link with.");
+    return await user.linkWithCredential(credential);
+  }
+
+  Future<UserCredential> linkWithMicrosoftPopup() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception("No user logged in to link with.");
+    
+    _microsoftProvider.setCustomParameters({
+      'prompt': 'select_account',
+      'tenant': 'common',
+    });
+
+    if (kIsWeb) {
+      return await user.linkWithPopup(_microsoftProvider);
+    } else {
+      return await user.linkWithProvider(_microsoftProvider);
+    }
   }
 
   // Password Reset
@@ -69,10 +143,117 @@ class FirebaseService {
 
   // User Profile Methods
   Future<void> createUserProfile(VistaUser user) async {
-    await _db.collection('users').doc(user.uid).set(user.toMap());
+    // 1. Phone Mapping (Identity Anchor)
     if (user.phoneNumber != null) {
-      await _updatePhoneMapping(user.phoneNumber, user.email);
+      final phoneDoc = _db.collection('phone_mappings').doc(user.phoneNumber);
+      
+      await _db.runTransaction((transaction) async {
+        final snap = await transaction.get(phoneDoc);
+        if (snap.exists) {
+          final existingUid = snap.data()?['uid'];
+          final existingEmail = snap.data()?['email'];
+          
+          if (existingUid != user.uid && existingEmail != user.email) {
+            throw Exception('This phone number is already registered with another account ($existingEmail).');
+          }
+        }
+        
+        // Check if a pre-populated profile exists with the email as key
+        final emailDocRef = _db.collection('users').doc(user.email);
+        final existingDoc = await transaction.get(emailDocRef);
+        
+        Map<String, dynamic> finalData;
+        if (existingDoc.exists) {
+          final existingData = existingDoc.data()!;
+          finalData = {
+            ...existingData,
+            ...user.toMap(),
+            'isAccountActive': true,
+            'uid': user.uid,
+          };
+          transaction.delete(emailDocRef);
+        } else {
+          finalData = user.toMap();
+        }
+        
+        // Set phone mapping and user profile
+        transaction.set(phoneDoc, {
+          'uid': user.uid,
+          'email': user.email,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        transaction.set(_db.collection('users').doc(user.uid), finalData);
+      });
+    } else {
+      // Standard creation if no phone (unlikely for students but safe)
+      await _db.collection('users').doc(user.uid).set(user.toMap());
     }
+  }
+
+  Future<void> updateMicrosoftLinkRequirement(String uid, bool required) async {
+    debugPrint('FirebaseService: Updating Microsoft link requirement for $uid to $required');
+    await _db.collection('users').doc(uid).update({
+      'isMicrosoftLinkRequired': required,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> setMicrosoftLinkedStatus(String uid, bool linked) async {
+    debugPrint('FirebaseService: Setting Microsoft link status for $uid to $linked');
+    final Map<String, dynamic> data = {
+      'isMicrosoftLinked': linked,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (linked) {
+      // If linked, we automatically clear the required flag
+      data['isMicrosoftLinkRequired'] = false;
+    }
+    await _db.collection('users').doc(uid).update(data);
+  }
+
+  Future<String?> getPhoneNumberOwner(String phoneNumber) async {
+    final doc = await _db.collection('phone_mappings').doc(phoneNumber).get();
+    if (doc.exists) {
+      return doc.data()?['email'] as String?;
+    }
+    return null;
+  }
+
+  Future<bool> isPhoneNumberRegistered(String phoneNumber) async {
+    final doc = await _db.collection('phone_mappings').doc(phoneNumber).get();
+    return doc.exists;
+  }
+
+  Future<void> updateStudentProfile(String uid, Map<String, dynamic> data) {
+    return _db.collection('users').doc(uid).update({
+      ...data,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> requestMicrosoftLink(String uid) {
+    return _db.collection('users').doc(uid).update({
+      'isMicrosoftLinkRequired': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> linkInstitutionalAccount({
+    required String uid,
+    required String rollNo,
+    required String institutionalEmail,
+  }) async {
+    final userDoc = _db.collection('users').doc(uid);
+    
+    await _db.runTransaction((transaction) async {
+      transaction.update(userDoc, {
+        'email': institutionalEmail,
+        'rollNo': rollNo,
+        'isMicrosoftLinked': true,
+        'isMicrosoftLinkRequired': false,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
   }
 
   Future<void> updateFcmToken(String uid, String token) {
@@ -83,63 +264,66 @@ class FirebaseService {
     return _db.collection('users').doc(uid).update({'fcmToken': null});
   }
 
-  Future<String?> getUserEmailByPhone(String phone) async {
-    // We target a specific document by phone number to avoid 'list' permissions
-    final doc = await _db.collection('phone_mappings').doc(phone).get();
-    if (doc.exists) {
-      return doc.data()?['email'] as String?;
-    }
-    return null;
-  }
-
-  /// Internal helper to sync phone-to-email mapping for secure login
-  Future<void> _updatePhoneMapping(String? phone, String email) async {
-    if (phone == null || phone.isEmpty) return;
-    try {
-      await _db.collection('phone_mappings').doc(phone).set({
-        'email': email,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      debugPrint('[FirebaseService] Error updating phone mapping: $e');
-    }
-  }
-
   Future<VistaUser?> getUserProfile(String uid) async {
-    // 1. Try by UID (document ID = uid) — the standard case
+    debugPrint("VISTA: getUserProfile start for UID: $uid");
+    
+    // 1. Try by current UID (document ID = uid) — standard case
     final doc = await _db.collection('users').doc(uid).get();
     if (doc.exists) {
       final user = VistaUser.fromMap(doc.data() as Map<String, dynamic>);
-      if (user.phoneNumber != null) {
-        _updatePhoneMapping(user.phoneNumber, user.email);
-      }
       return user;
     }
 
-    // 2. Fallback: query by email field — handles manually-created docs
-    //    where the document ID is the email instead of the UID
+    // 2. Fallback: Search by Email if UID search failed
+    //    Necessary for students who previously used Email/Password but now use Microsoft.
     final currentUser = _auth.currentUser;
-    if (currentUser != null) {
-      final query = await _db
-          .collection('users')
-          .where('email', isEqualTo: currentUser.email)
-          .limit(1)
-          .get();
-      if (query.docs.isNotEmpty) {
-        final data = query.docs.first.data();
-        // Fix the uid field if it's wrong, so future lookups work by UID too
-        if (data['uid'] != uid) {
-          await _db.collection('users').doc(query.docs.first.id).update({
+    if (currentUser?.email != null) {
+      final String email = currentUser!.email!;
+      debugPrint("VISTA: UID lookup failed. Searching fallback for email: $email");
+      
+      // We check for both exactly matching email and lowercase matching
+      try {
+        final query = await _db.collection('users')
+            .where('email', whereIn: [email, email.toLowerCase()])
+            .limit(1)
+            .get();
+
+        if (query.docs.isNotEmpty) {
+          final existingDoc = query.docs.first;
+          final existingData = existingDoc.data();
+          final String oldId = existingDoc.id;
+
+          debugPrint("VISTA: Found existing profile at doc ID: $oldId. MIGRATING to new UID: $uid");
+
+          // Prepare the migrated data
+          final updatedData = {
+            ...existingData,
             'uid': uid,
+            'isAccountActive': true,
+            'updatedAt': FieldValue.serverTimestamp(),
+          };
+
+          // TRANSACTIONAL MIGRATION: 
+          // We move the data to a new document (new UID) and delete the old one.
+          await _db.runTransaction((transaction) async {
+            transaction.set(_db.collection('users').doc(uid), updatedData);
+            // Only delete if it's not the same ID
+            if (oldId != uid) {
+              transaction.delete(_db.collection('users').doc(oldId));
+            }
           });
+
+          debugPrint("VISTA: Migration SUCCESSFUL for $email");
+          return VistaUser.fromMap(updatedData);
         }
-        final user = VistaUser.fromMap({...data, 'uid': uid});
-        if (user.phoneNumber != null) {
-          _updatePhoneMapping(user.phoneNumber, user.email);
-        }
-        return user;
+      } catch (e) {
+        debugPrint("VISTA: Error during fallback email query: $e");
+        // Fallback might fail due to missing index or rules, 
+        // in which case we proceed and probably return null.
       }
     }
+
+    debugPrint("VISTA: No profile found even after fallback/auto-registration.");
     return null;
   }
 
@@ -558,6 +742,10 @@ class FirebaseService {
       'hostel': null,
       'isApproved': false,
     });
+  }
+
+  Future<void> updateUser(String uid, Map<String, dynamic> data) {
+    return _db.collection('users').doc(uid).update(data);
   }
 
   // Returns approved students for a hostel
