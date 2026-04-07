@@ -104,8 +104,13 @@ class AuthProvider with ChangeNotifier {
         await Future.delayed(const Duration(seconds: 1));
         return fetchUserProfile(uid, retries: retries - 1, retryOnNull: retryOnNull);
       } else {
-        _userProfile = null;
-        debugPrint("VISTA: Profile fetch result: NULL (Directing to Signup/Link)");
+        // Only clear the profile if we don't already have one for this UID
+        if (_userProfile?.uid != uid) {
+          _userProfile = null;
+          debugPrint("VISTA: Profile fetch result: NULL (Directing to Signup/Link)");
+        } else {
+          debugPrint("VISTA: Profile fetch result: NULL (Preserving existing local profile for $uid)");
+        }
       }
     } catch (e) {
       debugPrint("VISTA: Profile fetch error: $e");
@@ -114,8 +119,13 @@ class AuthProvider with ChangeNotifier {
         await Future.delayed(const Duration(seconds: 2));
         return fetchUserProfile(uid, retries: retries - 1, retryOnNull: retryOnNull);
       }
-      _userProfile = null;
-      _hasProfileLoadError = true;
+      // Only clear on error if the UID is different
+      if (_userProfile?.uid != uid) {
+        _userProfile = null;
+        _hasProfileLoadError = true;
+      } else {
+        debugPrint("VISTA: Preserving existing local profile for $uid despite fetch error.");
+      }
     } finally {
       if (_isFetchingProfileForUid == uid) {
         _isFetchingProfileForUid = null;
@@ -211,11 +221,7 @@ class AuthProvider with ChangeNotifier {
       _suppressAuthChanges = false; // Re-enable auth listener
       notifyListeners();
     }
-    // After finally block, if staySignedIn, fetch the actual profile from Firestore
-    // to ensure we have the latest data and trigger navigation
-    if (staySignedIn && _userProfile != null) {
-      await fetchUserProfile(_userProfile!.uid);
-    }
+    // REDUNDANT Sync removed - we already have the newUser data and it's set locally.
   }
 
   Future<void> completeProfile({
@@ -280,10 +286,7 @@ class AuthProvider with ChangeNotifier {
       _suppressAuthChanges = false;
       notifyListeners();
     }
-
-    if (staySignedIn && _userProfile != null) {
-      await fetchUserProfile(_userProfile!.uid);
-    }
+    // REDUNDANT Sync removed - newUser is already the target state.
   }
 
 
@@ -320,8 +323,15 @@ class AuthProvider with ChangeNotifier {
       if (credential.user != null) {
         // Skip retries for Microsoft SSO to ensure instant redirect for new users
         await fetchUserProfile(credential.user!.uid, retryOnNull: false);
+      } else {
+        // This case is unlikely given Firebase's behavior but handled for safety
+        debugPrint("VISTA: signInWithMicrosoft returned no user.");
+        _isLoading = false;
+        notifyListeners();
       }
     } on FirebaseAuthException catch (e) {
+
+
       if (e.code == 'account-exists-with-different-credential') {
         _pendingMicrosoftCredential = e.credential;
         _pendingEmail = e.email;
@@ -473,6 +483,26 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+
+  Future<void> updateUserProfile(Map<String, dynamic> data) async {
+    final uid = firebaseUser?.uid;
+    if (uid == null) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _firebaseService.updateStudentProfile(uid, data);
+      // Refresh local profile
+      await fetchUserProfile(uid);
+    } catch (e) {
+      debugPrint("VISTA: Error updating user profile: $e");
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> signOut() async {
     final uid = _firebaseService.currentUser?.uid;

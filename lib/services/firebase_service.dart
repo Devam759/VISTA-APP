@@ -87,9 +87,9 @@ class FirebaseService {
     try {
       UserCredential? credential;
       if (kIsWeb) {
-        debugPrint("VISTA: Web - Triggering signInWithRedirect...");
-        await _auth.signInWithRedirect(_microsoftProvider);
-        return null as dynamic; 
+        debugPrint("VISTA: Web - Triggering signInWithPopup...");
+        // Use popup on web to avoid full page reloads and state loss
+        credential = await _auth.signInWithPopup(_microsoftProvider);
       } else {
         debugPrint("VISTA: Mobile - Triggering signInWithProvider...");
         credential = await _auth.signInWithProvider(_microsoftProvider);
@@ -97,6 +97,7 @@ class FirebaseService {
       stopwatch.stop();
       debugPrint("VISTA: signInWithMicrosoft SUCCESS in ${stopwatch.elapsedMilliseconds}ms");
       return credential;
+
     } on FirebaseAuthException catch (e) {
       stopwatch.stop();
       debugPrint("VISTA: FirebaseAuthException in signInWithMicrosoft (${stopwatch.elapsedMilliseconds}ms): ${e.code}");

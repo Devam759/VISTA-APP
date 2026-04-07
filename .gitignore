@@ -96,10 +96,13 @@ app.*.map.json
 .env
 *.local
 coordinates.csv
+vista-jklu-60d528d77b29.json
+
 # Android signing secrets
 **/android/key.properties
 **/*.jks
 **/*.keystore
+
 # Node modules in the scripts dir
 **/scripts/node_modules/
 

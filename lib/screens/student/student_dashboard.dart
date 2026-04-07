@@ -21,6 +21,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../services/security_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../services/notification_service.dart';
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME CONSTANTS (Consistent with Warden portal for unified feel)
@@ -52,7 +54,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
     _checkPermissions();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupStudentListeners();
+      _initNotifications();
     });
+  }
+
+  Future<void> _initNotifications() async {
+    final user = Provider.of<AuthProvider>(context, listen: false).userProfile;
+    if (user != null) {
+      await NotificationService().init(user.uid);
+    }
   }
 
   @override
@@ -131,16 +141,22 @@ class _StudentDashboardState extends State<StudentDashboard> {
       return;
     }
 
-    final locationStatus = await Permission.location.request();
-    final cameraStatus = await Permission.camera.request();
+    await Permission.location.request();
+    await Permission.camera.request();
+    await Permission.notification.request();
 
     if (mounted) {
+      final locationStatus = await Permission.location.status;
+      final cameraStatus = await Permission.camera.status;
+
       setState(() {
         _checkingPermissions = false;
         _permissionsGranted =
             locationStatus.isGranted && cameraStatus.isGranted;
+        // Note: Notification permission is often optional but requested here right away
       });
     }
+
   }
 
   @override
@@ -384,6 +400,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     const SizedBox(height: 32),
                     TextField(
                       controller: _rollNoController,
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: [UpperCaseTextFormatter()],
                       decoration: InputDecoration(
                         labelText: 'Roll Number',
                         hintText: 'e.g. 2021BTECH001',
@@ -406,7 +424,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                             : () async {
                                 try {
                                   await authProvider.linkInstitutionalAccount(
-                                    rollNo: _rollNoController.text.trim(),
+                                    rollNo: _rollNoController.text.trim().toUpperCase(),
                                   );
                                 } catch (e) {
                                   if (context.mounted) {
@@ -728,41 +746,11 @@ bool _isStudentOnLeave(List<LeaveRequest> approvedLeaves) {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Security Icon Holder
-                                Container(
-                                  width: 100,
-                                  height: 100,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _kPrimary.withValues(alpha: 0.05),
-                                  ),
-                                  child: Center(
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        const Text(
-                                          "📱",
-                                          style: TextStyle(fontSize: 50),
-                                        ),
-                                        Positioned(
-                                          bottom: 12,
-                                          right: 12,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(6),
-                                            decoration: const BoxDecoration(
-                                              color: _kPrimary,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.security_rounded,
-                                              size: 16,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                // Minimalist Visual
+                                Icon(
+                                  Icons.phonelink_lock_rounded,
+                                  size: 80,
+                                  color: _kPrimary.withValues(alpha: 0.3),
                                 ),
                                 const SizedBox(height: 32),
                                 Text(
@@ -3053,16 +3041,6 @@ class _ShortStayTab extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'FOR DAY SCHOLARS ONLY',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.redAccent,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
                   _buildInput(
                     'Check-in Date & Time',
                     checkInCtrl,
@@ -3198,6 +3176,24 @@ class _ShortStayTab extends StatelessWidget {
                                 createdAt: DateTime.now(),
                               );
                               await fs.submitShortStayRequest(req);
+
+                              // Update profile if any persistent fields changed
+                              final authProvider =
+                                  Provider.of<AuthProvider>(context, listen: false);
+                              Map<String, dynamic> updates = {};
+                              if (addressCtrl.text != user.address) {
+                                updates['address'] = addressCtrl.text;
+                              }
+                              if (parentNameCtrl.text != user.parentName) {
+                                updates['parentName'] = parentNameCtrl.text;
+                              }
+                              if (parentContactCtrl.text != user.parentContact) {
+                                updates['parentContact'] = parentContactCtrl.text;
+                              }
+
+                              if (updates.isNotEmpty) {
+                                await authProvider.updateUserProfile(updates);
+                              }
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(

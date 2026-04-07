@@ -222,8 +222,10 @@ class _SignupScreenState extends State<SignupScreen> {
   void _showSuccessDialog() {
     final bool isDayScholar = _userType == 'Day Scholar';
 
+    debugPrint('[Signup] Showing success dialog. isDayScholar: $isDayScholar');
     showDialog(
       context: context,
+      useRootNavigator: true, 
       barrierDismissible: false,
       barrierColor: Colors.black54,
       builder: (context) => Dialog(
@@ -353,17 +355,22 @@ class _SignupScreenState extends State<SignupScreen> {
     // Auto-redirect after 2 seconds
     Future.delayed(const Duration(milliseconds: 2000), () {
       if (mounted) {
+        debugPrint('[Signup] Auto-redirect timer fired.');
         // Only redirect if the dialog is still the top-most route (not closed manually)
         Navigator.of(context, rootNavigator: true).pop(); // Close dialog first
         _performSuccessRedirect(isDayScholar);
+      } else {
+        debugPrint('[Signup] SignupScreen no longer mounted, skipping auto-redirect.');
       }
     });
   }
 
   void _performSuccessRedirect(bool isDayScholar) async {
+    debugPrint('[Signup] Performing success redirect. isDayScholar: $isDayScholar');
     if (isDayScholar) {
       // For Day Scholars, go to the Student Dashboard
       if (mounted) {
+        debugPrint('[Signup] Navigating to /student...');
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/student',
           (route) => false,
@@ -373,6 +380,7 @@ class _SignupScreenState extends State<SignupScreen> {
       // For Hostellers, we need to sign out and go to Login
       final authProvider = Provider.of<vista.AuthProvider>(context, listen: false);
       
+      debugPrint('[Signup] Hosteller registration. Signing out and going to login...');
       await authProvider.signOut();
       
       if (mounted) {
@@ -624,6 +632,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             hintText: _idType == 'Roll Number' ? 'e.g. 2025BTECH195' : 'e.g. REG12345',
                           ),
                           textCapitalization: TextCapitalization.characters,
+                          inputFormatters: [UpperCaseTextFormatter()],
                         ),
                         const SizedBox(height: 20),
                         DropdownButtonFormField<String>(

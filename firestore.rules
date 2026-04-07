@@ -9,15 +9,16 @@ service cloud.firestore {
     }
     
     function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data.role : null;
     }
 
     // ── USERS COLLECTION ─────────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if isSignedIn() && (
         request.auth.uid == userId || 
-        resource.data.email == request.auth.token.email ||
         userId == request.auth.token.email ||
+        (resource != null && resource.data.email == request.auth.token.email) ||
         getUserRole() == 'warden' || 
         getUserRole() == 'headWarden' ||
         getUserRole() == 'chiefWarden'
@@ -26,7 +27,8 @@ service cloud.firestore {
       allow create: if isSignedIn() && 
         request.auth.uid == userId && 
         request.resource.data.role == 'student' && 
-        request.resource.data.isApproved == false;
+        (request.resource.data.isApproved == false || request.resource.data.isDayScholar == true);
+
       
       allow update: if isSignedIn() && (
         // Student can update their own profile basic info

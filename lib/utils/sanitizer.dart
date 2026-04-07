@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 /// Centralized utility for user input sanitization.
 /// Provides multi-layered protection against XSS, NoSQL/SQL injection,
@@ -137,5 +138,19 @@ class InputSanitizer {
       if (word.isEmpty) return "";
       return word[0].toUpperCase() + word.substring(1).toLowerCase();
     }).join(' ');
+  }
+}
+
+/// A [TextInputFormatter] that converts all input to uppercase.
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
   }
 }

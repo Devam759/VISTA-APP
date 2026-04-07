@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/sanitizer.dart';
 import 'dart:ui';
 
 class MandatoryLinkScreen extends StatefulWidget {
@@ -31,7 +32,7 @@ class _MandatoryLinkScreenState extends State<MandatoryLinkScreen> {
   }
 
   Future<void> _handleLinking() async {
-    final rollNo = _rollNoController.text.trim();
+    final rollNo = _rollNoController.text.trim().toUpperCase();
     if (rollNo.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your official Roll Number')),
@@ -184,6 +185,8 @@ class _MandatoryLinkScreenState extends State<MandatoryLinkScreen> {
                               child: TextField(
                                 controller: _rollNoController,
                                 style: const TextStyle(color: Colors.white),
+                                textCapitalization: TextCapitalization.characters,
+                                inputFormatters: [UpperCaseTextFormatter()],
                                 decoration: InputDecoration(
                                   icon: const Icon(Icons.badge_rounded, color: Colors.white70),
                                   hintText: 'Official Roll Number (e.g. 2024BTECH001)',
