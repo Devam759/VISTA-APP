@@ -52,7 +52,7 @@ class Complaint {
       'isEscalated': isEscalated,
       'isNotified': isNotified,
       'lastStatusNotified': lastStatusNotified,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': FieldValue.serverTimestamp(),
       'seqId': seqId,
     };
   }

@@ -70,7 +70,7 @@ class ShortStayRequest {
       'status': status,
       'appliedHostel': appliedHostel,
       'roomNumber': roomNumber,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': FieldValue.serverTimestamp(),
     };
 
     if (actualCheckOutTime != null) {

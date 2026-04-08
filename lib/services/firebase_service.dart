@@ -626,6 +626,13 @@ class FirebaseService {
     }
 
     await _db.collection('short_stay_requests').doc(id).update(data);
+    if (actionBy != null) {
+      AuditLogger.logSync(
+        uid: actionBy,
+        event: AuditEvent.statusChange,
+        detail: 'short_stay_requests/$id → $status',
+      );
+    }
 
     if (status == 'Approved') {
       final snap = await _db.collection('short_stay_requests').doc(id).get();
@@ -785,17 +792,33 @@ class FirebaseService {
     );
   }
 
-  Future<void> approveStudent(String uid, String roomNumber) {
+  Future<void> approveStudent(String uid, String roomNumber, {String? actionBy}) {
+    if (actionBy != null) {
+      AuditLogger.logSync(
+        uid: actionBy,
+        event: AuditEvent.statusChange,
+        detail: 'Approved student $uid',
+      );
+    }
     return _db.collection('users').doc(uid).update({
       'isApproved': true,
       'roomNumber': roomNumber,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<void> denyStudent(String uid) {
+  Future<void> denyStudent(String uid, {String? actionBy}) {
+    if (actionBy != null) {
+      AuditLogger.logSync(
+        uid: actionBy,
+        event: AuditEvent.statusChange,
+        detail: 'Denied student $uid',
+      );
+    }
     return _db.collection('users').doc(uid).update({
       'hostel': null,
       'isApproved': false,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
