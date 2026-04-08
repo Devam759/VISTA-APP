@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum UserRole { student, warden, headWarden, chiefWarden }
 
+/// Known-good role strings. Any value not in this set is rejected.
+const _kValidRoles = {'student', 'warden', 'headWarden', 'chiefWarden'};
+
 class VistaUser {
   final String uid;
   final String name;
@@ -83,33 +86,58 @@ class VistaUser {
   }
 
   factory VistaUser.fromMap(Map<String, dynamic> map) {
+    // ── Hard validation: reject documents with missing or empty identity fields.
+    final rawUid   = map['uid']?.toString()   ?? '';
+    final rawEmail = map['email']?.toString() ?? '';
+    final rawRole  = map['role']?.toString()  ?? '';
+
+    if (rawUid.isEmpty) {
+      throw StateError('VistaUser: document is missing required field "uid"');
+    }
+    if (rawEmail.isEmpty) {
+      throw StateError('VistaUser: document is missing required field "email"');
+    }
+    if (rawRole.isEmpty) {
+      throw StateError('VistaUser: document is missing required field "role"');
+    }
+
+    // ── Role deserialization: unknown values are rejected outright.
+    // SECURITY: do NOT silently fall back to UserRole.student.
+    // A document with role="superAdmin" or role="" must never produce
+    // a valid VistaUser; it should force sign-out in the auth listener.
+    if (!_kValidRoles.contains(rawRole)) {
+      throw StateError(
+        'VistaUser: unrecognized role "$rawRole" — '
+        'document rejected. This may indicate Firestore data corruption or '
+        'a privilege escalation attempt. Contact the administrator.',
+      );
+    }
+
+    final resolvedRole = UserRole.values.firstWhere(
+      (e) => e.toString().split('.').last == rawRole,
+    );
+
     return VistaUser(
-      uid: map['uid'] ?? '',
-      name: map['name'] ?? '',
-      email: map['email'] ?? '',
-      role: UserRole.values.firstWhere(
-        (e) => e.toString().split('.').last == map['role'],
-        orElse: () => UserRole.student,
-      ),
-      hostel: map['hostel'],
-      roomNumber: map['roomNumber'],
-      isApproved: map['isApproved'] ?? false,
-      phoneNumber: map['phoneNumber'],
-      fcmToken: map['fcmToken'],
-      registrationNotified: map['registrationNotified'] ?? true,
-      approvalNotified: map['approvalNotified'] ?? true,
-      rollNo: map['rollNo'],
-      programme: map['programme'],
-      gender: map['gender'],
-      address: map['address'],
-      parentName: map['parentName'],
-      parentContact: map['parentContact'],
-      hasUsedShortStay: map['hasUsedShortStay'] ?? false,
-      isDayScholar: map['isDayScholar'] ?? false,
-      isAccountActive: map['isAccountActive'] ?? true,
-      registrationNo: map['registrationNo'],
-      isMicrosoftLinked: map['isMicrosoftLinked'] ?? false,
-      isMicrosoftLinkRequired: map['isMicrosoftLinkRequired'] ?? false,
+      uid:                  rawUid,
+      name:                 map['name']?.toString() ?? '',
+      email:                rawEmail,
+      role:                 resolvedRole,
+      hostel:               map['hostel']?.toString(),
+      roomNumber:           map['roomNumber']?.toString(),
+      // Explicit bool comparison — no implicit JS-style truthy casting.
+      isApproved:           map['isApproved'] == true,
+      phoneNumber:          map['phoneNumber']?.toString(),
+      fcmToken:             map['fcmToken']?.toString(),
+      registrationNotified: map['registrationNotified'] == true,
+      approvalNotified:     map['approvalNotified'] == true,
+      rollNo:               map['rollNo']?.toString(),
+      programme:            map['programme']?.toString(),
+      gender:               map['gender']?.toString(),
+      address:              map['address']?.toString(),
+      parentName:           map['parentName']?.toString(),
+      parentContact:        map['parentContact']?.toString(),
+      hasUsedShortStay:     map['hasUsedShortStay'] == true,
+      isDayScholar:         map['isDayScholar'] == true,
     );
   }
 }

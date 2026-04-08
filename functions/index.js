@@ -1,12 +1,75 @@
 const functions = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
 
 const db = getFirestore('default');
 const messaging = getMessaging();
+
+// ── FCM error codes that indicate a permanently invalid token ─────────────────
+const STALE_TOKEN_ERRORS = new Set([
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-registration-token',
+]);
+
+/**
+ * Assigns a secure sequence ID to a new document (e.g., LA2412, CA241)
+ * securely on the server using a Firestore transaction.
+ */
+async function assignSeqId(docRef, prefix) {
+    const counterRef = db.collection('counters').doc(prefix);
+    try {
+        await db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(counterRef);
+            let currentVal = 0;
+            if (snapshot.exists) {
+                currentVal = snapshot.data().current ?? 0;
+            }
+            const nextVal = currentVal + 1;
+            transaction.set(counterRef, { current: nextVal });
+            const yearStr = new Date().getFullYear().toString().slice(-2);
+            const seqId = `${prefix}${yearStr}${nextVal}`;
+            transaction.update(docRef, { seqId: seqId });
+        });
+    } catch (e) {
+        console.error(`[assignSeqId] Failed to assign seqId for ${prefix}`, e);
+    }
+}
+
+/**
+ * After a multicast send, purge any FCM tokens that Firebase marked as
+ * permanently invalid. Stale tokens accumulate silently and skew delivery stats.
+ *
+ * @param {admin.messaging.BatchResponse} response - Result from sendEachForMulticast
+ * @param {string[]} tokens - The token array sent, parallel to response.responses
+ * @param {string[]} uids   - The uid array parallel to tokens (for Firestore lookup)
+ */
+async function purgeStaleTokens(response, tokens, uids) {
+  const purgePromises = [];
+  response.responses.forEach((res, idx) => {
+    if (res.success) return;
+    const errCode = res.error?.code ?? '';
+    if (STALE_TOKEN_ERRORS.has(errCode)) {
+      const staleToken = tokens[idx];
+      // Find the user document by token and null it out.
+      purgePromises.push(
+        db.collection('users')
+          .where('fcmToken', '==', staleToken)
+          .limit(1)
+          .get()
+          .then(snap => {
+            if (!snap.empty) {
+              return snap.docs[0].ref.update({ fcmToken: null });
+            }
+          })
+          .catch(e => console.warn(`[purgeStaleTokens] Error purging token: ${e}`))
+      );
+    }
+  });
+  await Promise.allSettled(purgePromises);
+}
 
 /**
  * Helper to get current Date in Asia/Kolkata
@@ -48,13 +111,13 @@ async function sendNotificationToEligibleStudents() {
         const activeShortStays = await db.collection('short_stay_requests')
             .where('status', '==', 'Approved')
             .get();
-        
+
         const activeShortStayUids = new Set();
         activeShortStays.forEach(doc => {
             const data = doc.data();
+            if (!data.checkInDate || !data.checkOutDate || !data.studentId) return;
             const start = data.checkInDate.toDate();
             const end = data.checkOutDate.toDate();
-            // Reset times for date-only comparison or keep as is if they are midnight
             start.setHours(0, 0, 0, 0);
             end.setHours(23, 59, 59, 999);
             if (nowIST >= start && nowIST <= end) {
@@ -70,6 +133,7 @@ async function sendNotificationToEligibleStudents() {
         const onLeaveStudentIds = new Set();
         leavesSnapshot.forEach(doc => {
             const data = doc.data();
+            if (!data.fromDate || !data.toDate || !data.studentId) return;
             try {
                 const fromDate = data.fromDate.toDate ? data.fromDate.toDate() : new Date(data.fromDate);
                 const toDate = data.toDate.toDate ? data.toDate.toDate() : new Date(data.toDate);
@@ -85,21 +149,21 @@ async function sendNotificationToEligibleStudents() {
 
         // 4. Note: No longer checking "already marked" (removed 10:20 PM reminder)
         const tokens = [];
+        const uids   = [];
         studentsSnapshot.forEach(doc => {
             const data = doc.data();
             const uid = data.uid || doc.id;
             const fcmToken = data.fcmToken;
-            
-            // Exclude if on leave
+
+            if (!fcmToken || typeof fcmToken !== 'string') return;
             if (onLeaveStudentIds.has(uid)) return;
-            
-            // Inclusion logic:
-            // - Regular hosteller (not day scholar)
-            // - OR Day Scholar with ACTIVE short stay
+
             const isEligibleHosteller = !data.isDayScholar || activeShortStayUids.has(uid);
-            
-            if (fcmToken && isEligibleHosteller) {
+            const isMarked = isMissedReminder && markedStudentIds.has(uid);
+
+            if (isEligibleHosteller && !isMarked) {
                 tokens.push(fcmToken);
+                uids.push(uid);
             }
         });
 
@@ -128,6 +192,11 @@ async function sendNotificationToEligibleStudents() {
 
         const response = await messaging.sendEachForMulticast(message);
         console.log(`${response.successCount} messages sent to ${tokens.length} potential tokens.`);
+
+        // Purge permanently-invalid tokens to keep Firestore clean.
+        if (response.failureCount > 0) {
+            await purgeStaleTokens(response, tokens, uids);
+        }
     } catch (error) {
         console.error('Error in sendNotificationToEligibleStudents:', error);
     }
@@ -149,7 +218,13 @@ exports.nightAttendanceReminder = functions.region('asia-south1')
 
 exports.notifyWardenNewRegistration = functions.region('asia-south1').firestore.database('default').document('users/{uid}').onCreate(async (snapshot, context) => {
     const newUser = snapshot.data();
-    if (newUser.role !== 'student' || newUser.isApproved === true) return;
+    // Guard: only notify for pending student registrations.
+    if (!newUser || newUser.role !== 'student' || newUser.isApproved === true) return;
+    // Guard: require a hostel value to route notifications correctly.
+    if (!newUser.hostel || typeof newUser.hostel !== 'string') {
+        console.warn(`[notifyWardenNewRegistration] User ${context.params.uid} missing hostel field.`);
+        return;
+    }
 
     try {
         const wardens = await db.collection('users')
@@ -159,17 +234,19 @@ exports.notifyWardenNewRegistration = functions.region('asia-south1').firestore.
 
         const tokens = [];
         wardens.forEach(doc => {
-            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+            const token = doc.data().fcmToken;
+            if (token && typeof token === 'string') tokens.push(token);
         });
 
         if (tokens.length > 0) {
-            await messaging.sendEachForMulticast({
+            const response = await messaging.sendEachForMulticast({
                 notification: {
                     title: 'New Student Registration',
-                    body: `${newUser.name} has registered for ${newUser.hostel}. Approval pending.`,
+                    body: `${newUser.name || 'A student'} has registered for ${newUser.hostel}. Approval pending.`,
                 },
                 tokens: tokens,
             });
+            if (response.failureCount > 0) await purgeStaleTokens(response, tokens, []);
         }
     } catch (error) {
         console.error('Error in notifyWardenNewRegistration:', error);
@@ -177,7 +254,15 @@ exports.notifyWardenNewRegistration = functions.region('asia-south1').firestore.
 });
 
 exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.database('default').document('leave_requests/{id}').onCreate(async (snapshot, context) => {
+    // 1. Assign Sequence ID server-side
+    await assignSeqId(snapshot.ref, 'LA');
+
     const leave = snapshot.data();
+    if (!leave || !leave.hostel || !leave.studentName) {
+        console.warn('[notifyWardenNewLeave] Missing required fields in leave request.');
+        return;
+    }
+
     try {
         const wardens = await db.collection('users')
             .where('role', '==', 'warden')
@@ -186,17 +271,19 @@ exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.databas
 
         const tokens = [];
         wardens.forEach(doc => {
-            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+            const token = doc.data().fcmToken;
+            if (token && typeof token === 'string') tokens.push(token);
         });
 
         if (tokens.length > 0) {
-            await messaging.sendEachForMulticast({
+            const response = await messaging.sendEachForMulticast({
                 notification: {
                     title: 'New Leave Request',
                     body: `${leave.studentName} has requested leave from ${leave.fromDate}.`,
                 },
                 tokens: tokens,
             });
+            if (response.failureCount > 0) await purgeStaleTokens(response, tokens, []);
         }
     } catch (error) {
         console.error('Error in notifyWardenNewLeave:', error);
@@ -204,7 +291,15 @@ exports.notifyWardenNewLeave = functions.region('asia-south1').firestore.databas
 });
 
 exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.database('default').document('complaints/{id}').onCreate(async (snapshot, context) => {
+    // 1. Assign Sequence ID server-side
+    await assignSeqId(snapshot.ref, 'CA');
+
     const complaint = snapshot.data();
+    if (!complaint || !complaint.hostel || !complaint.title) {
+        console.warn('[notifyWardenNewComplaint] Missing required fields in complaint.');
+        return;
+    }
+
     try {
         const wardens = await db.collection('users')
             .where('role', '==', 'warden')
@@ -213,24 +308,31 @@ exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.dat
 
         const tokens = [];
         wardens.forEach(doc => {
-            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+            const token = doc.data().fcmToken;
+            if (token && typeof token === 'string') tokens.push(token);
         });
 
-        if (complaint.targetRoles && (complaint.targetRoles.includes('headWarden') || complaint.targetRoles.includes('Head Warden'))) {
+        if (complaint.targetRoles && (
+            complaint.targetRoles.includes('headWarden') ||
+            complaint.targetRoles.includes('Head Warden')
+        )) {
             const headWardens = await db.collection('users').where('role', '==', 'headWarden').get();
             headWardens.forEach(doc => {
-                if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+                const token = doc.data().fcmToken;
+                if (token && typeof token === 'string') tokens.push(token);
             });
         }
 
-        if (tokens.length > 0) {
-            await messaging.sendEachForMulticast({
+        const uniqueTokens = [...new Set(tokens)];
+        if (uniqueTokens.length > 0) {
+            const response = await messaging.sendEachForMulticast({
                 notification: {
                     title: 'New Complaint Received',
                     body: `A new complaint has been filed for ${complaint.hostel}: ${complaint.title}`,
                 },
-                tokens: [...new Set(tokens)],
+                tokens: uniqueTokens,
             });
+            if (response.failureCount > 0) await purgeStaleTokens(response, uniqueTokens, []);
         }
     } catch (error) {
         console.error('Error in notifyWardenNewComplaint:', error);
@@ -238,11 +340,24 @@ exports.notifyWardenNewComplaint = functions.region('asia-south1').firestore.dat
 });
 
 exports.notifyWardenNewShortStay = functions.region('asia-south1').firestore.database('default').document('short_stay_requests/{id}').onCreate(async (snapshot, context) => {
+    // 1. Assign Sequence ID server-side
+    await assignSeqId(snapshot.ref, 'SS');
+
     const request = snapshot.data();
+    if (!request || !request.gender || !request.studentName) {
+        console.warn('[notifyWardenNewShortStay] Missing required fields in short stay request.');
+        return;
+    }
+
+    // Validate gender to avoid injecting unexpected hostel values.
+    if (!['Male', 'Female'].includes(request.gender)) {
+        console.warn(`[notifyWardenNewShortStay] Unexpected gender value: ${request.gender}`);
+        return;
+    }
+
     try {
-        // Short stay for boys goes to BH1/BH2 wardens, girls to GH1/GH2
         const targetHostels = request.gender === 'Male' ? ['BH1', 'BH2'] : ['GH1', 'GH2'];
-        
+
         const wardens = await db.collection('users')
             .where('role', '==', 'warden')
             .where('hostel', 'in', targetHostels)
@@ -250,37 +365,50 @@ exports.notifyWardenNewShortStay = functions.region('asia-south1').firestore.dat
 
         const tokens = [];
         wardens.forEach(doc => {
-            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+            const token = doc.data().fcmToken;
+            if (token && typeof token === 'string') tokens.push(token);
         });
 
-        // Always notify Head Warden for all short stays
         const headWardens = await db.collection('users').where('role', '==', 'headWarden').get();
         headWardens.forEach(doc => {
-            if (doc.data().fcmToken) tokens.push(doc.data().fcmToken);
+            const token = doc.data().fcmToken;
+            if (token && typeof token === 'string') tokens.push(token);
         });
 
-        if (tokens.length > 0) {
-            await messaging.sendEachForMulticast({
+        const uniqueTokens = [...new Set(tokens)];
+        if (uniqueTokens.length > 0) {
+            const response = await messaging.sendEachForMulticast({
                 notification: {
                     title: 'New Short Stay Request',
-                    body: `${request.studentName} (${request.gender}) is requesting a short stay for ${request.reason}.`,
+                    body: `${request.studentName} (${request.gender}) is requesting a short stay for ${request.reason || 'unspecified reason'}.`,
                 },
-                tokens: [...new Set(tokens)],
+                tokens: uniqueTokens,
             });
+            if (response.failureCount > 0) await purgeStaleTokens(response, uniqueTokens, []);
         }
     } catch (error) {
         console.error('Error in notifyWardenNewShortStay:', error);
     }
 });
 
+// Allowed collection names to prevent wildcard abuse.
+const NOTIFIABLE_COLLECTIONS = new Set([
+    'users',
+    'leave_requests',
+    'complaints',
+    'short_stay_requests',
+]);
+
 exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.database('default').document('{col}/{id}').onUpdate(async (change, context) => {
     const col = context.params.col;
-    if (!['users', 'leave_requests', 'complaints', 'short_stay_requests'].includes(col)) return;
+
+    // Hard whitelist — ignore any collection not in our set.
+    if (!NOTIFIABLE_COLLECTIONS.has(col)) return;
 
     const oldData = change.before.data();
     const newData = change.after.data();
 
-    // Avoid triggering if status hasn't changed
+    // Avoid triggering if status hasn't changed.
     if (oldData.status === newData.status && col !== 'users') return;
 
     let title = '';
@@ -290,28 +418,43 @@ exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.databa
     if (col === 'users') {
         if (oldData.isApproved === false && newData.isApproved === true) {
             title = 'Registration Approved!';
-            body = `Your registration for ${newData.hostel} has been approved. Room: ${newData.roomNumber}`;
-            studentUid = newData.uid;
+            body = `Your registration for ${newData.hostel || 'your hostel'} has been approved. Room: ${newData.roomNumber || 'TBD'}`;
+            studentUid = newData.uid || '';
         }
     } else if (col === 'leave_requests') {
         title = 'Leave Request Update';
-        body = `Your leave request has been ${newData.status.toLowerCase()}.`;
-        studentUid = newData.studentId;
+        body = `Your leave request has been ${(newData.status || '').toLowerCase()}.`;
+        studentUid = newData.studentId || '';
     } else if (col === 'short_stay_requests') {
         title = 'Short Stay Update';
-        body = `Your short stay request is now ${newData.status.toLowerCase()}${newData.roomNumber ? '. Allotted Room: ' + newData.roomNumber : ''}.`;
-        studentUid = newData.studentId;
+        body = `Your short stay request is now ${(newData.status || '').toLowerCase()}${newData.roomNumber ? '. Allotted Room: ' + newData.roomNumber : ''}.`;
+        studentUid = newData.studentId || '';
     } else if (col === 'complaints') {
         title = 'Complaint Update';
-        body = newData.isEscalated ? 'Your complaint has been escalated.' : `Status now: ${newData.status}`;
-        studentUid = newData.studentId;
+        body = newData.isEscalated
+            ? 'Your complaint has been escalated.'
+            : `Status now: ${newData.status || 'updated'}`;
+        studentUid = newData.studentId || '';
     }
 
     if (title && studentUid) {
-        const studentDoc = await db.collection('users').doc(studentUid).get();
-        const token = studentDoc.data()?.fcmToken;
-        if (token) {
-            await messaging.send({ notification: { title, body }, token: token });
+        try {
+            const studentDoc = await db.collection('users').doc(studentUid).get();
+            const token = studentDoc.data()?.fcmToken;
+            if (token && typeof token === 'string') {
+                const sendResult = await messaging.send({ notification: { title, body }, token });
+                console.log(`[notifyStudentOnUpdate] Sent to ${studentUid}: ${sendResult}`);
+            }
+        } catch (e) {
+            // If the token is stale, purge it.
+            const errCode = e?.errorInfo?.code ?? '';
+            if (STALE_TOKEN_ERRORS.has(errCode) && studentUid) {
+                await db.collection('users').doc(studentUid)
+                    .update({ fcmToken: null })
+                    .catch(purgeErr => console.warn('[notifyStudentOnUpdate] Purge failed:', purgeErr));
+            } else {
+                console.error('[notifyStudentOnUpdate] Send failed:', e);
+            }
         }
     }
 });

@@ -98,6 +98,11 @@ app.*.map.json
 coordinates.csv
 vista-jklu-60d528d77b29.json
 
+# Firebase auto-generated options file — contains API keys.
+# Regenerate with: flutterfire configure
+# IMPORTANT: Rotate the API keys in Firebase Console before committing this file.
+lib/firebase_options.dart
+
 # Android signing secrets
 **/android/key.properties
 **/*.jks

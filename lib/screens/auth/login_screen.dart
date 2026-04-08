@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../providers/auth_provider.dart';
-
 import '../../utils/sanitizer.dart';
+import '../../utils/rate_limiter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,58 +15,112 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  bool _obscurePassword     = true;
   String? _errorMessage;
+
+  // Lockout countdown
+  int _lockoutSeconds = 0;
+  Timer? _lockoutTimer;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _lockoutTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Start or refresh the lockout countdown widget.
+  void _startLockoutCountdown(int seconds) {
+    _lockoutTimer?.cancel();
+    setState(() => _lockoutSeconds = seconds);
+    if (seconds <= 0) return;
+    _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        _lockoutSeconds = (_lockoutSeconds - 1).clamp(0, 99999);
+        if (_lockoutSeconds == 0) t.cancel();
+      });
+    });
+  }
+
+  String _formatLockout(int secs) {
+    final h = secs ~/ 3600;
+    final m = (secs % 3600) ~/ 60;
+    final s = secs % 60;
+    if (h > 0) return '${h}h ${m}m ${s}s';
+    if (m > 0) return '${m}m ${s}s';
+    return '${s}s';
+  }
 
   void _login() async {
     setState(() => _errorMessage = null);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    try {
-      String identifier = InputSanitizer.sanitize(_emailController.text.trim());
-      if (identifier.isEmpty) {
-        setState(() => _errorMessage = 'Please enter your ID');
-        return;
-      }
 
-      // Handle cases where user might have typed the full email
+    final identifier = InputSanitizer.sanitize(_emailController.text.trim());
+    if (identifier.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your ID');
+      return;
+    }
+
+    // ── Pre-check lockout BEFORE calling Firebase (no unnecessary round-trip) ──
+    // Capture context-dependent objects BEFORE the first await.
+    // Using a BuildContext across an async gap triggers
+    // use_build_context_synchronously lint.
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    final remaining = await LoginThrottle.lockoutRemainingSeconds(identifier);
+    if (remaining > 0) {
+      _startLockoutCountdown(remaining);
+      if (mounted) setState(() => _errorMessage = null);
+      return;
+    }
+
+    try {
       String finalIdentifier = identifier;
-      if (!identifier.contains('@')) {
+      if (!identifier.contains('@') &&
+          !RegExp(r'^[0-9+\s-]+$').hasMatch(identifier)) {
         finalIdentifier = '$identifier@jklu.edu.in';
       }
 
       await authProvider.signIn(finalIdentifier, _passwordController.text.trim());
-      // Trigger the password-save prompt on Android / iOS / Web
       TextInput.finishAutofillContext();
     } catch (e) {
-      if (mounted) {
-        String message = 'Login failed. Please check your credentials.';
-        if (e.toString().contains('invalid-credential') ||
-            e.toString().contains('wrong-password') ||
-            e.toString().contains('user-not-found')) {
-          message = 'Incorrect ID or password entered.';
-        } else if (e.toString().contains('network-request-failed')) {
-          message = 'Network error. Please check your connection.';
-        }
+      if (!mounted) return;
 
-        setState(() => _errorMessage = message);
+      // Check if the exception is a lockout from LoginThrottle.
+      final newRemaining =
+          await LoginThrottle.lockoutRemainingSeconds(identifier);
+      if (newRemaining > 0) {
+        _startLockoutCountdown(newRemaining);
+        return;
       }
+
+      String message = 'Login failed. Please check your credentials.';
+      final errorStr = e.toString();
+      if (errorStr.contains('invalid-credential') ||
+          errorStr.contains('wrong-password') ||
+          errorStr.contains('user-not-found')) {
+        message = 'Incorrect ID or password entered.';
+      } else if (errorStr.contains('network-request-failed')) {
+        message = 'Network error. Please check your connection.';
+      } else if (errorStr.contains('too-many-requests')) {
+        message = 'Too many attempts. Please try again later.';
+      }
+
+      setState(() => _errorMessage = message);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    debugPrint("VISTA: LoginScreen build (v2). Loading: ${authProvider.isLoading}");
+    final isLocked     = _lockoutSeconds > 0;
 
-    // Reactive Linking Dialog Trigger
-    if (authProvider.pendingEmail != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        debugPrint("VISTA: Reactive Trigger - Calling _showAccountLinkingDialog...");
-        _showAccountLinkingDialog(context);
-      });
-    }
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -79,244 +134,191 @@ class _LoginScreenState extends State<LoginScreen> {
                     maxWidth: 400,
                   ),
                   child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 40),
-                        Center(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Image.asset(
-                                      'assets/images/jklu_logo.jpg',
-                                      height: 60,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Text(
-                                      'VISTA',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFF1E3A8A),
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                        const SizedBox(height: 50),
-                        OutlinedButton(
-                          onPressed: authProvider.isLoading
-                              ? null
-                              : () async {
-                                  debugPrint("VISTA: Microsoft Login button CLICKED");
-                                  try {
-                                    await authProvider.signInWithMicrosoft();
-                                    debugPrint("VISTA: signInWithMicrosoft completion - Pending: ${authProvider.pendingEmail != null}");
-                                  } on FirebaseAuthException catch (e) {
-                                    if (mounted) {
-                                      setState(() => _errorMessage =
-                                          'Microsoft Login failed: ${e.message}');
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      setState(() => _errorMessage =
-                                          'An unexpected error occurred: ${e.toString()}');
-                                    }
-                                  }
-                                },
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            side: BorderSide.none,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 16,
-                              horizontal: 20,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            elevation: 2,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Custom Microsoft 4-color square logo
-                              SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: Row(
-                                        children: [
-                                          Expanded(child: Container(color: const Color(0xFFF25022))),
-                                          const SizedBox(width: 1.5),
-                                          Expanded(child: Container(color: const Color(0xFF7FBA00))),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 1.5),
-                                    Expanded(
-                                      child: Row(
-                                        children: [
-                                          Expanded(child: Container(color: const Color(0xFF00A4EF))),
-                                          const SizedBox(width: 1.5),
-                                          Expanded(child: Container(color: const Color(0xFFFFB900))),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              const Text(
-                                'Sign in with Microsoft',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        const Row(
-                          children: [
-                            Expanded(child: Divider()),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Text('OR', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                            ),
-                            Expanded(child: Divider()),
-                          ],
-                        ),
-                        const SizedBox(height: 30),
-                        AutofillGroup(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              TextField(
-                                    controller: _emailController,
-                                    autofillHints: const [
-                                      AutofillHints.email,
-                                      AutofillHints.username,
-                                    ],
-                                    decoration: InputDecoration(
-                                      labelText: 'Email',
-                                      prefixIcon: const Icon(Icons.person_outline),
-                                      suffix: _emailController.text.contains('@')
-                                          ? null
-                                          : const Text(
-                                              '@jklu.edu.in',
-                                              style: TextStyle(color: Colors.grey),
-                                            ),
-                                    ),
-                                    onChanged: (val) => setState(() {}),
-                                    keyboardType: TextInputType.emailAddress,
-                                  ),
-                              const SizedBox(height: 20),
-                              TextField(
-                                    controller: _passwordController,
-                                    autofillHints: const [
-                                      AutofillHints.password,
-                                    ],
-                                    decoration: InputDecoration(
-                                      labelText: 'Password',
-                                      prefixIcon: const Icon(
-                                        Icons.lock_outline,
-                                      ),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(
-                                          _obscurePassword
-                                              ? Icons.visibility_off
-                                              : Icons.visibility,
-                                        ),
-                                        onPressed: () => setState(
-                                          () => _obscurePassword =
-                                              !_obscurePassword,
-                                        ),
-                                      ),
-                                    ),
-                                    obscureText: _obscurePassword,
-                                    onEditingComplete: () =>
-                                        TextInput.finishAutofillContext(
-                                          shouldSave: false,
-                                        ),
-                                  ),
-                            ],
-                          ),
-                        ),
-                        if (_errorMessage != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 20),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error_outline,
-                                    color: Colors.red,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: const TextStyle(
-                                        color: Colors.red,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 40),
-                        ElevatedButton(
-                          onPressed: authProvider.isLoading ? null : _login,
-                          child: authProvider.isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Login'),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 40),
+                      Center(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text("Don't have an account?"),
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pushNamed(context, '/signup'),
-                              child: const Text('Sign Up'),
+                            Image.asset(
+                              'assets/images/jklu_logo.jpg',
+                              height: 60,
+                            ),
+                            const SizedBox(width: 16),
+                            Text(
+                              'VISTA',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF1E3A8A),
+                                  ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 50),
+                      AutofillGroup(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextField(
+                              controller: _emailController,
+                              autofillHints: const [
+                                AutofillHints.email,
+                                AutofillHints.username,
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Email or Mobile Number',
+                                prefixIcon: const Icon(Icons.person_outline),
+                                suffix: _emailController.text.contains('@') ||
+                                        RegExp(r'^[0-9+\s-]+$')
+                                            .hasMatch(_emailController.text)
+                                    ? null
+                                    : const Text(
+                                        '@jklu.edu.in',
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                              ),
+                              onChanged: (val) => setState(() {}),
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: _passwordController,
+                              autofillHints: const [AutofillHints.password],
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
+                                ),
+                              ),
+                              obscureText: _obscurePassword,
+                              onEditingComplete: () =>
+                                  TextInput.finishAutofillContext(
+                                    shouldSave: false,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ── Lockout Banner ──────────────────────────────────
+                      if (isLocked)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF3CD),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFFFCA2C)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.lock_clock,
+                                    color: Color(0xFF856404), size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Account locked due to too many failed attempts.\n'
+                                    'Try again in ${_formatLockout(_lockoutSeconds)}.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF856404),
+                                      fontSize: 13,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // ── Error Message ───────────────────────────────────
+                      if (_errorMessage != null && !isLocked)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 40),
+                      ElevatedButton(
+                        onPressed:
+                            (authProvider.isLoading || isLocked) ? null : _login,
+                        child: authProvider.isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Login'),
+                      ),
+                      const SizedBox(height: 40),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("Don't have an account?"),
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pushNamed(context, '/signup'),
+                            child: const Text('Sign Up'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-              );
+              ),
+            );
           },
         ),
       ),

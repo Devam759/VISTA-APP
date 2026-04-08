@@ -3207,10 +3207,11 @@ class _ShortStayTab extends StatelessWidget {
                                 );
                               }
                             } catch (e) {
-                              if (context.mounted)
+                              if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('Error: $e')),
                                 );
+                              }
                             } finally {
                               setDialogState(() => isSubmitting = false);
                             }
@@ -3438,10 +3439,11 @@ class _ShortStayCard extends StatelessWidget {
     );
     if (confirmed == true) {
       await fs.checkOutFromShortStay(request.id);
-      if (context.mounted)
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Checked out successfully!')),
         );
+      }
     }
   }
 
@@ -3466,10 +3468,11 @@ class _ShortStayCard extends StatelessWidget {
           time.minute,
         );
         await fs.requestShortStayExtension(request.id, newDate);
-        if (context.mounted)
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Extension request sent!')),
           );
+        }
       }
     }
   }

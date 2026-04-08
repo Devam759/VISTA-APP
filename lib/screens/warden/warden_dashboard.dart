@@ -900,7 +900,7 @@ class _StudentsTabState extends State<_StudentsTab> {
                       ),
                       Switch.adaptive(
                         value: s.isMicrosoftLinkRequired,
-                        activeColor: _kPrimary,
+                        activeTrackColor: _kPrimary,
                         onChanged: (bool val) async {
                           try {
                             await widget.fs.updateMicrosoftLinkRequirement(
@@ -3681,8 +3681,9 @@ class _ShortStaysTabState extends State<_ShortStaysTab> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (roomCtrl.text.trim().isEmpty || selectedHostel == null)
+                if (roomCtrl.text.trim().isEmpty || selectedHostel == null) {
                   return;
+                }
                 widget.fs.updateShortStayStatus(
                   request.id,
                   'Approved',

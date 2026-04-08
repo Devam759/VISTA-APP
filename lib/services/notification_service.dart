@@ -113,7 +113,7 @@ class NotificationService {
     );
 
     await _localNotifications!.show(
-      0,
+      DateTime.now().millisecondsSinceEpoch ~/ 1000, // unique per second
       notification.title,
       notification.body,
       platformChannelSpecifics,

@@ -11,6 +11,13 @@ import '../models/short_stay_model.dart';
 import '../utils/rate_limiter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'audit_logger.dart';
+
+// ── Immutable status whitelists (defence-in-depth alongside Firestore rules) ──
+const _kLeaveStatuses       = {'Pending', 'Approved', 'Rejected', 'Cancelled'};
+const _kShortStayStatuses   = {'Pending', 'Approved', 'Rejected', 'Cancelled', 'Completed'};
+const _kComplaintStatuses   = {'Pending', 'Resolved', 'Confirmed', 'Escalated'};
+const _kAttendanceStatuses  = {'Present', 'Absent'};
 
 class FirebaseService {
   // Using lazy getters for all Firebase instances.
@@ -112,6 +119,22 @@ class FirebaseService {
     }
   }
 
+
+  Future<void> verifyPhoneNumber({
+    required String phoneNumber,
+    Object? webVerifier,
+    required void Function(String, int?) onCodeSent,
+    required void Function(FirebaseAuthException) onVerificationFailed,
+    required void Function(PhoneAuthCredential) onVerificationCompleted,
+  }) async {
+    await _auth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      verificationCompleted: onVerificationCompleted,
+      verificationFailed: onVerificationFailed,
+      codeSent: onCodeSent,
+      codeAutoRetrievalTimeout: (String verificationId) {},
+    );
+  }
 
   // Sign Out
   Future<void> signOut() {
@@ -335,8 +358,25 @@ class FirebaseService {
 
   // Attendance Methods
   Future<void> markAttendance(Attendance attendance) {
+    if (!_kAttendanceStatuses.contains(attendance.status)) {
+      throw ArgumentError(
+        'Invalid attendance status "${attendance.status}". '
+        'Must be one of: ${_kAttendanceStatuses.join(', ')}',
+      );
+    }
     return RateLimiter.run('markAttendance_${attendance.studentId}', () {
-      return _db.collection('attendance').add(attendance.toMap());
+      // Build the map ourselves to override the client timestamp with the
+      // server timestamp — ensures students cannot backdate attendance by
+      // manipulating their device clock.
+      final data = attendance.toMap()
+        ..['timestamp'] = FieldValue.serverTimestamp()
+        // Recalculate date server-side for consistency.
+        ..remove('date');
+      // 'date' is stored as a convenience field for queries.
+      // We remove the client value and let the Cloud Function or a Firestore
+      // trigger populate it from the serverTimestamp if needed.
+      // For now, omitting it is safer than using a client-controlled value.
+      return _db.collection('attendance').add(data);
     });
   }
 
@@ -368,33 +408,11 @@ class FirebaseService {
         });
   }
 
-  // Sequential ID Generator
-  Future<String> _getNextSequence(String prefix) async {
-    final counterRef = _db.collection('counters').doc(prefix);
 
-    return _db.runTransaction((transaction) async {
-      final snapshot = await transaction.get(counterRef);
-      int currentVal = 0;
-
-      if (snapshot.exists) {
-        currentVal = snapshot.data()?['current'] ?? 0;
-      }
-
-      int nextVal = currentVal + 1;
-      transaction.set(counterRef, {'current': nextVal});
-
-      // Get last 2 digits of current year (e.g., 2024 -> 24)
-      final year = DateTime.now().year % 100;
-      
-      // Return Prefix + Year + Counter (e.g., CA241)
-      return '$prefix$year$nextVal';
-    });
-  }
 
   // Leave Methods
   Future<void> submitLeaveRequest(LeaveRequest request) async {
     return RateLimiter.run('submitLeave_${request.studentId}', () async {
-      final seqId = await _getNextSequence('LA');
       final updatedRequest = LeaveRequest(
         id: request.id,
         studentId: request.studentId,
@@ -411,7 +429,7 @@ class FirebaseService {
         status: request.status,
         createdAt: DateTime.now(),
         checkInTime: request.checkInTime,
-        seqId: seqId,
+        seqId: '', // Assigned securely on the server via Cloud Functions
       );
       await _db.collection('leave_requests').add(updatedRequest.toMap());
     });
@@ -447,8 +465,21 @@ class FirebaseService {
     });
   }
 
-  Future<void> updateLeaveStatus(String id, String status) {
-    return _db.collection('leave_requests').doc(id).update({'status': status});
+  Future<void> updateLeaveStatus(String id, String status, {String? actorUid}) async {
+    if (!_kLeaveStatuses.contains(status)) {
+      throw ArgumentError(
+        'Invalid leave status "$status". '
+        'Valid values: ${_kLeaveStatuses.join(', ')}',
+      );
+    }
+    await _db.collection('leave_requests').doc(id).update({'status': status});
+    if (actorUid != null) {
+      AuditLogger.logSync(
+        uid: actorUid,
+        event: AuditEvent.statusChange,
+        detail: 'leave_requests/$id → $status',
+      );
+    }
   }
 
   Stream<List<LeaveRequest>> getApprovedLeaves(String? hostel) {
@@ -488,10 +519,9 @@ class FirebaseService {
   // Short Stay Methods (Annexure - F)
   Future<void> submitShortStayRequest(ShortStayRequest request) async {
     return RateLimiter.run('submitShortStay_${request.studentId}', () async {
-      final seqId = await _getNextSequence('SS');
       final updatedRequest = ShortStayRequest(
         id: request.id,
-        seqId: seqId,
+        seqId: '', // Assigned securely on the server via Cloud Functions
         studentId: request.studentId,
         studentName: request.studentName,
         rollNo: request.rollNo,
@@ -577,6 +607,12 @@ class FirebaseService {
     String? allotmentHostel,
     String? actionBy,
   }) async {
+    if (!_kShortStayStatuses.contains(status)) {
+      throw ArgumentError(
+        'Invalid short-stay status "$status". '
+        'Valid values: ${_kShortStayStatuses.join(', ')}',
+      );
+    }
     final Map<String, dynamic> data = {'status': status};
     if (roomNumber != null) data['roomNumber'] = roomNumber;
     if (allotmentHostel != null) data['appliedHostel'] = allotmentHostel;
@@ -635,7 +671,6 @@ class FirebaseService {
   // Complaint Methods
   Future<void> submitComplaint(Complaint complaint) async {
     return RateLimiter.run('submitComplaint_${complaint.studentId}', () async {
-      final seqId = await _getNextSequence('CA');
       final updatedComplaint = Complaint(
         id: complaint.id,
         studentId: complaint.studentId,
@@ -650,7 +685,7 @@ class FirebaseService {
         studentConfirmed: complaint.studentConfirmed,
         isEscalated: complaint.isEscalated,
         createdAt: complaint.createdAt,
-        seqId: seqId,
+        seqId: '',
       );
       await _db.collection('complaints').add(updatedComplaint.toMap());
     });
@@ -685,14 +720,28 @@ class FirebaseService {
         });
   }
 
-  Future<void> updateComplaintStatus(String id, String status) {
+  Future<void> updateComplaintStatus(String id, String status, {String? actorUid}) async {
+    if (!_kComplaintStatuses.contains(status)) {
+      throw ArgumentError(
+        'Invalid complaint status "$status". '
+        'Valid values: ${_kComplaintStatuses.join(', ')}',
+      );
+    }
     if (status == 'Confirmed') {
-      return _db.collection('complaints').doc(id).update({
+      await _db.collection('complaints').doc(id).update({
         'status': status,
         'studentConfirmed': true,
       });
+    } else {
+      await _db.collection('complaints').doc(id).update({'status': status});
     }
-    return _db.collection('complaints').doc(id).update({'status': status});
+    if (actorUid != null) {
+      AuditLogger.logSync(
+        uid: actorUid,
+        event: AuditEvent.statusChange,
+        detail: 'complaints/$id → $status',
+      );
+    }
   }
 
   Future<void> escalateComplaint(Complaint complaint) {
