@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart' as vista;
 import '../../utils/sanitizer.dart';
+import '../../widgets/vista_loader.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -100,10 +101,10 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    if (emailInput.isEmpty && phoneInput.isEmpty) {
+    if (emailInput.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter either an email or a phone number'),
+          content: Text('Please enter your Email'),
         ),
       );
       return;
@@ -127,14 +128,9 @@ class _SignupScreenState extends State<SignupScreen> {
       _phoneController.text.trim(),
     );
 
-    String finalEmail;
-    if (emailInput.isNotEmpty) {
-      finalEmail = emailInput.contains('@')
-          ? emailInput
-          : '$emailInput@jklu.edu.in';
-    } else {
-      finalEmail = '$phoneInput@vista.local';
-    }
+    final String finalEmail = emailInput.contains('@')
+        ? emailInput
+        : '$emailInput@jklu.edu.in';
 
     if (_firstNameController.text.trim().isEmpty ||
         _lastNameController.text.trim().isEmpty ||
@@ -529,14 +525,11 @@ class _SignupScreenState extends State<SignupScreen> {
                             AutofillHints.newUsername,
                           ],
                           decoration: InputDecoration(
-                            labelText: 'JKLU Email Username',
+                            labelText: 'Email',
                             prefixIcon: const Icon(Icons.email_outlined),
                             suffix:
                                 (_emailController.text.isEmpty ||
-                                    _emailController.text.contains('@') ||
-                                    RegExp(
-                                      r'^[0-9+\s-]+$',
-                                    ).hasMatch(_emailController.text))
+                                    _emailController.text.contains('@'))
                                 ? null
                                 : const Text(
                                     '@jklu.edu.in',
@@ -636,7 +629,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         const SizedBox(height: 20),
                         DropdownButtonFormField<String>(
-                          value: _selectedProgramme,
+                          initialValue: _selectedProgramme,
                           items: _programmes
                               .map(
                                 (p) =>
@@ -709,14 +702,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         ? const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              VISTALoader(size: 24, color: Colors.white),
                               SizedBox(width: 12),
                               Text('Submitting...'),
                             ],

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Hardcoded App Check Debug Token for development -->
+    <!-- Copy this UUID and add it to Firebase Console -> App Check -> Manage Debug Tokens -->
+    <string name="app_name">VISTA</string>
+    <string name="app_check_debug_token">88756d1c-8e42-4f3b-b6d4-d5a2f5e3b6a2</string>
+</resources>

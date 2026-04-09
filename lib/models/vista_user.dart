@@ -15,8 +15,6 @@ class VistaUser {
   final bool isApproved;
   final String? phoneNumber;
   final String? fcmToken;
-  final bool registrationNotified;
-  final bool approvalNotified;
   final String? rollNo;
   final String? programme;
   final String? gender;
@@ -28,7 +26,6 @@ class VistaUser {
   final String? parentContact;
   final String? registrationNo;
   final bool isMicrosoftLinked;
-  final bool isMicrosoftLinkRequired;
 
   VistaUser({
     required this.uid,
@@ -40,8 +37,6 @@ class VistaUser {
     this.isApproved = false,
     this.phoneNumber,
     this.fcmToken,
-    this.registrationNotified = false,
-    this.approvalNotified = false,
     this.rollNo,
     this.programme,
     this.gender,
@@ -53,11 +48,10 @@ class VistaUser {
     this.parentContact,
     this.registrationNo,
     this.isMicrosoftLinked = false,
-    this.isMicrosoftLinkRequired = false,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
+  Map<String, dynamic> toMap({bool forCreate = false}) {
+    final map = {
       'uid': uid,
       'name': name,
       'email': email,
@@ -67,8 +61,6 @@ class VistaUser {
       'isApproved': isApproved,
       'phoneNumber': phoneNumber,
       'fcmToken': fcmToken,
-      'registrationNotified': registrationNotified,
-      'approvalNotified': approvalNotified,
       'rollNo': rollNo,
       'programme': programme,
       'gender': gender,
@@ -80,9 +72,15 @@ class VistaUser {
       'isAccountActive': isAccountActive,
       'registrationNo': registrationNo,
       'isMicrosoftLinked': isMicrosoftLinked,
-      'isMicrosoftLinkRequired': isMicrosoftLinkRequired,
       'createdAt': FieldValue.serverTimestamp(),
     };
+
+    if (forCreate) {
+      map.remove('fcmToken');
+      map.remove('hasUsedShortStay');
+    }
+
+    return map;
   }
 
   factory VistaUser.fromMap(Map<String, dynamic> map) {
@@ -118,26 +116,28 @@ class VistaUser {
     );
 
     return VistaUser(
-      uid:                  rawUid,
-      name:                 map['name']?.toString() ?? '',
-      email:                rawEmail,
-      role:                 resolvedRole,
-      hostel:               map['hostel']?.toString(),
-      roomNumber:           map['roomNumber']?.toString(),
+      uid: rawUid,
+      name: map['name']?.toString() ?? '',
+      email: rawEmail,
+      role: resolvedRole,
+      hostel: map['hostel']?.toString(),
+      roomNumber: map['roomNumber']?.toString(),
       // Explicit bool comparison — no implicit JS-style truthy casting.
-      isApproved:           map['isApproved'] == true,
-      phoneNumber:          map['phoneNumber']?.toString(),
-      fcmToken:             map['fcmToken']?.toString(),
-      registrationNotified: map['registrationNotified'] == true,
-      approvalNotified:     map['approvalNotified'] == true,
-      rollNo:               map['rollNo']?.toString(),
-      programme:            map['programme']?.toString(),
-      gender:               map['gender']?.toString(),
-      address:              map['address']?.toString(),
-      parentName:           map['parentName']?.toString(),
-      parentContact:        map['parentContact']?.toString(),
-      hasUsedShortStay:     map['hasUsedShortStay'] == true,
-      isDayScholar:         map['isDayScholar'] == true,
+      isApproved: map['isApproved'] == true,
+      phoneNumber: map['phoneNumber']?.toString(),
+      fcmToken: map['fcmToken']?.toString(),
+      rollNo: map['rollNo']?.toString(),
+      programme: map['programme']?.toString(),
+      gender: map['gender']?.toString(),
+      address: map['address']?.toString(),
+      parentName: map['parentName']?.toString(),
+      parentContact: map['parentContact']?.toString(),
+      hasUsedShortStay: map['hasUsedShortStay'] == true,
+      isDayScholar: map['isDayScholar'] == true,
+      // ── FIXED: Missing field mappings identified post-merge
+      registrationNo: map['registrationNo']?.toString(),
+      isAccountActive: map['isAccountActive'] ?? true, // Default to true if missing (legacy/warden docs)
+      isMicrosoftLinked: map['isMicrosoftLinked'] == true,
     );
   }
 }

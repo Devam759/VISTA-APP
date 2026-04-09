@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 import '../../services/face_recognition_service.dart';
+import '../../widgets/vista_loader.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MODE
@@ -453,7 +454,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
             Expanded(
               child: _cam == null || !_cam!.value.isInitialized
                   ? const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                      child: VISTALoader(size: 80, color: Colors.white),
                     )
                   : ClipRect(
                       child: Stack(
@@ -493,7 +494,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
                     ),
                   const SizedBox(height: 12),
                   if (_processing)
-                    const CircularProgressIndicator(color: Color(0xFF10B981))
+                    const VISTALoader(size: 40, color: Color(0xFF10B981))
                   else ...[
                     Text(
                       _statusMessage,

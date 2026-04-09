@@ -33,9 +33,6 @@ class FirebaseService {
     // We will now handle redirect explicitly from AuthProvider for better sync
   }
 
-  final MicrosoftAuthProvider _microsoftProvider = MicrosoftAuthProvider();
-  MicrosoftAuthProvider get microsoftProvider => _microsoftProvider;
-
   Future<void> handleRedirectResult() async {
     if (!kIsWeb) return;
     try {
@@ -85,21 +82,32 @@ class FirebaseService {
     debugPrint("VISTA: signInWithMicrosoft START");
     
     // Check if we have a specific tenant ID, otherwise use common
-    final tenantId = dotenv.env['MICROSOFT_TENANT_ID'] ?? 'common';
+    String tenantId = 'common';
+    try {
+      if (dotenv.isInitialized) {
+        tenantId = dotenv.env['MICROSOFT_TENANT_ID'] ?? 'common';
+      }
+    } catch (_) {}
     
-    _microsoftProvider.setCustomParameters({
+    final provider = OAuthProvider('microsoft.com');
+    provider.setCustomParameters({
       'tenant': tenantId,
+      'prompt': 'select_account',
     });
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.addScope('openid');
 
     try {
       UserCredential? credential;
+      debugPrint("VISTA: Microsoft provider setup: tenant=$tenantId");
       if (kIsWeb) {
         debugPrint("VISTA: Web - Triggering signInWithPopup...");
         // Use popup on web to avoid full page reloads and state loss
-        credential = await _auth.signInWithPopup(_microsoftProvider);
+        credential = await _auth.signInWithPopup(provider);
       } else {
         debugPrint("VISTA: Mobile - Triggering signInWithProvider...");
-        credential = await _auth.signInWithProvider(_microsoftProvider);
+        credential = await _auth.signInWithProvider(provider);
       }
       stopwatch.stop();
       debugPrint("VISTA: signInWithMicrosoft SUCCESS in ${stopwatch.elapsedMilliseconds}ms");
@@ -120,21 +128,6 @@ class FirebaseService {
   }
 
 
-  Future<void> verifyPhoneNumber({
-    required String phoneNumber,
-    Object? webVerifier,
-    required void Function(String, int?) onCodeSent,
-    required void Function(FirebaseAuthException) onVerificationFailed,
-    required void Function(PhoneAuthCredential) onVerificationCompleted,
-  }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: onVerificationCompleted,
-      verificationFailed: onVerificationFailed,
-      codeSent: onCodeSent,
-      codeAutoRetrievalTimeout: (String verificationId) {},
-    );
-  }
 
   // Sign Out
   Future<void> signOut() {
@@ -151,16 +144,20 @@ class FirebaseService {
   Future<UserCredential> linkWithMicrosoftPopup() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception("No user logged in to link with.");
-    
-    _microsoftProvider.setCustomParameters({
+
+    final provider = OAuthProvider('microsoft.com');
+    provider.setCustomParameters({
       'prompt': 'select_account',
       'tenant': 'common',
     });
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.addScope('openid');
 
     if (kIsWeb) {
-      return await user.linkWithPopup(_microsoftProvider);
+      return await user.linkWithPopup(provider);
     } else {
-      return await user.linkWithProvider(_microsoftProvider);
+      return await user.linkWithProvider(provider);
     }
   }
 
@@ -171,7 +168,7 @@ class FirebaseService {
   }
 
   // User Profile Methods
-  Future<void> createUserProfile(VistaUser user) async {
+  Future<void> createUserProfile(VistaUser user, {bool forCreate = false}) async {
     // 1. Phone Mapping (Identity Anchor)
     if (user.phoneNumber != null) {
       final phoneDoc = _db.collection('phone_mappings').doc(user.phoneNumber);
@@ -196,13 +193,13 @@ class FirebaseService {
           final existingData = existingDoc.data()!;
           finalData = {
             ...existingData,
-            ...user.toMap(),
+            ...user.toMap(forCreate: forCreate),
             'isAccountActive': true,
             'uid': user.uid,
           };
           transaction.delete(emailDocRef);
         } else {
-          finalData = user.toMap();
+          finalData = user.toMap(forCreate: forCreate);
         }
         
         // Set phone mapping and user profile
@@ -215,29 +212,23 @@ class FirebaseService {
       });
     } else {
       // Standard creation if no phone (unlikely for students but safe)
-      await _db.collection('users').doc(user.uid).set(user.toMap());
+      await _db.collection('users').doc(user.uid).set(user.toMap(forCreate: forCreate));
     }
   }
 
-  Future<void> updateMicrosoftLinkRequirement(String uid, bool required) async {
-    debugPrint('FirebaseService: Updating Microsoft link requirement for $uid to $required');
+
+  Future<void> setMicrosoftLinkedStatus(String uid, bool linked) async {
+    debugPrint('FirebaseService: Setting Microsoft link status for $uid to $linked');
     await _db.collection('users').doc(uid).update({
-      'isMicrosoftLinkRequired': required,
+      'isMicrosoftLinked': linked,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<void> setMicrosoftLinkedStatus(String uid, bool linked) async {
-    debugPrint('FirebaseService: Setting Microsoft link status for $uid to $linked');
-    final Map<String, dynamic> data = {
-      'isMicrosoftLinked': linked,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-    if (linked) {
-      // If linked, we automatically clear the required flag
-      data['isMicrosoftLinkRequired'] = false;
-    }
-    await _db.collection('users').doc(uid).update(data);
+
+  Future<bool> isPhoneNumberRegistered(String phoneNumber) async {
+    final doc = await _db.collection('phone_mappings').doc(phoneNumber).get();
+    return doc.exists;
   }
 
   Future<String?> getPhoneNumberOwner(String phoneNumber) async {
@@ -246,25 +237,6 @@ class FirebaseService {
       return doc.data()?['email'] as String?;
     }
     return null;
-  }
-
-  Future<bool> isPhoneNumberRegistered(String phoneNumber) async {
-    final doc = await _db.collection('phone_mappings').doc(phoneNumber).get();
-    return doc.exists;
-  }
-
-  Future<void> updateStudentProfile(String uid, Map<String, dynamic> data) {
-    return _db.collection('users').doc(uid).update({
-      ...data,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> requestMicrosoftLink(String uid) {
-    return _db.collection('users').doc(uid).update({
-      'isMicrosoftLinkRequired': true,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
   }
 
   Future<void> linkInstitutionalAccount({
@@ -279,7 +251,6 @@ class FirebaseService {
         'email': institutionalEmail,
         'rollNo': rollNo,
         'isMicrosoftLinked': true,
-        'isMicrosoftLinkRequired': false,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     });

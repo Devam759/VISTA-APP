@@ -6,7 +6,7 @@ import '../models/vista_user.dart';
 import '../services/firebase_service.dart';
 import '../services/notification_service.dart';
 import '../services/audit_logger.dart';
-import '../utils/sanitizer.dart';
+
 import '../utils/rate_limiter.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -63,9 +63,15 @@ class AuthProvider with ChangeNotifier {
       }
       if (user != null) {
         // If we already have a profile for this user, don't re-fetch unless it's a different UID
+        // OR if we haven't successfully completed at least one fetch attempt for this UID yet.
         if (_userProfile?.uid != user.uid) {
            _hasProfileLoadError = false; // Reset error on new user
-           await fetchUserProfile(user.uid);
+           
+           // Only fetch if we aren't already initialized for this UID with a NULL result
+           // This prevents the "fetch loop" when a user has no profile yet.
+           if (!_isInitialized || _isFetchingProfileForUid != null) {
+              await fetchUserProfile(user.uid);
+           }
         }
       } else {
         debugPrint("VISTA: User is null, clearing profile.");
@@ -118,30 +124,25 @@ class AuthProvider with ChangeNotifier {
       }
     } on StateError catch (e) {
       // VistaUser.fromMap threw — bad/corrupted Firestore document.
-      // Force sign-out immediately: do not leave the user in a limbo state.
-      debugPrint('[AuthProvider] Rejected user document: $e');
-      await AuditLogger.log(
-        uid: uid,
-        event: AuditEvent.securityViolation,
-        detail: 'User document rejected: ${e.message}',
-      );
+      // We do NOT sign out immediately anymore, as it creates a logout loop.
+      // Instead, we mark it as a profile load error so the UI can show the Sync Issue screen.
+      debugPrint('[AuthProvider] User rejection (schema mismatch): $e');
       _userProfile = null;
-      await _firebaseService.signOut();
+      _hasProfileLoadError = true;
+      _isLoading = false;
       notifyListeners();
       return;
     } catch (e) {
       debugPrint('[AuthProvider] fetchUserProfile error: $e');
+      
       if (retries > 0) {
-        debugPrint("VISTA: Error caught, retrying in 2s...");
-        await Future.delayed(const Duration(seconds: 2));
-        return fetchUserProfile(uid, retries: retries - 1, retryOnNull: retryOnNull);
-      }
-      // Only clear on error if the UID is different
-      if (_userProfile?.uid != uid) {
+        debugPrint('[AuthProvider] Retrying profile fetch ($retries remaining)...');
+        await fetchUserProfile(uid, retries: retries - 1, retryOnNull: retryOnNull);
+      } else {
         _userProfile = null;
         _hasProfileLoadError = true;
-      } else {
-        debugPrint("VISTA: Preserving existing local profile for $uid despite fetch error.");
+        _isLoading = false;
+        notifyListeners();
       }
     } finally {
       if (_isFetchingProfileForUid == uid) {
@@ -215,12 +216,11 @@ class AuthProvider with ChangeNotifier {
         parentContact: parentContact,
         isDayScholar: isDayScholar,
         isMicrosoftLinked: isMicrosoftLinked,
-        isMicrosoftLinkRequired: false,
       );
       
       try {
         await _firebaseService
-            .createUserProfile(newUser);
+            .createUserProfile(newUser, forCreate: true);
       } catch (firestoreError) {
         debugPrint(
           '[Auth] Firestore profile write failed: $firestoreError',
@@ -289,10 +289,9 @@ class AuthProvider with ChangeNotifier {
         parentContact: parentContact,
         isDayScholar: isDayScholar,
         isMicrosoftLinked: isMicrosoftLinked,
-        isMicrosoftLinkRequired: false,
       );
 
-      await _firebaseService.createUserProfile(newUser);
+      await _firebaseService.createUserProfile(newUser, forCreate: true);
 
       _userProfile = newUser;
     } catch (e) {
@@ -305,48 +304,7 @@ class AuthProvider with ChangeNotifier {
     // REDUNDANT Sync removed - newUser is already the target state.
   }
 
-  // OTP Verification
-  String? _verificationId;
 
-  Future<void> sendOTP(
-    String phoneNumber, {
-    required Function(String, int?) onCodeSent,
-    required Function(String) onError,
-    Object? webVerifier,
-  }) async {
-    try {
-      await _firebaseService.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        webVerifier: webVerifier,
-        onCodeSent: (verId, forceResend) {
-          _verificationId = verId;
-          onCodeSent(verId, forceResend);
-        },
-        onVerificationFailed: (e) =>
-            onError(e.message ?? 'Verification failed'),
-        onVerificationCompleted: (credential) async {
-          // Auto-retrieval path — handled in the UI layer for now.
-        },
-      );
-    } catch (e) {
-      onError(e.toString());
-    }
-  }
-
-  Future<void> verifyOTP(String smsCode) async {
-    if (_verificationId == null) throw Exception('No verification ID found');
-    final credential = PhoneAuthProvider.credential(
-      verificationId: _verificationId!,
-      smsCode: smsCode,
-    );
-
-    final currentUser = _firebaseService.currentUser;
-    if (currentUser != null) {
-      await currentUser.linkWithCredential(credential);
-    } else {
-      await FirebaseAuth.instance.signInWithCredential(credential);
-    }
-  }
 
 
   Future<void> sendPasswordReset(String email) async {
@@ -384,24 +342,6 @@ class AuthProvider with ChangeNotifier {
 
     try {
       String email = identifier;
-      // If identifier looks like a phone number, resolve to email first.
-      if (RegExp(r'^[0-9+\s-]+$').hasMatch(identifier) &&
-          identifier.length >= 10) {
-        final normalizedPhone = InputSanitizer.normalizePhone(identifier);
-        final resolvedEmail = await _firebaseService.getPhoneNumberOwner(
-          normalizedPhone,
-        );
-        if (resolvedEmail == null) {
-          // Do NOT tell the caller whether the phone exists — enumeration protection.
-          await LoginThrottle.onFailure(identifier);
-          await AuditLogger.logAnonymous(
-            event: AuditEvent.loginFailed,
-            detail: 'Phone lookup returned no account.',
-          );
-          throw Exception('Login failed. Please check your credentials.');
-        }
-        email = resolvedEmail;
-      }
 
       final credential = await _firebaseService.signIn(email, password);
 
@@ -410,7 +350,7 @@ class AuthProvider with ChangeNotifier {
       await AuditLogger.log(
         uid: credential.user!.uid,
         event: AuditEvent.loginSuccess,
-        detail: 'Signed in via ${identifier.contains('@') ? 'email' : 'phone'}.',
+        detail: 'Signed in via Email.',
       );
       await fetchUserProfile(credential.user!.uid);
     } on FirebaseAuthException catch (e) {
@@ -593,7 +533,6 @@ class AuthProvider with ChangeNotifier {
       await _firebaseService.db.collection('users').doc(user.uid).update({
         'rollNo': rollNo.toUpperCase(),
         'isMicrosoftLinked': true,
-        'isMicrosoftLinkRequired': false,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -615,7 +554,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _firebaseService.updateStudentProfile(uid, data);
+      await _firebaseService.updateUser(uid, data);
       // Refresh local profile
       await fetchUserProfile(uid);
     } catch (e) {

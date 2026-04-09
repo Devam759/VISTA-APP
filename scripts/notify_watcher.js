@@ -66,29 +66,6 @@ async function runWatcher() {
             }
         }
 
-        // 2. New Registrations
-        const newRegs = await db.collection('users')
-            .where('role', '==', 'student')
-            .where('isApproved', '==', false)
-            .where('registrationNotified', '==', false)
-            .get();
-
-        for (const doc of newRegs.docs) {
-            const user = doc.data();
-            const wardens = await db.collection('users')
-                .where('role', '==', 'warden')
-                .where('hostel', '==', user.hostel)
-                .get();
-            const tokens = wardens.docs.map(w => w.data().fcmToken).filter(t => !!t);
-
-            if (tokens.length > 0) {
-                await messaging.sendEachForMulticast({
-                    notification: { title: 'New Student', body: `${user.name} applied for ${user.hostel}.` },
-                    tokens: tokens
-                });
-            }
-            await doc.ref.update({ registrationNotified: true });
-        }
 
         // 3. New Leave/Complaint
         const cols = ['leave_requests', 'complaints'];
@@ -139,22 +116,6 @@ async function runWatcher() {
             }
         }
 
-        // 5. Approvals
-        const approvals = await db.collection('users')
-            .where('role', '==', 'student')
-            .where('isApproved', '==', true)
-            .where('approvalNotified', '==', false)
-            .get();
-        for (const doc of approvals.docs) {
-            const s = doc.data();
-            if (s.fcmToken) {
-                await messaging.send({
-                    notification: { title: 'Approved!', body: `Your account for ${s.hostel} is ready.` },
-                    token: s.fcmToken
-                });
-            }
-            await doc.ref.update({ approvalNotified: true });
-        }
 
     } catch (error) {
         console.error('Watcher Error:', error);

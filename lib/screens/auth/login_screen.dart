@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../providers/auth_provider.dart';
 import '../../utils/sanitizer.dart';
 import '../../utils/rate_limiter.dart';
+import '../../widgets/vista_loader.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -82,8 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       String finalIdentifier = identifier;
-      if (!identifier.contains('@') &&
-          !RegExp(r'^[0-9+\s-]+$').hasMatch(identifier)) {
+      if (!identifier.contains('@')) {
         finalIdentifier = '$identifier@jklu.edu.in';
       }
 
@@ -171,11 +171,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 AutofillHints.username,
                               ],
                               decoration: InputDecoration(
-                                labelText: 'Email or Mobile Number',
+                                labelText: 'Email',
                                 prefixIcon: const Icon(Icons.person_outline),
-                                suffix: _emailController.text.contains('@') ||
-                                        RegExp(r'^[0-9+\s-]+$')
-                                            .hasMatch(_emailController.text)
+                                suffix: _emailController.text.contains('@')
                                     ? null
                                     : const Text(
                                         '@jklu.edu.in',
@@ -291,15 +289,105 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed:
                             (authProvider.isLoading || isLocked) ? null : _login,
                         child: authProvider.isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
+                            ? const VISTALoader(size: 24, color: Colors.white)
                             : const Text('Login'),
+                      ),
+                      const SizedBox(height: 20),
+                      const Row(
+                        children: [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('or', style: TextStyle(color: Colors.grey)),
+                          ),
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: authProvider.isLoading ? null : () async {
+                          try {
+                            await authProvider.signInWithMicrosoft();
+                            if (!mounted) return;
+                            if (authProvider.pendingMicrosoftCredential != null) {
+                              // ignore: use_build_context_synchronously
+                              _showAccountLinkingDialog(context);
+                            }
+                          } catch (e) {
+                            if (!mounted) return;
+                            String errorMessage = 'Microsoft sign-in failed. Please try again.';
+                            if (e is FirebaseAuthException && e.message != null) {
+                              errorMessage = e.message!;
+                            } else if (e is Exception) {
+                              errorMessage = e.toString();
+                            }
+                            setState(() {
+                              _errorMessage = errorMessage;
+                            });
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        color: const Color(0xFFF25022),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        color: const Color(0xFF7FBA00), // Swapped from Blue to Green
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        color: const Color(0xFF00A4EF), // Swapped from Green to Blue
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        color: const Color(0xFFFFB900),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Flexible(
+                              child: Text(
+                                'Sign in with Microsoft',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 40),
                       Row(
@@ -382,14 +470,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   }
                 },
                 child: authProvider.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                    ? const VISTALoader(size: 24, color: Colors.white)
                     : const Text('Link & Log In'),
               ),
             ],

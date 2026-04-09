@@ -14,6 +14,7 @@ import 'screens/auth/pending_approval_screen.dart';
 import 'screens/auth/mandatory_link_screen.dart';
 import 'utils/theme.dart';
 import 'models/vista_user.dart';
+import 'widgets/vista_loader.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, debugPrint;
 import 'services/security_service.dart';
 
@@ -24,78 +25,67 @@ const platform = MethodChannel('com.ashish.vista.jklu/debug_token');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // .env is optional — it may not exist on web (gitignored).
-  // Firebase options fall back to the hardcoded values in firebase_options.dart.
+  
+  // 1. Start background tasks (env, options)
+  final envFuture = _loadEnv();
+  
+  // 2. Start Firebase and Security checks in parallel to minimize UI blockage
+  // We use Future.wait to handle multiple heavy initializations
+  final initializationResults = await Future.wait([
+    _initializeFirebase(),
+    SecurityService.checkSecurity(),
+    envFuture,
+  ]);
+
+  final bool isSecure = initializationResults[1] as bool;
+
+  runApp(VistaApp(isSecure: isSecure));
+}
+
+/// Helper to load .env without blocking main thread excessively
+Future<void> _loadEnv() async {
   try {
-    await dotenv.load(fileName: ".env");
+    if (!kIsWeb) {
+      await dotenv.load(fileName: ".env");
+    }
   } catch (_) {
-    debugPrint('.env not found — continuing without it.');
+    debugPrint('VISTA: .env not found — continuing without it.');
   }
-  // Note: Firebase.initializeApp() requires configuration files (google-services.json / GoogleService-Info.plist)
-  // which are usually added manually. I will assume they are present or will be added.
+}
+
+/// Helper to initialize Firebase and App Check
+Future<void> _initializeFirebase() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    // ─────────────────────────────────────────────────────────────────────────
-    // APP CHECK INITIALIZATION
-    // Play Integrity is required for Production to prevent unauthorized access.
-    // ─────────────────────────────────────────────────────────────────────────
+    
     if (!kIsWeb) {
+      // Activate App Check with Native Debug Provider configuration
       await FirebaseAppCheck.instance.activate(
         providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
         providerApple: const AppleDebugProvider(),
       );
-      // In debug mode, force-fetch the App Check token so it prints in Flutter console
+
       if (kDebugMode) {
-        try {
-          final token = await FirebaseAppCheck.instance.getToken(true);
-          debugPrint("\n\n=======================================================");
-          debugPrint("YOUR FIREBASE APP CHECK DEBUG TOKEN IS:");
-          debugPrint(token ?? "Failed to get token");
-          debugPrint("=======================================================\n\n");
-        } catch (e) {
-          debugPrint("Could not fetch App Check debug token: $e");
-        }
+        // We wait a tiny bit for the native provider to sync
+        Future.delayed(const Duration(seconds: 1), () async {
+          try {
+            final token = await FirebaseAppCheck.instance.getToken(true);
+            debugPrint("\n\n${"=" * 60}");
+            debugPrint("VISTA: APP CHECK DEBUG TOKEN (Hardcoded in strings.xml):");
+            debugPrint(token ?? "Failed to retrieve - check console");
+            debugPrint("ACTION: Add the above UUID to Firebase Console -> App Check");
+            debugPrint("=" * 60 + "\n\n");
+          } catch (e) {
+             debugPrint("VISTA: Could not fetch App Check token yet (Attempting background...): $e");
+          }
+        });
       }
     }
-
-
   } catch (e) {
-    // ignore: prefer_interpolation_to_compose_strings
-    debugPrint("Firebase initialization failed: " + e.toString());
-    // On web, if Firebase fails once, subsequent calls usually fail. 
-    // We try to catch it early.
+    debugPrint("VISTA: Firebase initialization failed: $e");
   }
-
-  bool isSecure = true;
-
-  // Only attempt to retrieve debug token in debug builds
-  if (kDebugMode) {
-    try {
-      if (!kIsWeb) {
-        final String debugToken = await platform.invokeMethod('getDebugToken');
-        debugPrint("\n\n=======================================================");
-        debugPrint("YOUR FIREBASE APP CHECK DEBUG TOKEN IS:");
-        debugPrint(debugToken);
-        debugPrint("=======================================================\n\n");
-      }
-    } on PlatformException catch (e) {
-      debugPrint("Failed to get debug token: '${e.message}'.");
-    } catch (e) {
-      debugPrint("Debug token not available: $e");
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // SECURITY CHECK: BLOCK EMULATORS, ROOT, VPN, & MOCK LOCATION
-  // Only runs on mobile platforms (via SecurityService platform abstraction).
-  // ─────────────────────────────────────────────────────────────────────────
-  if (!kIsWeb) {
-    isSecure = await SecurityService.checkSecurity();
-  }
-
-  runApp(VistaApp(isSecure: isSecure));
 }
 
 class VistaApp extends StatelessWidget {
@@ -142,9 +132,33 @@ class AuthWrapper extends StatelessWidget {
     debugPrint("VISTA: AuthWrapper Building. isLoading: ${authProvider.isLoading}, firebaseUser: ${authProvider.firebaseUser?.email}, userProfile: ${authProvider.userProfile != null ? 'EXISTS' : 'NULL'}");
 
     if (authProvider.isLoading) {
-      return const Scaffold(
+      return Scaffold(
+        backgroundColor: const Color(0xFFF0F4FF),
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/jklu_logo.jpg',
+                    height: 60,
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'VISTA',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E3A8A),
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              const VISTALoader(size: 150),
+            ],
+          ),
         ),
       );
     }
@@ -178,9 +192,6 @@ class AuthWrapper extends StatelessWidget {
         final bool hostellerNeedsApproval = !user.isDayScholar && !user.isApproved;
         if (!user.isAccountActive || hostellerNeedsApproval) {
           return const PendingApprovalScreen();
-        }
-        if (user.isMicrosoftLinkRequired) {
-          return const MandatoryLinkScreen();
         }
         return const StudentDashboard();
       case UserRole.warden:
@@ -263,7 +274,7 @@ class ProfileSyncErrorScreen extends StatelessWidget {
                            future: FirebaseAppCheck.instance.getToken(false),
                            builder: (context, snapshot) {
                               if (snapshot.connectionState == ConnectionState.waiting) {
-                                 return const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2));
+                                 return const SizedBox(height: 24, width: 24, child: VISTALoader(size: 20));
                               }
                               return SelectableText(
                                 "Attestation: ${snapshot.data?.substring(0, 10)}...",

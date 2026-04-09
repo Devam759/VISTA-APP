@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/sanitizer.dart';
 import 'dart:ui';
+import '../../widgets/vista_loader.dart';
 
 class MandatoryLinkScreen extends StatefulWidget {
   const MandatoryLinkScreen({super.key});
@@ -212,14 +213,7 @@ class _MandatoryLinkScreenState extends State<MandatoryLinkScreen> {
                                   elevation: 0,
                                 ),
                                 child: _isLinking
-                                    ? const SizedBox(
-                                        height: 24,
-                                        width: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation(Colors.blueAccent),
-                                        ),
-                                      )
+                                    ? const VISTALoader(size: 24, color: Colors.blueAccent)
                                     : Text(
                                         isAlreadyLinked ? 'Submit Verification' : 'Link & Verify',
                                         style: const TextStyle(
@@ -240,9 +234,7 @@ class _MandatoryLinkScreenState extends State<MandatoryLinkScreen> {
                             ),
                           ] else ...[
                             const SizedBox(height: 20),
-                            const CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation(Colors.greenAccent),
-                            ),
+                            const VISTALoader(size: 80, color: Colors.greenAccent),
                             const SizedBox(height: 20),
                             const Text(
                               'Redirecting to Dashboard...',
