@@ -18,6 +18,7 @@ class ShortStayRequest {
   final DateTime checkOutDate;
   final String status; // Pending, Approved, Rejected, Completed
   final String appliedHostel;
+  final String? allotmentHostel; // Added for warden allotment
   final String? roomNumber;
   final DateTime createdAt;
   final DateTime? actualCheckOutTime;
@@ -43,6 +44,7 @@ class ShortStayRequest {
     required this.checkOutDate,
     required this.status,
     required this.appliedHostel,
+    this.allotmentHostel,
     this.roomNumber,
     required this.createdAt,
     this.actualCheckOutTime,
@@ -69,6 +71,7 @@ class ShortStayRequest {
       'checkOutDate': Timestamp.fromDate(checkOutDate),
       'status': status,
       'appliedHostel': appliedHostel,
+      'allotmentHostel': allotmentHostel, // Added
       'roomNumber': roomNumber,
       'createdAt': FieldValue.serverTimestamp(),
     };
@@ -104,6 +107,7 @@ class ShortStayRequest {
       checkOutDate: (map['checkOutDate'] as Timestamp).toDate(),
       status: map['status'] ?? 'Pending',
       appliedHostel: map['appliedHostel'] ?? '',
+      allotmentHostel: map['allotmentHostel'], // Added
       roomNumber: map['roomNumber'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       actualCheckOutTime: (map['actualCheckOutTime'] as Timestamp?)?.toDate(),
@@ -113,3 +117,4 @@ class ShortStayRequest {
     );
   }
 }
+

@@ -26,6 +26,7 @@ class VistaUser {
   final String? parentContact;
   final String? registrationNo;
   final bool isMicrosoftLinked;
+  final bool hasActiveShortStay;
 
   VistaUser({
     required this.uid,
@@ -48,6 +49,7 @@ class VistaUser {
     this.parentContact,
     this.registrationNo,
     this.isMicrosoftLinked = false,
+    this.hasActiveShortStay = false,
   });
 
   Map<String, dynamic> toMap({bool forCreate = false}) {
@@ -71,7 +73,8 @@ class VistaUser {
       'isDayScholar': isDayScholar,
       'isAccountActive': isAccountActive,
       'registrationNo': registrationNo,
-      'isMicrosoftLinked': isMicrosoftLinked,
+       'isMicrosoftLinked': isMicrosoftLinked,
+      'Hasapprovedshortstay': hasActiveShortStay,
       'createdAt': FieldValue.serverTimestamp(),
     };
 
@@ -137,7 +140,8 @@ class VistaUser {
       // ── FIXED: Missing field mappings identified post-merge
       registrationNo: map['registrationNo']?.toString(),
       isAccountActive: map['isAccountActive'] ?? true, // Default to true if missing (legacy/warden docs)
-      isMicrosoftLinked: map['isMicrosoftLinked'] == true,
+       isMicrosoftLinked: map['isMicrosoftLinked'] == true,
+      hasActiveShortStay: map['Hasapprovedshortstay'] == true,
     );
   }
 }

@@ -13,7 +13,9 @@ import 'tabs/attendance_tab.dart';
 import 'tabs/leaves_tab.dart';
 import 'tabs/complaints_tab.dart';
 import 'tabs/short_stays_tab.dart';
+import '../../widgets/hover_effect.dart';
 import 'components/warden_components.dart';
+import '../../widgets/smooth_animations.dart';
 
 class WardenDashboard extends StatefulWidget {
   const WardenDashboard({super.key});
@@ -23,12 +25,35 @@ class WardenDashboard extends StatefulWidget {
 }
 
 class _WardenDashboardState extends State<WardenDashboard> {
+  late PageController _pageController;
   int _selectedIndex = 0;
 
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   void _onTabTapped(int index, WardenProvider wardenProv) {
+    if (_selectedIndex == index) return;
+    
     setState(() {
       _selectedIndex = index;
     });
+    
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    
     // Clear the marker in the provider when the tab is visited
     wardenProv.clearMarker(index);
   }
@@ -100,12 +125,7 @@ class _WardenDashboardState extends State<WardenDashboard> {
     }
   }
 
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -131,12 +151,18 @@ class _WardenDashboardState extends State<WardenDashboard> {
                 children: [
                   _buildHeader(warden, authProvider),
                   Expanded(
-                    child: IndexedStack(
-                      index: _selectedIndex,
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                        wardenProv.clearMarker(index);
+                      },
                       children: [
-                         StudentsTab(warden: warden),
-                         AttendanceTab(warden: warden),
-                         LeavesTab(warden: warden),
+                         StudentsTab(warden: warden, fs: FirebaseService()),
+                         AttendanceTab(warden: warden, fs: FirebaseService()),
+                         LeavesTab(warden: warden, fs: FirebaseService()),
                          ComplaintsTab(warden: warden),
                          ShortStaysTab(warden: warden),
                       ],
@@ -152,51 +178,59 @@ class _WardenDashboardState extends State<WardenDashboard> {
   }
 
   Widget _buildHeader(VistaUser warden, AuthProvider authProvider) {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF0F2460), kPrimary, kAccent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return SmoothEntrance(
+      delay: const Duration(milliseconds: 100),
+      offset: const Offset(0, -20),
+      child: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0F2460), kPrimary, kAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Image.asset('assets/images/jklu_logo_darkbg_bgremove.png', height: 40),
-                  const SizedBox(width: 10),
-                  const Text('VISTA', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
-                    child: Text(warden.hostel ?? 'Hostel', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _showExportDialog,
-                    icon: const Icon(Icons.file_download_outlined, color: Colors.white, size: 22),
-                    tooltip: 'Export Data',
-                  ),
-                  IconButton(
-                    onPressed: () => authProvider.signOut(),
-                    icon: const Icon(Icons.logout_rounded, color: Colors.white60, size: 20),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '$_greeting, ${warden.name}',
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2),
-              ),
-            ],
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Image.asset('assets/images/jklu_logo_darkbg_bgremove.png', height: 40),
+                    const SizedBox(width: 10),
+                    const Text('VISTA', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
+                      child: Text(warden.hostel ?? 'Hostel', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 8),
+                    HoverEffect(
+                      child: IconButton(
+                        onPressed: _showExportDialog,
+                        icon: const Icon(Icons.file_download_outlined, color: Colors.white, size: 22),
+                        tooltip: 'Export Data',
+                      ),
+                    ),
+                    HoverEffect(
+                      child: IconButton(
+                        onPressed: () => authProvider.signOut(),
+                        icon: const Icon(Icons.logout_rounded, color: Colors.white60, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Welcome ${warden.name} Sir',
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -232,30 +266,32 @@ class _WardenDashboardState extends State<WardenDashboard> {
                                  (i == 3 && wardenProv.hasNewComplaints) || 
                                  (i == 4 && wardenProv.hasNewShortStays);
 
-              return GestureDetector(
-                onTap: () => _onTabTapped(i, wardenProv),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: selected ? kPrimary.withValues(alpha: 0.1) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Icon(selected ? icons[i].on : icons[i].off, size: 22, color: selected ? kPrimary : Colors.black38),
-                          if (showMarker)
-                            Positioned(top: -2, right: -2, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle))),
+              return HoverEffect(
+                child: GestureDetector(
+                  onTap: () => _onTabTapped(i, wardenProv),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected ? kPrimary.withValues(alpha: 0.1) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(selected ? icons[i].on : icons[i].off, size: 22, color: selected ? kPrimary : Colors.black38),
+                            if (showMarker)
+                              Positioned(top: -2, right: -2, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle))),
+                          ],
+                        ),
+                        if (selected) ...[
+                          const SizedBox(width: 8),
+                          Text(labels[i], style: const TextStyle(color: kPrimary, fontSize: 13, fontWeight: FontWeight.w800)),
                         ],
-                      ),
-                      if (selected) ...[
-                        const SizedBox(width: 8),
-                        Text(labels[i], style: const TextStyle(color: kPrimary, fontSize: 13, fontWeight: FontWeight.w800)),
                       ],
-                    ],
+                    ),
                   ),
                 ),
               );

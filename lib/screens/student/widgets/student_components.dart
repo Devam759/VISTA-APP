@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../../widgets/hover_effect.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STUDENT THEME CONSTANTS
@@ -42,27 +44,29 @@ class StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: color ?? Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: kStudentPrimary.withValues(alpha: 0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
+    return HoverEffect(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: color ?? Colors.white,
           borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: child,
+          boxShadow: [
+            BoxShadow(
+              color: kStudentPrimary.withValues(alpha: 0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: child,
+            ),
           ),
         ),
       ),
@@ -121,64 +125,6 @@ class StudentEmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-Future<DateTime?> showStudentDatePicker(
-  BuildContext context,
-  DateTime initialDate,
-  DateTime firstDate,
-) async {
-  DateTime tempDate = initialDate;
-  return showDialog<DateTime>(
-    context: context,
-    builder: (context) => AlertDialog(
-      contentPadding: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 24),
-            child: Text(
-              'Select Date',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-                color: kStudentPrimary,
-              ),
-            ),
-          ),
-          SizedBox(
-            height: 320,
-            width: 320,
-            child: CalendarDatePicker(
-              initialDate: initialDate,
-              firstDate: firstDate,
-              lastDate: DateTime.now().add(const Duration(days: 90)),
-              onDateChanged: (date) => tempDate = date,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel', style: TextStyle(color: Colors.black38)),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, tempDate),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: kStudentPrimary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: const Text('Confirm'),
-        ),
-      ],
-    ),
-  );
 }
 
 class StudentInput extends StatelessWidget {
@@ -273,18 +219,296 @@ class StudentTabHeader extends StatelessWidget {
               ],
             ),
           ),
-          ElevatedButton.icon(
-            onPressed: onAction,
-            icon: Icon(actionIcon, size: 18),
-            label: Text(actionLabel),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: kStudentPrimary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          HoverEffect(
+            child: ElevatedButton.icon(
+              onPressed: onAction,
+              icon: Icon(actionIcon, size: 18),
+              label: Text(actionLabel),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kStudentPrimary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPANDABLE LEAVE CARD (PORTED FROM WARDEN)
+// ─────────────────────────────────────────────────────────────────────────────
+class StudentExpandableLeaveCard extends StatefulWidget {
+  final String seqId;
+  final String status;
+  final DateTime fromDate;
+  final DateTime toDate;
+  final String reason;
+  final String address;
+  final String parentName;
+  final String parentRelation;
+  final String parentContact;
+  final DateTime? checkInTime;
+
+  const StudentExpandableLeaveCard({
+    super.key,
+    required this.seqId,
+    required this.status,
+    required this.fromDate,
+    required this.toDate,
+    required this.reason,
+    required this.address,
+    required this.parentName,
+    required this.parentRelation,
+    required this.parentContact,
+    this.checkInTime,
+  });
+
+  @override
+  State<StudentExpandableLeaveCard> createState() => _StudentExpandableLeaveCardState();
+}
+
+class _StudentExpandableLeaveCardState extends State<StudentExpandableLeaveCard> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isApproved = widget.status == 'Approved';
+    final isRejected = widget.status == 'Rejected';
+    final statusColor = isApproved ? kStudentSuccess : (isRejected ? Colors.redAccent : kStudentWarning);
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: kStudentPrimary.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // CONTRACTED VIEW
+          HoverEffect(
+            child: InkWell(
+              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: (isApproved ? kStudentSuccess : (isRejected ? Colors.redAccent : kStudentPrimary)).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        widget.seqId,
+                        style: TextStyle(
+                          color: isApproved ? kStudentSuccess : (isRejected ? Colors.redAccent : kStudentPrimary),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '${DateFormat('dd MMM').format(widget.fromDate)} - ${DateFormat('dd MMM yyyy').format(widget.toDate)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: Color(0xFF1E293B),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        widget.status.toUpperCase(),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      duration: const Duration(milliseconds: 300),
+                      turns: _isExpanded ? 0.5 : 0,
+                      child: const Icon(
+                        Icons.expand_more,
+                        color: Colors.black26,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // EXPANDED VIEW
+          if (_isExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Divider(height: 1, thickness: 0.5),
+                  const SizedBox(height: 16),
+                  const StudentSectionLabel('Leave Duration'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: StudentReadOnlyInput(
+                          label: 'From',
+                          value: DateFormat('dd MMM, hh:mm a').format(widget.fromDate),
+                          icon: Icons.login_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: StudentReadOnlyInput(
+                          label: 'To',
+                          value: DateFormat('dd MMM, hh:mm a').format(widget.toDate),
+                          icon: Icons.logout_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const StudentSectionLabel('Leave Details'),
+                  StudentReadOnlyInput(
+                    label: 'Reason',
+                    value: widget.reason,
+                    icon: Icons.info_outline_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  StudentReadOnlyInput(
+                    label: 'Address during leave',
+                    value: widget.address,
+                    icon: Icons.location_on_outlined,
+                  ),
+                  const SizedBox(height: 16),
+                  const StudentSectionLabel('Parent Information'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: StudentReadOnlyInput(
+                          label: 'Name',
+                          value: '${widget.parentName} (${widget.parentRelation})',
+                          icon: Icons.person_outline,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: StudentReadOnlyInput(
+                          label: 'Mobile',
+                          value: widget.parentContact,
+                          icon: Icons.phone_android_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (widget.checkInTime != null) ...[
+                    const SizedBox(height: 16),
+                    const StudentSectionLabel('Check-In Details'),
+                    StudentReadOnlyInput(
+                      label: 'Checked In At',
+                      value: DateFormat('dd MMM, hh:mm a').format(widget.checkInTime!),
+                      icon: Icons.verified_user_outlined,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+}
+
+class StudentReadOnlyInput extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData? icon;
+
+  const StudentReadOnlyInput({
+    super.key,
+    required this.label,
+    required this.value,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: kStudentBg.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: kStudentPrimary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 16, color: kStudentPrimary),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black38,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

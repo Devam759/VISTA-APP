@@ -158,7 +158,8 @@ async function sendNotificationToEligibleStudents() {
             if (!fcmToken || typeof fcmToken !== 'string') return;
             if (onLeaveStudentIds.has(uid)) return;
 
-            const isEligibleHosteller = !data.isDayScholar || activeShortStayUids.has(uid);
+            // Day scholars are eligible ONLY if they have an active, approved short stay flag AND current date falls within stay period
+            const isEligibleHosteller = !data.isDayScholar || (data.Hasapprovedshortstay === true && activeShortStayUids.has(uid));
             const isMarked = isMissedReminder && markedStudentIds.has(uid);
 
             if (isEligibleHosteller && !isMarked) {

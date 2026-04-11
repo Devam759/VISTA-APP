@@ -6,7 +6,10 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../providers/auth_provider.dart';
 import '../../utils/sanitizer.dart';
 import '../../utils/rate_limiter.dart';
+import '../../widgets/hover_effect.dart';
 import '../../widgets/vista_loader.dart';
+import '../../widgets/smooth_animations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -135,85 +138,97 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                       const SizedBox(height: 40),
-                      Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'assets/images/jklu_logo.jpg',
-                              height: 60,
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              'VISTA',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1E3A8A),
-                                  ),
-                            ),
-                          ],
+                      SmoothEntrance(
+                        delay: const Duration(milliseconds: 200),
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/images/jklu_logo.jpg',
+                                height: 60,
+                              ),
+                              const SizedBox(width: 16),
+                              Text(
+                                'VISTA',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1E3A8A),
+                                    ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 50),
-                      AutofillGroup(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TextField(
-                              controller: _emailController,
-                              autofillHints: const [
-                                AutofillHints.email,
-                                AutofillHints.username,
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'Email',
-                                prefixIcon: const Icon(Icons.person_outline),
-                                suffix: _emailController.text.contains('@')
-                                    ? null
-                                    : const Text(
-                                        '@jklu.edu.in',
-                                        style: TextStyle(color: Colors.grey),
-                                      ),
+                      SmoothEntrance(
+                        delay: const Duration(milliseconds: 400),
+                        child: AutofillGroup(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: _emailController,
+                                autofillHints: const [
+                                  AutofillHints.email,
+                                  AutofillHints.username,
+                                ],
+                                decoration: InputDecoration(
+                                  labelText: 'Email',
+                                  prefixIcon: const Icon(Icons.person_outline),
+                                  suffix: _emailController.text.contains('@')
+                                      ? null
+                                      : const Text(
+                                          '@jklu.edu.in',
+                                          style: TextStyle(color: Colors.grey),
+                                        ),
+                                ),
+                                onChanged: (val) => setState(() {}),
+                                keyboardType: TextInputType.emailAddress,
                               ),
-                              onChanged: (val) => setState(() {}),
-                              keyboardType: TextInputType.emailAddress,
-                            ),
-                            const SizedBox(height: 20),
-                            TextField(
-                              controller: _passwordController,
-                              autofillHints: const [AutofillHints.password],
-                              decoration: InputDecoration(
-                                labelText: 'Password',
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                  ),
-                                  onPressed: () => setState(
-                                    () => _obscurePassword = !_obscurePassword,
+                              const SizedBox(height: 20),
+                              TextField(
+                                controller: _passwordController,
+                                autofillHints: const [AutofillHints.password],
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  suffixIcon: HoverEffect(
+                                    child: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                      ),
+                                      onPressed: () => setState(
+                                        () => _obscurePassword = !_obscurePassword,
+                                      ),
+                                    ),
                                   ),
                                 ),
+                                obscureText: _obscurePassword,
+                                onEditingComplete: () =>
+                                    TextInput.finishAutofillContext(
+                                      shouldSave: false,
+                                    ),
                               ),
-                              obscureText: _obscurePassword,
-                              onEditingComplete: () =>
-                                  TextInput.finishAutofillContext(
-                                    shouldSave: false,
-                                  ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
 
                       // ── Lockout Banner ──────────────────────────────────
-                      if (isLocked)
-                        Padding(
+                      SmoothSwitcher(
+                        child: !isLocked ? const SizedBox.shrink() : Padding(
                           padding: const EdgeInsets.only(top: 20),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -245,10 +260,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
+                      ),
 
                       // ── Error Message ───────────────────────────────────
-                      if (_errorMessage != null && !isLocked)
-                        Padding(
+                      SmoothSwitcher(
+                        child: (_errorMessage == null || isLocked) ? const SizedBox.shrink() : Padding(
                           padding: const EdgeInsets.only(top: 20),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -283,110 +299,125 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
+                      ),
 
                       const SizedBox(height: 40),
-                      ElevatedButton(
-                        onPressed:
-                            (authProvider.isLoading || isLocked) ? null : _login,
-                        child: authProvider.isLoading
-                            ? const VISTALoader(size: 24, color: Colors.white)
-                            : const Text('Login'),
-                      ),
-                      const SizedBox(height: 20),
-                      const Row(
-                        children: [
-                          Expanded(child: Divider()),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('or', style: TextStyle(color: Colors.grey)),
-                          ),
-                          Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: authProvider.isLoading ? null : () async {
-                          try {
-                            await authProvider.signInWithMicrosoft();
-                            if (!mounted) return;
-                            if (authProvider.pendingMicrosoftCredential != null) {
-                              // ignore: use_build_context_synchronously
-                              _showAccountLinkingDialog(context);
-                            }
-                          } catch (e) {
-                            if (!mounted) return;
-                            String errorMessage = 'Microsoft sign-in failed. Please try again.';
-                            if (e is FirebaseAuthException && e.message != null) {
-                              errorMessage = e.message!;
-                            } else if (e is Exception) {
-                              errorMessage = e.toString();
-                            }
-                            setState(() {
-                              _errorMessage = errorMessage;
-                            });
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
+                      SmoothEntrance(
+                        delay: const Duration(milliseconds: 600),
+                        child: Column(
                           children: [
-                            SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        color: const Color(0xFFF25022),
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        color: const Color(0xFF7FBA00), // Swapped from Blue to Green
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        color: const Color(0xFF00A4EF), // Swapped from Green to Blue
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        color: const Color(0xFFFFB900),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                            HoverEffect(
+                              child: ElevatedButton(
+                                onPressed:
+                                    (authProvider.isLoading || isLocked) ? null : _login,
+                                child: authProvider.isLoading
+                                    ? const VISTALoader(size: 24, color: Colors.white)
+                                    : const Text('Login'),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            const Flexible(
-                              child: Text(
-                                'Sign in with Microsoft',
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                            const SizedBox(height: 20),
+                            const Row(
+                              children: [
+                                Expanded(child: Divider()),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text('or', style: TextStyle(color: Colors.grey)),
+                                ),
+                                Expanded(child: Divider()),
+                              ],
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      SmoothEntrance(
+                        delay: const Duration(milliseconds: 800),
+                        child: HoverEffect(
+                          child: ElevatedButton(
+                            onPressed: authProvider.isLoading ? null : () async {
+                              try {
+                                await authProvider.signInWithMicrosoft();
+                                if (!mounted) return;
+                                if (authProvider.pendingMicrosoftCredential != null) {
+                                  // ignore: use_build_context_synchronously
+                                  _showAccountLinkingDialog(context);
+                                }
+                              } catch (e) {
+                                if (!mounted) return;
+                                String errorMessage = 'Microsoft sign-in failed. Please try again.';
+                                if (e is FirebaseAuthException && e.message != null) {
+                                  errorMessage = e.message!;
+                                } else if (e is Exception) {
+                                  errorMessage = e.toString();
+                                }
+                                setState(() {
+                                  _errorMessage = errorMessage;
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 10,
+                                            height: 10,
+                                            color: const Color(0xFFF25022),
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Container(
+                                            width: 10,
+                                            height: 10,
+                                            color: const Color(0xFF7FBA00), // Swapped from Blue to Green
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 10,
+                                            height: 10,
+                                            color: const Color(0xFF00A4EF), // Swapped from Green to Blue
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Container(
+                                            width: 10,
+                                            height: 10,
+                                            color: const Color(0xFFFFB900),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Flexible(
+                                  child: Text(
+                                    'Sign in with Microsoft',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 40),
@@ -394,14 +425,37 @@ class _LoginScreenState extends State<LoginScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Text("Don't have an account?"),
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.pushNamed(context, '/signup'),
-                            child: const Text('Sign Up'),
+                          HoverEffect(
+                            child: TextButton(
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, '/signup'),
+                              child: const Text('Sign Up'),
+                            ),
                           ),
                         ],
                       ),
+                        ],
+                      ),
                       const SizedBox(height: 24),
+                      Center(
+                        child: HoverEffect(
+                          child: TextButton.icon(
+                            onPressed: _showDeveloperInfo,
+                            icon: const Icon(Icons.code, size: 14),
+                            label: const Text(
+                              'Developer Info',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.grey[400],
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -445,37 +499,198 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
             actions: [
-              TextButton(
-                onPressed: authProvider.isLoading ? null : () {
-                  authProvider.clearPendingCredential();
-                  Navigator.pop(context);
-                },
-                child: const Text('Cancel'),
+              HoverEffect(
+                child: TextButton(
+                  onPressed: authProvider.isLoading ? null : () {
+                    authProvider.clearPendingCredential();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Cancel'),
+                ),
               ),
-              ElevatedButton(
-                onPressed: authProvider.isLoading ? null : () async {
-                  try {
-                    setDialogState(() => localError = null);
-                    await authProvider.linkAccountWithPassword(passwordController.text);
-                    if (context.mounted) Navigator.pop(context);
-                  } catch (e) {
-                    debugPrint("VISTA: Linking error in dialog: $e");
-                    setDialogState(() {
-                      if (e is FirebaseAuthException) {
-                        localError = e.message;
-                      } else {
-                        localError = 'Linking failed: ${e.toString()}';
-                      }
-                    });
-                  }
-                },
-                child: authProvider.isLoading
-                    ? const VISTALoader(size: 24, color: Colors.white)
-                    : const Text('Link & Log In'),
+              HoverEffect(
+                child: ElevatedButton(
+                  onPressed: authProvider.isLoading ? null : () async {
+                    try {
+                      setDialogState(() => localError = null);
+                      await authProvider.linkAccountWithPassword(passwordController.text);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      debugPrint("VISTA: Linking error in dialog: $e");
+                      setDialogState(() {
+                        if (e is FirebaseAuthException) {
+                          localError = e.message;
+                        } else {
+                          localError = 'Linking failed: ${e.toString()}';
+                        }
+                      });
+                    }
+                  },
+                  child: authProvider.isLoading
+                      ? const VISTALoader(size: 24, color: Colors.white)
+                      : const Text('Link & Log In'),
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showDeveloperInfo() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 20,
+              spreadRadius: 5,
+            )
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'The Minds Behind VISTA',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E3A8A),
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Designed & Developed with Passion',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+            const SizedBox(height: 30),
+            _developerCard(
+              name: 'Devam Gupta',
+              github: 'https://github.com/Devam759',
+              image: 'https://github.com/Devam759.png',
+              role: 'Project Lead & Lead Developer',
+            ),
+            const SizedBox(height: 16),
+            _developerCard(
+              name: 'Yash Mishra',
+              github: 'https://github.com/yashmish18',
+              image: 'https://github.com/yashmish18.png',
+              role: 'Full Stack Developer',
+            ),
+            const SizedBox(height: 30),
+            Text(
+              '© ${DateTime.now().year} VISTA Team',
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _developerCard({
+    required String name,
+    required String github,
+    required String image,
+    required String role,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[100]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF1E3A8A).withValues(alpha: 0.2)),
+            ),
+            child: CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.grey[200],
+              backgroundImage: NetworkImage(image),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  role,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          HoverEffect(
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E3A8A).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.open_in_new,
+                  size: 18,
+                  color: Color(0xFF1E3A8A),
+                ),
+              ),
+              onPressed: () async {
+                final url = Uri.parse(github);
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

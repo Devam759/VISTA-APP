@@ -7,7 +7,9 @@ import '../../../services/firebase_service.dart';
 import '../../../utils/sanitizer.dart';
 import '../../../widgets/skeleton_loader.dart';
 import '../widgets/student_components.dart';
+import '../../../widgets/hover_effect.dart';
 import '../../../widgets/vista_loader.dart';
+import '../../../widgets/vista_date_picker.dart';
 
 class LeaveTab extends StatefulWidget {
   final VistaUser user;
@@ -27,12 +29,14 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
     super.build(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'leaveFAB',
-        onPressed: () => _showLeaveDialog(context),
-        backgroundColor: kStudentPrimary,
-        elevation: 4,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
+      floatingActionButton: HoverEffect(
+        child: FloatingActionButton(
+          heroTag: 'leaveFAB',
+          onPressed: () => _showLeaveDialog(context),
+          backgroundColor: kStudentPrimary,
+          elevation: 4,
+          child: const Icon(Icons.add_rounded, color: Colors.white),
+        ),
       ),
       body: StreamBuilder<List<LeaveRequest>>(
         stream: widget.fs.getStudentLeaves(widget.user.uid),
@@ -49,87 +53,21 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
             );
           }
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
             itemCount: list.length,
             itemBuilder: (context, i) {
               final l = list[i];
-              Color statusColor;
-              switch (l.status) {
-                case 'Approved':
-                  statusColor = kStudentSuccess;
-                  break;
-                case 'Rejected':
-                  statusColor = Colors.redAccent;
-                  break;
-                default:
-                  statusColor = kStudentWarning;
-              }
-
-              return StudentCard(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.event_note_rounded,
-                                size: 14,
-                                color: kStudentPrimary.withValues(alpha: 0.5),
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  '${l.seqId} · ${DateFormat('dd MMM').format(l.fromDate)} - ${DateFormat('dd MMM yyyy').format(l.toDate)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                    color: Color(0xFF1E293B),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            l.reason,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.black45,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: statusColor.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Text(
-                        l.status.toUpperCase(),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 10,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              return StudentExpandableLeaveCard(
+                seqId: l.seqId,
+                status: l.status,
+                fromDate: l.fromDate,
+                toDate: l.toDate,
+                reason: l.reason,
+                address: l.address,
+                parentName: l.parentName,
+                parentRelation: l.parentRelation,
+                parentContact: l.parentContact,
+                checkInTime: l.checkInTime,
               );
             },
           );
@@ -222,10 +160,11 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
                       icon: Icons.access_time_rounded,
                       readOnly: true,
                       onTap: () async {
-                        final date = await showStudentDatePicker(
-                          context,
-                          DateTime.now(),
-                          DateTime.now(),
+                        final date = await showVistaDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          primaryColor: kStudentPrimary,
                         );
                         if (date != null && context.mounted) {
                           final time = await showTimePicker(
@@ -263,10 +202,11 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
                           } catch (_) {}
                         }
 
-                        final date = await showStudentDatePicker(
-                          context,
-                          initialDate,
-                          initialDate,
+                        final date = await showVistaDatePicker(
+                          context: context,
+                          initialDate: initialDate,
+                          firstDate: initialDate,
+                          primaryColor: kStudentPrimary,
                         );
                         if (date != null && context.mounted) {
                           final time = await showTimePicker(

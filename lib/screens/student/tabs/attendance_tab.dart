@@ -94,11 +94,6 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
     return now.hour >= 22;
   }
 
-  bool _isWithinGracePeriod() {
-    final now = DateTime.now();
-    return now.hour == 22 && now.minute < 30;
-  }
-
   bool _isLate() {
     final now = DateTime.now();
     return (now.hour == 22 && now.minute >= 30) || (now.hour == 23);
@@ -174,7 +169,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
             }
 
             return ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
               children: [
                 const StudentSectionLabel("Night Attendance"),
                 const SizedBox(height: 20),

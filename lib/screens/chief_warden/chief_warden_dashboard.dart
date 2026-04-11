@@ -33,6 +33,7 @@ class ChiefWardenDashboard extends StatefulWidget {
 class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
   final FirebaseService _fs = FirebaseService();
   int _selectedIndex = 0;
+  late PageController _pageController;
   final List<StreamSubscription> _subscriptions = [];
   
   // Activity Markers
@@ -44,11 +45,13 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
     _setupChiefWardenListeners();
   }
 
   @override
   void dispose() {
+    _pageController.dispose();
     for (var s in _subscriptions) {
       s.cancel();
     }
@@ -134,7 +137,6 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
       _fs.getPendingLeaves('All').listen((list) {
         if (list.isNotEmpty) {
           if (_selectedIndex != 2) setState(() => _hasNewLeaves = true);
-          _showInAppAlert('New Leave Request', '${list.length} requests pending', 2);
         } else {
           setState(() => _hasNewLeaves = false);
         }
@@ -193,7 +195,15 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
   }
 
   void _onTabTapped(int index) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (_selectedIndex == index) return;
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _clearMarkers(int index) {
     setState(() {
       _selectedIndex = index;
       if (index == 0) _hasNewRegistrations = false;
@@ -203,12 +213,7 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
     });
   }
 
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -338,7 +343,7 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Text('$_greeting, ${warden.name}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2)),
+                        Text('Welcome ${warden.name} Sir', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2)),
                       ],
                     ),
                   );
@@ -352,8 +357,12 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
                 final hPad = constraints.maxWidth > 900 ? (constraints.maxWidth - 900) / 2 : 0.0;
                 return Padding(
                   padding: EdgeInsets.symmetric(horizontal: hPad),
-                  child: IndexedStack(
-                    index: _selectedIndex,
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      setState(() => _selectedIndex = index);
+                      _clearMarkers(index);
+                    },
                     children: pages,
                   ),
                 );

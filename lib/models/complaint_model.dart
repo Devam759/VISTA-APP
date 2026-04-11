@@ -37,8 +37,8 @@ class Complaint {
     this.seqId = '',
   });
 
-  Map<String, dynamic> toMap() {
-    return {
+  Map<String, dynamic> toMap({bool forCreate = false}) {
+    final map = {
       'studentId': studentId,
       'studentName': studentName,
       'title': title,
@@ -48,13 +48,18 @@ class Complaint {
       'targetRoles': targetRoles,
       'status': status,
       'isAnonymous': isAnonymous,
-      'studentConfirmed': studentConfirmed,
-      'isEscalated': isEscalated,
       'isNotified': isNotified,
       'lastStatusNotified': lastStatusNotified,
       'createdAt': FieldValue.serverTimestamp(),
-      'seqId': seqId,
     };
+
+    if (!forCreate) {
+      map['studentConfirmed'] = studentConfirmed;
+      map['isEscalated'] = isEscalated;
+      map['seqId'] = seqId;
+    }
+
+    return map;
   }
 
   factory Complaint.fromMap(Map<String, dynamic> map, String id) {

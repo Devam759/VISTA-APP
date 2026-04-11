@@ -13,10 +13,12 @@ import '../../widgets/skeleton_loader.dart';
 
 // Modular components and tabs
 import 'widgets/student_components.dart';
+import '../../widgets/hover_effect.dart';
 import 'tabs/attendance_tab.dart';
 import 'tabs/leave_tab.dart';
 import 'tabs/complaints_tab.dart';
 import 'tabs/short_stay_tab.dart';
+import '../../widgets/smooth_animations.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -28,6 +30,7 @@ class StudentDashboard extends StatefulWidget {
 class _StudentDashboardState extends State<StudentDashboard> {
   final FirebaseService _firebaseService = FirebaseService();
   int _selectedIndex = 0;
+  late PageController _pageController;
   bool _checkingPermissions = true;
   bool _permissionsGranted = false;
   final List<StreamSubscription> _subscriptions = [];
@@ -35,6 +38,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
     _checkPermissions();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupStudentListeners();
@@ -51,6 +55,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   @override
   void dispose() {
+    _pageController.dispose();
     for (var sub in _subscriptions) {
       sub.cancel();
     }
@@ -188,34 +193,38 @@ class _StudentDashboardState extends State<StudentDashboard> {
               children: [
                 _buildHeader(context, user, authProvider),
                 Expanded(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(24),
-                        topRight: Radius.circular(24),
+                  child: SmoothEntrance(
+                    delay: const Duration(milliseconds: 200),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
                       ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(32),
-                        topRight: Radius.circular(32),
-                      ),
-                      child: IndexedStack(
-                        index: _selectedIndex,
-                        children: [
-                          AttendanceTab(
-                            user: user,
-                            fs: _firebaseService,
-                            isActive: _selectedIndex == 0,
-                          ),
-                          if (user.hostel != 'Short Stay')
-                            LeaveTab(user: user, fs: _firebaseService),
-                          if (user.hostel != 'Short Stay')
-                            ComplaintsTab(user: user, fs: _firebaseService),
-                          if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
-                            ShortStayTab(user: user, fs: _firebaseService),
-                        ],
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
+                        ),
+                        child: PageView(
+                          controller: _pageController,
+                          onPageChanged: (index) => setState(() => _selectedIndex = index),
+                          children: [
+                            AttendanceTab(
+                              user: user,
+                              fs: _firebaseService,
+                              isActive: _selectedIndex == 0,
+                            ),
+                            if (user.hostel != 'Short Stay')
+                              LeaveTab(user: user, fs: _firebaseService),
+                            if (user.hostel != 'Short Stay')
+                              ComplaintsTab(user: user, fs: _firebaseService),
+                            if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
+                              ShortStayTab(user: user, fs: _firebaseService),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -236,7 +245,14 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
             child: BottomNavigationBar(
               currentIndex: _selectedIndex,
-              onTap: (index) => setState(() => _selectedIndex = index),
+              onTap: (index) {
+                if (_selectedIndex == index) return;
+                _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
               elevation: 0,
               backgroundColor: Colors.transparent,
               selectedItemColor: kStudentPrimary,
@@ -278,50 +294,56 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Widget _buildHeader(BuildContext context, VistaUser user, AuthProvider authProvider) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Image.asset('assets/images/jklu_logo_bgremove.png', height: 28),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'VISTA',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: kStudentPrimary,
-                        letterSpacing: 2,
+    return SmoothEntrance(
+      delay: const Duration(milliseconds: 100),
+      offset: const Offset(0, -20),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Image.asset('assets/images/jklu_logo_bgremove.png', height: 28),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'VISTA',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: kStudentPrimary,
+                          letterSpacing: 2,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Hello, ${user.name.split(" ")[0]}',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () => _showProfileMenu(context, user, authProvider),
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: kStudentPrimary.withValues(alpha: 0.1)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Hello, ${user.name.split(" ")[0]}',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.person_rounded, color: kStudentPrimary),
             ),
-          ),
-        ],
+            HoverEffect(
+              child: IconButton(
+                onPressed: () => _showProfileMenu(context, user, authProvider),
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: kStudentPrimary.withValues(alpha: 0.1)),
+                  ),
+                  child: const Icon(Icons.person_rounded, color: kStudentPrimary),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -349,13 +371,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
             _profileItem(Icons.home_outlined, 'Hostel', user.hostel ?? 'N/A'),
             _profileItem(Icons.meeting_room_outlined, 'Room', user.roomNumber ?? 'Unassigned'),
             const Divider(height: 48),
-            ListTile(
-              leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-              title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-              onTap: () {
-                Navigator.pop(context);
-                authProvider.signOut();
-              },
+            HoverEffect(
+              child: ListTile(
+                leading: const Icon(Icons.logout_rounded, color: Colors.red),
+                title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  authProvider.signOut();
+                },
+              ),
             ),
           ],
         ),

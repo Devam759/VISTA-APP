@@ -8,6 +8,7 @@ import '../../../services/firebase_service.dart';
 import '../../../widgets/skeleton_loader.dart';
 import '../widgets/student_components.dart';
 import '../../../widgets/vista_loader.dart';
+import '../../../widgets/vista_date_picker.dart';
 
 class ShortStayTab extends StatelessWidget {
   final VistaUser user;
@@ -89,10 +90,11 @@ class ShortStayTab extends StatelessWidget {
                     icon: Icons.login_rounded,
                     readOnly: true,
                     onTap: () async {
-                      final date = await showStudentDatePicker(
-                        context,
-                        DateTime.now(),
-                        DateTime.now(),
+                      final date = await showVistaDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        primaryColor: kStudentPrimary,
                       );
                       if (date != null && context.mounted) {
                         final time = await showTimePicker(
@@ -121,7 +123,12 @@ class ShortStayTab extends StatelessWidget {
                         } catch (_) {}
                       }
 
-                      final date = await showStudentDatePicker(context, initialDate, initialDate);
+                      final date = await showVistaDatePicker(
+                        context: context,
+                        initialDate: initialDate,
+                        firstDate: initialDate,
+                        primaryColor: kStudentPrimary,
+                      );
                       if (date != null && context.mounted) {
                         final time = await showTimePicker(
                           context: context,
@@ -180,6 +187,7 @@ class ShortStayTab extends StatelessWidget {
                               );
                               await fs.submitShortStayRequest(req);
 
+                              if (!context.mounted) return;
                               final authProvider = Provider.of<AuthProvider>(context, listen: false);
                               Map<String, dynamic> updates = {};
                               if (addressCtrl.text != user.address) updates['address'] = addressCtrl.text;
@@ -380,11 +388,12 @@ class ShortStayCard extends StatelessWidget {
   }
 
   void _showExtensionDialog(BuildContext context) async {
-    final date = await showDatePicker(
+    final date = await showVistaDatePicker(
       context: context,
       initialDate: request.checkOutDate.add(const Duration(days: 1)),
       firstDate: request.checkOutDate,
       lastDate: request.checkOutDate.add(const Duration(days: 7)),
+      primaryColor: kStudentPrimary,
     );
     if (date != null && context.mounted) {
       final time = await showTimePicker(

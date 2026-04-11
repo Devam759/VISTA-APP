@@ -12,8 +12,9 @@
 .swiftpm/
 migrate_working_dir/
 node_modules/
-.qoder/
 .firebase/
+.gemini/
+.antigravity/
 release_outputs/
 analyze.txt
 flutter_analyze*.txt
@@ -110,4 +111,11 @@ lib/firebase_options.dart
 
 # Node modules in the scripts dir
 **/scripts/node_modules/
+**/functions/node_modules/
+
+# Media backups
+old-media/
+
+# Extra Build Reports
+**/reports/
 

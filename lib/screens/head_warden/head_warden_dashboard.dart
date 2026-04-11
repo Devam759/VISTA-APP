@@ -35,6 +35,7 @@ class HeadWardenDashboard extends StatefulWidget {
 class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
   final FirebaseService _fs = FirebaseService();
   int _selectedIndex = 0;
+  late PageController _pageController;
   final List<StreamSubscription> _subscriptions = [];
   final List<GlobalKey> _tabKeys = List.generate(5, (index) => GlobalKey());
 
@@ -47,11 +48,13 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
     _setupHeadWardenListeners();
   }
 
   @override
   void dispose() {
+    _pageController.dispose();
     for (var s in _subscriptions) {
       s.cancel();
     }
@@ -200,11 +203,6 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
           if (_selectedIndex != 2) {
             setState(() => _hasNewLeaves = true);
           }
-          _showInAppAlert(
-            'New Leave Request',
-            '${list.length} requests pending',
-            2,
-          );
         } else {
           setState(() => _hasNewLeaves = false);
         }
@@ -275,9 +273,18 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
   }
 
   void _onTabTapped(int index) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    _clearMarkers(index);
+  }
+
+  void _clearMarkers(int index) {
     setState(() {
-      _selectedIndex = index;
       if (index == 0) _hasNewRegistrations = false;
       if (index == 2) _hasNewLeaves = false;
       if (index == 3) _hasNewComplaints = false;
@@ -285,12 +292,7 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
     });
   }
 
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -479,7 +481,7 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          '$_greeting, ${warden.name}',
+                          'Welcome ${warden.name} Sir',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -504,8 +506,12 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
                     : 0.0;
                 return Padding(
                   padding: EdgeInsets.symmetric(horizontal: hPad),
-                  child: IndexedStack(
-                    index: _selectedIndex,
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      setState(() => _selectedIndex = index);
+                      _clearMarkers(index);
+                    },
                     children: pages,
                   ),
                 );

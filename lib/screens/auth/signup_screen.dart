@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart' as vista;
 import '../../utils/sanitizer.dart';
 import '../../widgets/vista_loader.dart';
+import '../../widgets/hover_effect.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -301,32 +302,34 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                       const SizedBox(height: 28),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          icon: Icon(
-                            isDayScholar ? Icons.dashboard_rounded : Icons.login_rounded,
-                            size: 20,
-                          ),
-                          label: Text(
-                            isDayScholar ? 'Go to Portal' : 'Go to Login',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                      HoverEffect(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: Icon(
+                              isDayScholar ? Icons.dashboard_rounded : Icons.login_rounded,
+                              size: 20,
                             ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E3A8A),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            label: Text(
+                              isDayScholar ? 'Go to Portal' : 'Go to Login',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            elevation: 0,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E3A8A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () async {
+                              _performSuccessRedirect(isDayScholar);
+                            },
                           ),
-                          onPressed: () async {
-                            _performSuccessRedirect(isDayScholar);
-                          },
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -475,17 +478,21 @@ class _SignupScreenState extends State<SignupScreen> {
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: _buildTypeButton(
-                                    'Hosteller',
-                                    Icons.apartment_rounded,
-                                    _userType == 'Hosteller',
+                                  child: HoverEffect(
+                                    child: _buildTypeButton(
+                                      'Hosteller',
+                                      Icons.apartment_rounded,
+                                      _userType == 'Hosteller',
+                                    ),
                                   ),
                                 ),
                                 Expanded(
-                                  child: _buildTypeButton(
-                                    'Day Scholar',
-                                    Icons.home_outlined,
-                                    _userType == 'Day Scholar',
+                                  child: HoverEffect(
+                                    child: _buildTypeButton(
+                                      'Day Scholar',
+                                      Icons.home_outlined,
+                                      _userType == 'Day Scholar',
+                                    ),
                                   ),
                                 ),
                               ],
@@ -611,8 +618,8 @@ class _SignupScreenState extends State<SignupScreen> {
                           padding: const EdgeInsets.all(4),
                           child: Row(
                             children: [
-                              _buildIDTypeButton('Roll Number', _idType == 'Roll Number'),
-                              _buildIDTypeButton('Registration Number', _idType == 'Registration Number'),
+                              HoverEffect(child: _buildIDTypeButton('Roll Number', _idType == 'Roll Number')),
+                              HoverEffect(child: _buildIDTypeButton('Registration Number', _idType == 'Registration Number')),
                             ],
                           ),
                         ),
@@ -696,34 +703,38 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: _isSubmitting ? null : _signup,
-                    child: _isSubmitting
-                        ? const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              VISTALoader(size: 24, color: Colors.white),
-                              SizedBox(width: 12),
-                              Text('Submitting...'),
-                            ],
-                          )
-                        : const Text('Submit Registration'),
+                  HoverEffect(
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : _signup,
+                      child: _isSubmitting
+                          ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                VISTALoader(size: 24, color: Colors.white),
+                                SizedBox(width: 12),
+                                Text('Submitting...'),
+                              ],
+                            )
+                          : const Text('Submit Registration'),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text('Already have an account?'),
-                      TextButton(
-                        onPressed: () {
-                          if (Navigator.of(context).canPop()) {
-                            Navigator.pop(context);
-                          } else {
-                            // This case happens during SSO profile completion (where SignupScreen is the root)
-                            context.read<vista.AuthProvider>().signOut();
-                          }
-                        },
-                        child: const Text('Login'),
+                      HoverEffect(
+                        child: TextButton(
+                          onPressed: () {
+                            if (Navigator.of(context).canPop()) {
+                              Navigator.pop(context);
+                            } else {
+                              // This case happens during SSO profile completion (where SignupScreen is the root)
+                              context.read<vista.AuthProvider>().signOut();
+                            }
+                          },
+                          child: const Text('Login'),
+                        ),
                       ),
                     ],
                   ),

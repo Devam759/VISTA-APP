@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'hover_effect.dart';
 
 enum ExportType {
   attendance,
@@ -12,13 +13,11 @@ enum ExportType {
 class ExportOption {
   final ExportType type;
   final String title;
-  final String subtitle;
   final IconData icon;
 
   const ExportOption({
     required this.type,
     required this.title,
-    required this.subtitle,
     required this.icon,
   });
 }
@@ -56,32 +55,27 @@ class _ExportDialogState extends State<ExportDialog> {
     ExportOption(
       type: ExportType.attendance,
       title: 'Attendance Report',
-      subtitle: 'Export attendance records with date range',
-      icon: Icons.fact_check_rounded,
+      icon: Icons.assignment_ind,
     ),
     ExportOption(
       type: ExportType.students,
       title: 'Students List',
-      subtitle: 'Export all registered students',
-      icon: Icons.people_alt_rounded,
+      icon: Icons.groups,
     ),
     ExportOption(
       type: ExportType.leaveRequests,
       title: 'Leave Requests',
-      subtitle: 'Export leave applications with details',
-      icon: Icons.request_page_rounded,
+      icon: Icons.event_note,
     ),
     ExportOption(
       type: ExportType.complaints,
       title: 'Complaints',
-      subtitle: 'Export all complaints data',
-      icon: Icons.report_problem_rounded,
+      icon: Icons.assignment_late,
     ),
     ExportOption(
       type: ExportType.shortStays,
       title: 'Short Stay Forms',
-      subtitle: 'Export short stay applications',
-      icon: Icons.night_shelter_rounded,
+      icon: Icons.hotel,
     ),
   ];
 
@@ -193,13 +187,6 @@ class _ExportDialogState extends State<ExportDialog> {
                           color: Color(0xFF1E3A8A),
                         ),
                       ),
-                      Text(
-                        'Select data type and date range',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -211,18 +198,9 @@ class _ExportDialogState extends State<ExportDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             // Export Options
-            const Text(
-              'Select Export Type',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 12),
             Flexible(
               child: RadioGroup<ExportType>(
                 groupValue: _selectedType,
@@ -239,72 +217,61 @@ class _ExportDialogState extends State<ExportDialog> {
                     final option = _options[index];
                     final isSelected = _selectedType == option.type;
 
-                    return InkWell(
-                      onTap: () => setState(() => _selectedType = option.type),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF1E3A8A).withValues(alpha: 0.08)
-                              : Colors.grey.withValues(alpha: 0.05),
-                          border: Border.all(
+                    return HoverEffect(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedType = option.type),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFF1E3A8A)
-                                : Colors.grey.withValues(alpha: 0.2),
-                            width: isSelected ? 2 : 1,
+                                ? const Color(0xFF1E3A8A).withValues(alpha: 0.08)
+                                : Colors.grey.withValues(alpha: 0.05),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF1E3A8A)
+                                  : Colors.grey.withValues(alpha: 0.2),
+                              width: isSelected ? 2 : 1,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF1E3A8A)
-                                    : Colors.grey.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFF1E3A8A)
+                                      : Colors.grey.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  option.icon,
+                                  size: 20,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF1E3A8A),
+                                ),
                               ),
-                              child: Icon(
-                                option.icon,
-                                size: 20,
-                                color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF1E3A8A),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    option.title,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: isSelected
-                                          ? const Color(0xFF1E3A8A)
-                                          : Colors.black87,
-                                    ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  option.title,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? const Color(0xFF1E3A8A)
+                                        : Colors.black87,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    option.subtitle,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
-                            Radio<ExportType>(
-                              value: option.type,
-                              activeColor: const Color(0xFF1E3A8A),
-                            ),
-                          ],
+                              Radio<ExportType>(
+                                value: option.type,
+                                activeColor: const Color(0xFF1E3A8A),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -312,18 +279,9 @@ class _ExportDialogState extends State<ExportDialog> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Date Range Section
-            const Text(
-              'Date Range',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -356,31 +314,35 @@ class _ExportDialogState extends State<ExportDialog> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black54,
-                      side: BorderSide(color: Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  child: HoverEffect(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black54,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
+                      child: const Text('Cancel'),
                     ),
-                    child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _onExport,
-                    icon: const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('Export'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E3A8A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  child: HoverEffect(
+                    child: ElevatedButton.icon(
+                      onPressed: _onExport,
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: const Text('Export'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
@@ -407,47 +369,49 @@ class _DateRangeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.05),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Colors.black54,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(
-                  Icons.calendar_today_rounded,
-                  size: 14,
-                  color: Color(0xFF1E3A8A),
+    return HoverEffect(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.05),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  DateFormat('dd MMM yyyy').format(date),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 14,
                     color: Color(0xFF1E3A8A),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 6),
+                  Text(
+                    DateFormat('dd MMM yyyy').format(date),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E3A8A),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

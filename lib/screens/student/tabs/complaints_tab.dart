@@ -6,6 +6,7 @@ import '../../../services/firebase_service.dart';
 import '../../../utils/sanitizer.dart';
 import '../../../widgets/skeleton_loader.dart';
 import '../widgets/student_components.dart';
+import '../../../widgets/hover_effect.dart';
 import '../../../widgets/vista_loader.dart';
 
 class ComplaintsTab extends StatelessWidget {
@@ -17,12 +18,14 @@ class ComplaintsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'complaintFAB',
-        onPressed: () => _showComplaintDialog(context, user, fs),
-        backgroundColor: kStudentPrimary,
-        elevation: 4,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
+      floatingActionButton: HoverEffect(
+        child: FloatingActionButton(
+          heroTag: 'complaintFAB',
+          onPressed: () => _showComplaintDialog(context, user, fs),
+          backgroundColor: kStudentPrimary,
+          elevation: 4,
+          child: const Icon(Icons.add_rounded, color: Colors.white),
+        ),
       ),
       body: StreamBuilder<List<Complaint>>(
         stream: fs.getStudentComplaints(user.uid),
@@ -39,7 +42,7 @@ class ComplaintsTab extends StatelessWidget {
             );
           }
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
             itemCount: list.length,
             itemBuilder: (context, i) {
               final c = list[i];
@@ -281,6 +284,15 @@ class ComplaintsTab extends StatelessWidget {
                         : () async {
                             if (titleController.text.trim().isEmpty) return;
 
+                            if (user.hostel == null) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Profile incomplete: Hostel not assigned')),
+                                );
+                              }
+                              return;
+                            }
+
                             setModalState(() => isSubmitting = true);
                             try {
                               final complaint = Complaint(
@@ -289,7 +301,7 @@ class ComplaintsTab extends StatelessWidget {
                                 studentName: user.name,
                                 title: InputSanitizer.sanitize(titleController.text.trim()),
                                 description: InputSanitizer.sanitize(descController.text.trim()),
-                                hostel: user.hostel!,
+                                hostel: user.hostel ?? 'Unassigned',
                                 targetRoles: ['Warden'],
                                 status: 'Pending',
                                 isAnonymous: true,
@@ -309,8 +321,8 @@ class ComplaintsTab extends StatelessWidget {
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Failed to report issue'),
+                                  SnackBar(
+                                    content: Text('Failed: ${e.toString().split(':').last.trim()}'),
                                     backgroundColor: Colors.redAccent,
                                   ),
                                 );

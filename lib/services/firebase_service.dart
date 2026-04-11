@@ -8,6 +8,7 @@ import '../models/attendance_model.dart';
 import '../models/leave_request_model.dart';
 import '../models/complaint_model.dart';
 import '../models/short_stay_model.dart';
+import '../models/attendance_record.dart';
 import '../utils/rate_limiter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -613,7 +614,10 @@ class FirebaseService {
           final userSnap = await _db.collection('users').doc(studentId).get();
           if (userSnap.exists) {
             final userData = userSnap.data()!;
-            final userUpdates = <String, dynamic>{'hasUsedShortStay': true};
+            final userUpdates = <String, dynamic>{
+              'hasUsedShortStay': true,
+              'Hasapprovedshortstay': true,
+            };
             // If the student is still in 'Short Stay' category, move them to the actual hostel
             if (userData['hostel'] == 'Short Stay' && allotmentHostel != null) {
               userUpdates['hostel'] = allotmentHostel;
@@ -626,11 +630,20 @@ class FirebaseService {
     }
   }
 
-  Future<void> checkOutFromShortStay(String id) {
-    return _db.collection('short_stay_requests').doc(id).update({
-      'status': 'Completed',
-      'actualCheckOutTime': FieldValue.serverTimestamp(),
-    });
+  Future<void> checkOutFromShortStay(String id) async {
+    final snap = await _db.collection('short_stay_requests').doc(id).get();
+    if (snap.exists) {
+      final studentId = snap.data()?['studentId'];
+      await _db.collection('short_stay_requests').doc(id).update({
+        'status': 'Completed',
+        'actualCheckOutTime': FieldValue.serverTimestamp(),
+      });
+      if (studentId != null) {
+        await _db.collection('users').doc(studentId).update({
+          'Hasapprovedshortstay': false,
+        });
+      }
+    }
   }
 
   Future<void> requestShortStayExtension(String id, DateTime newToDate) {
@@ -665,7 +678,7 @@ class FirebaseService {
         createdAt: complaint.createdAt,
         seqId: '',
       );
-      await _db.collection('complaints').add(updatedComplaint.toMap());
+      await _db.collection('complaints').add(updatedComplaint.toMap(forCreate: true));
     });
   }
 
@@ -931,5 +944,81 @@ class FirebaseService {
     return _db.collection('leave_requests').doc(leaveId).update({
       'checkInTime': FieldValue.serverTimestamp(),
     });
+  }
+
+  // ── Unified Warden Data Streams ──
+
+  /// Combines Students, Attendance, and Approved Leaves into a single source of truth
+  /// for attendance monitoring. Used across base Warden, Head, and Chief warden portals.
+  Stream<List<AttendanceRecord>> getUnifiedAttendanceStream(String? hostel, DateTime date) {
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final startOfDay = DateTime(date.year, date.month, date.day);
+
+    return getHostelStudents(hostel ?? 'All').asyncMap((students) async {
+      // Get attendance for the specific day
+      final attendanceList = await getHostelAttendance(hostel, dateStr).first;
+      // Get approved leaves to check for "On Leave" status
+      final leaveRequests = await getApprovedLeaves(hostel).first;
+
+      return students.map((student) {
+        final att = attendanceList.where((a) => a.studentId == student.uid).firstOrNull;
+        final onLeave = leaveRequests.any((l) =>
+            l.studentId == student.uid &&
+            !startOfDay.isBefore(DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day)) &&
+            !startOfDay.isAfter(DateTime(l.toDate.year, l.toDate.month, l.toDate.day)));
+
+        return AttendanceRecord(student, att, onLeave: onLeave);
+      }).toList();
+    });
+  }
+
+  /// Unified stream for fetching and searching leaves across portals.
+  Stream<List<LeaveRequest>> getUnifiedLeavesStream(String? hostel) {
+    return getHostelLeaves(hostel ?? 'All').map((list) {
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  /// Unified stream for fetching and searching short stay requests.
+  Stream<List<ShortStayRequest>> getUnifiedShortStaysStream(String? hostel) {
+    return getHostelShortStays(hostel ?? 'All').map((list) {
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  /// Unified stream for fetching and searching students.
+  Stream<List<VistaUser>> getUnifiedStudentsStream(String? hostel) {
+    return getHostelStudents(hostel ?? 'All').map((list) {
+      list.sort((a, b) => a.name.compareTo(b.name));
+      return list;
+    });
+  }
+
+  /// Unified stream for fetching pending registrations.
+  Stream<List<VistaUser>> getPendingRegistrationsStream(String? hostel) {
+    return getPendingRegistrations(hostel ?? 'All').map((list) {
+      list.sort((a, b) => (a.registrationNo ?? '').compareTo(b.registrationNo ?? ''));
+      return list;
+    });
+  }
+
+  /// Static helper to check if a student is currently on approved leave.
+  static bool isStudentOnLeave(String uid, List<LeaveRequest> approvedLeaves) {
+    final now = DateTime.now();
+    return approvedLeaves.any((l) {
+      if (l.studentId != uid) return false;
+      if (l.checkInTime != null && !now.isBefore(l.checkInTime!)) return false;
+      return l.fromDate.isBefore(now) && l.toDate.isAfter(now);
+    });
+  }
+
+  /// Static helper to check if a student is currently on an approved short stay.
+  static bool isStudentOnShortStay(String uid, List<ShortStayRequest> approvedShortStays) {
+    final now = DateTime.now();
+    return approvedShortStays.any(
+      (ss) => ss.studentId == uid && ss.status == 'Approved' && ss.checkInDate.isBefore(now) && ss.checkOutDate.isAfter(now),
+    );
   }
 }

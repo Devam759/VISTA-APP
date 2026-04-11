@@ -8,6 +8,22 @@
                 { "fieldPath": "role", "order": "ASCENDING" },
                 { "fieldPath": "hostel", "order": "ASCENDING" }
             ]
+        },
+        {
+            "collectionGroup": "complaints",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "hostel", "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "attendance",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "hostel", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "ASCENDING" }
+            ]
         }
     ],
     "fieldOverrides": []
