@@ -84,7 +84,10 @@ function getISTDate() {
  */
 function getCurrentDateString() {
     const ist = getISTDate();
-    return `${ist.getFullYear()}-${ist.getMonth() + 1}-${ist.getDate()}`;
+    const d = ist.getDate().toString().padStart(2, '0');
+    const m = (ist.getMonth() + 1).toString().padStart(2, '0');
+    const y = ist.getFullYear();
+    return `${d}-${m}-${y}`;
 }
 
 /**
@@ -459,3 +462,77 @@ exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.databa
         }
     }
 });
+/**
+ * Scheduled function to handle:
+ * 1. Automatic Escalation of Pending complaints after 3 days.
+ * 2. Automatic Confirmation of Resolved complaints after 7 days (if student hasn't verified).
+ * Runs daily at 1:00 AM IST.
+ */
+exports.autoProcessComplaints = functions.region('asia-south1')
+    .pubsub.schedule('0 1 * * *')
+    .timeZone('Asia/Kolkata')
+    .onRun(async (context) => {
+        const now = new Date();
+        const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+        const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+        console.log('Starting auto-process for complaints...');
+
+        try {
+            // 1. Process 3-Day Escalation
+            const pendingComplaints = await db.collection('complaints')
+                .where('status', '==', 'Pending')
+                .where('createdAt', '<=', threeDaysAgo)
+                .get();
+
+            const escalationPromises = [];
+            pendingComplaints.forEach(doc => {
+                const data = doc.data();
+                // Avoid re-escalating if already at top level
+                if (data.targetRoles && data.targetRoles.includes('Chief Warden')) return;
+
+                let nextRoles = Array.from(data.targetRoles || []);
+                let nextRole = '';
+
+                if (nextRoles.includes('Head Warden')) {
+                    if (!nextRoles.includes('Chief Warden')) nextRoles.push('Chief Warden');
+                    nextRole = 'Chief Warden';
+                } else if (nextRoles.includes('Warden')) {
+                    if (!nextRoles.includes('Head Warden')) nextRoles.push('Head Warden');
+                    nextRole = 'Head Warden';
+                } else {
+                    // Default fallback if roles are empty
+                    nextRoles = ['Warden', 'Head Warden'];
+                    nextRole = 'Head Warden';
+                }
+
+                escalationPromises.push(doc.ref.update({
+                    isEscalated: true,
+                    targetRole: nextRole,
+                    targetRoles: nextRoles,
+                    updatedAt: FieldValue.serverTimestamp(),
+                }));
+            });
+
+            // 2. Process 7-Day Auto-Resolution (Confirmed)
+            // Note: We use 'resolvedAt' field added to the model
+            const resolvedComplaints = await db.collection('complaints')
+                .where('status', '==', 'Resolved')
+                .where('resolvedAt', '<=', sevenDaysAgo)
+                .get();
+
+            const confirmationPromises = [];
+            resolvedComplaints.forEach(doc => {
+                confirmationPromises.push(doc.ref.update({
+                    status: 'Confirmed',
+                    studentConfirmed: true,
+                    updatedAt: FieldValue.serverTimestamp(),
+                }));
+            });
+
+            await Promise.all([...escalationPromises, ...confirmationPromises]);
+            console.log(`Auto-processed ${escalationPromises.length} escalations and ${confirmationPromises.length} confirmations.`);
+        } catch (error) {
+            console.error('Error in autoProcessComplaints:', error);
+        }
+    });

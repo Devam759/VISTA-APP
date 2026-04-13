@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/vista_user.dart';
 import '../models/attendance_model.dart';
 import '../models/leave_request_model.dart';
@@ -18,7 +19,7 @@ import 'audit_logger.dart';
 const _kLeaveStatuses       = {'Pending', 'Approved', 'Rejected', 'Cancelled'};
 const _kShortStayStatuses   = {'Pending', 'Approved', 'Rejected', 'Cancelled', 'Completed'};
 const _kComplaintStatuses   = {'Pending', 'Resolved', 'Confirmed', 'Escalated'};
-const _kAttendanceStatuses  = {'Present', 'Absent'};
+const _kAttendanceStatuses  = {'Present', 'Absent', 'Late'};
 
 class FirebaseService {
   // Using lazy getters for all Firebase instances.
@@ -27,6 +28,9 @@ class FirebaseService {
   // Using a lazy getter so Firebase.app() is only called after initializeApp() is done.
   FirebaseFirestore get _db =>
       FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
+  FirebaseStorage get _storage => FirebaseStorage.instanceFor(
+        bucket: 'vista-jklu.firebasestorage.app',
+      );
 
   FirebaseFirestore get db => _db;
 
@@ -341,13 +345,10 @@ class FirebaseService {
       // server timestamp — ensures students cannot backdate attendance by
       // manipulating their device clock.
       final data = attendance.toMap()
-        ..['timestamp'] = FieldValue.serverTimestamp()
-        // Recalculate date server-side for consistency.
-        ..remove('date');
-      // 'date' is stored as a convenience field for queries.
-      // We remove the client value and let the Cloud Function or a Firestore
-      // trigger populate it from the serverTimestamp if needed.
-      // For now, omitting it is safer than using a client-controlled value.
+        ..['timestamp'] = FieldValue.serverTimestamp();
+      
+      // Keep 'date' field (standardized to DD-MM-YYYY in model) for queries.
+      // Removed previous logic that deleted it in anticipation of a trigger.
       return _db.collection('attendance').add(data);
     });
   }
@@ -682,6 +683,19 @@ class FirebaseService {
     });
   }
 
+  Future<String> uploadComplaintImage(Uint8List imageData, String studentUid) async {
+    final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final Reference ref = _storage.ref().child('complaints').child(studentUid).child(fileName);
+    
+    final UploadTask uploadTask = ref.putData(
+      imageData,
+      SettableMetadata(contentType: 'image/jpeg'),
+    );
+    
+    final TaskSnapshot snapshot = await uploadTask;
+    return await snapshot.ref.getDownloadURL();
+  }
+
   Stream<List<Complaint>> getComplaintsForRole(String role, [String? hostel]) {
     Query<Map<String, dynamic>> query = _db
         .collection('complaints')
@@ -723,6 +737,11 @@ class FirebaseService {
         'status': status,
         'studentConfirmed': true,
       });
+    } else if (status == 'Resolved') {
+      await _db.collection('complaints').doc(id).update({
+        'status': status,
+        'resolvedAt': FieldValue.serverTimestamp(),
+      });
     } else {
       await _db.collection('complaints').doc(id).update({'status': status});
     }
@@ -751,12 +770,22 @@ class FirebaseService {
       nextRole = 'Head Warden';
     }
 
+    // Add Audit Log for escalation
+    if (complaint.studentId != null) {
+      AuditLogger.logSync(
+        uid: complaint.studentId!,
+        event: AuditEvent.statusChange,
+        detail: 'Escalated complaint ${complaint.seqId} to $nextRole',
+      );
+    }
+
     return _db.collection('complaints').doc(complaint.id).update({
       'status': 'Pending',
       'isEscalated': true,
       'studentConfirmed': null,
       'targetRole': nextRole,
       'targetRoles': nextRoles,
+      'resolvedAt': null, // Reset resolved timer if it was previously resolved
     });
   }
 
@@ -951,7 +980,7 @@ class FirebaseService {
   /// Combines Students, Attendance, and Approved Leaves into a single source of truth
   /// for attendance monitoring. Used across base Warden, Head, and Chief warden portals.
   Stream<List<AttendanceRecord>> getUnifiedAttendanceStream(String? hostel, DateTime date) {
-    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final dateStr = '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
     final startOfDay = DateTime(date.year, date.month, date.day);
 
     return getHostelStudents(hostel ?? 'All').asyncMap((students) async {
@@ -964,6 +993,7 @@ class FirebaseService {
         final att = attendanceList.where((a) => a.studentId == student.uid).firstOrNull;
         final onLeave = leaveRequests.any((l) =>
             l.studentId == student.uid &&
+            l.checkInTime == null && // Fix: Student is NOT on leave if they checked in early
             !startOfDay.isBefore(DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day)) &&
             !startOfDay.isAfter(DateTime(l.toDate.year, l.toDate.month, l.toDate.day)));
 

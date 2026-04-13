@@ -22,8 +22,9 @@ class _AttendanceTabState extends State<AttendanceTab> {
   @override
   Widget build(BuildContext context) {
     return WardenTabScaffold<AttendanceRecord>(
+      title: 'Daily Attendance',
       sectionTitle: 'Attendance Records',
-      tabs: const ['All', 'Marked', 'Late', 'On Leave', 'Absent'],
+      tabs: const ['All', 'Present', 'Late', 'On Leave', 'Absent'],
       actionWidget: WardenSearchAction(
         onTap: () async {
           final picked = await WardenUIUtils.showWardenDatePicker(context, initialDate: _selectedDate);
@@ -45,12 +46,22 @@ class _AttendanceTabState extends State<AttendanceTab> {
       emptyIcon: Icons.how_to_reg_rounded,
       emptyTitle: 'No Attendance Records',
       emptySubtitle: 'Student attendance records for this date will appear here.',
+      extraHeaderBuilder: (records) {
+        final now = DateTime.now();
+        final isLateWindow = now.hour >= 22;
+        final defaulters = records.where((r) => r.status == 'Absent').toList();
+        if (isLateWindow && defaulters.isNotEmpty) {
+          return PendingAttendanceBanner(
+            count: defaulters.length,
+            onViewList: () => WardenUIUtils.showPendingAttendanceList(context, defaulters),
+          );
+        }
+        return const SizedBox.shrink();
+      },
       itemBuilder: (context, record) => WardenCard(
         onTap: () => _showStudentAttendanceHistory(record.student),
         child: Row(
           children: [
-            _statusIndicator(record.status),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,17 +70,16 @@ class _AttendanceTabState extends State<AttendanceTab> {
                     record.student.name,
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF1E293B)),
                   ),
+                  const SizedBox(height: 2),
                   Text(
-                    'Room ${record.student.roomNumber ?? "N/A"}',
-                    style: const TextStyle(color: Colors.black45, fontSize: 12),
+                    'Room ${record.student.roomNumber ?? "N/A"} • ${shortHostelName(record.student.hostel)}',
+                    style: const TextStyle(color: Colors.black45, fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
             ),
-            Text(
-              record.status == 'On Leave' ? 'On Leave' : (record.attendance == null ? 'Not Marked' : DateFormat('hh:mm a').format(record.attendance!.timestamp)),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black38),
-            ),
+            const SizedBox(width: 12),
+            _statusIndicator(record.status),
           ],
         ),
       ),
@@ -87,28 +97,35 @@ class _AttendanceTabState extends State<AttendanceTab> {
 
   Widget _statusIndicator(String status) {
     Color color;
-    IconData icon;
     switch (status) {
-      case 'Marked':
-        color = Colors.green;
-        icon = Icons.check_circle_rounded;
+      case 'Present':
+        color = const Color(0xFF10B981); // Green
         break;
       case 'Late':
-        color = Colors.orange;
-        icon = Icons.access_time_filled_rounded;
+        color = const Color(0xFFF59E0B); // Yellow/Amber
         break;
       case 'On Leave':
-        color = Colors.blue;
-        icon = Icons.home_rounded;
+        color = Colors.grey;
         break;
-      default:
+      default: // Absent
         color = Colors.red;
-        icon = Icons.cancel_rounded;
     }
     return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-      child: Icon(icon, color: color, size: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
     );
   }
 

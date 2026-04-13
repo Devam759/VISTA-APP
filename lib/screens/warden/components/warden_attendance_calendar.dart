@@ -20,7 +20,8 @@ class WardenStudentCalendar extends StatefulWidget {
 
 class _WardenStudentCalendarState extends State<WardenStudentCalendar> {
   DateTime _focusedDay = DateTime.now();
-  final Map<DateTime, String> _attendanceMap = {};
+  DateTime? _selectedDay;
+  Map<DateTime, String> _attendanceMap = {};
   bool _isLoading = true;
 
   @override
@@ -37,25 +38,29 @@ class _WardenStudentCalendarState extends State<WardenStudentCalendar> {
 
       if (!mounted) return;
 
-      setState(() {
-        for (var a in history) {
-          final d = DateTime(a.timestamp.year, a.timestamp.month, a.timestamp.day);
-          // Warden view specific: we want to know if it was late or just present
-          _attendanceMap[d] = a.status == 'Late' ? 'Late' : 'Present';
-        }
+      final Map<DateTime, String> map = {};
+      for (var a in history) {
+        final d = DateTime(a.timestamp.year, a.timestamp.month, a.timestamp.day);
+        map[d] = a.status;
+      }
 
-        for (var l in approvedLeaves) {
-          var curr = DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day);
-          final end = DateTime(l.toDate.year, l.toDate.month, l.toDate.day);
-          while (!curr.isAfter(end)) {
-            if (!_attendanceMap.containsKey(curr)) {
-              _attendanceMap[curr] = 'On Leave';
-            }
-            curr = curr.add(const Duration(days: 1));
+      for (var l in approvedLeaves) {
+        var curr = DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day);
+        final end = DateTime(l.toDate.year, l.toDate.month, l.toDate.day);
+        while (!curr.isAfter(end)) {
+          if (!map.containsKey(curr)) {
+            map[curr] = 'On Leave';
           }
+          curr = curr.add(const Duration(days: 1));
         }
-        _isLoading = false;
-      });
+      }
+
+      if (mounted) {
+        setState(() {
+          _attendanceMap = map;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -64,20 +69,19 @@ class _WardenStudentCalendarState extends State<WardenStudentCalendar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
+      height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
         children: [
-          _buildHandle(),
           _buildHeader(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: kPrimary))
                 : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
                         _buildCalendar(),
@@ -93,49 +97,70 @@ class _WardenStudentCalendarState extends State<WardenStudentCalendar> {
     );
   }
 
-  Widget _buildHandle() {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 12),
-        width: 40,
-        height: 4,
-        decoration: BoxDecoration(
-          color: Colors.black12,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: kPrimary.withValues(alpha: 0.1),
-            child: const Icon(Icons.history_rounded, color: kPrimary, size: 20),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.student.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
-                ),
-                Text(
-                  'Attendance & Leave History',
-                  style: TextStyle(color: Colors.black.withValues(alpha: 0.4), fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ],
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close_rounded, color: Colors.black45),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: kPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.history_rounded, color: kPrimary),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.student.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const Text(
+                      'Attendance & Leave History',
+                      style: TextStyle(
+                        color: Colors.black45,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded, color: Colors.black45),
+              ),
+            ],
           ),
         ],
       ),
@@ -147,48 +172,89 @@ class _WardenStudentCalendarState extends State<WardenStudentCalendar> {
       firstDay: DateTime(2025, 1, 1),
       lastDay: DateTime.now(),
       focusedDay: _focusedDay,
-      calendarFormat: CalendarFormat.month,
-      headerStyle: const HeaderStyle(
-        formatButtonVisible: false,
-        titleCentered: true,
-        titleTextStyle: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-      ),
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+      },
       calendarStyle: CalendarStyle(
         todayDecoration: BoxDecoration(
           color: kPrimary.withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
-        todayTextStyle: const TextStyle(color: kPrimary, fontWeight: FontWeight.bold),
+        todayTextStyle: const TextStyle(
+          color: kPrimary,
+          fontWeight: FontWeight.bold,
+        ),
+        markerDecoration: const BoxDecoration(
+          color: Colors.transparent,
+        ),
       ),
       calendarBuilders: CalendarBuilders(
-        markerBuilder: (context, date, events) {
-          final d = DateTime(date.year, date.month, date.day);
-          if (_attendanceMap.containsKey(d)) {
-            final status = _attendanceMap[d];
-            Color color = status == 'Late' ? Colors.orange : (status == 'On Leave' ? Colors.blue : Colors.green);
-            return Positioned(
-              bottom: 4,
-              child: Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        defaultBuilder: (context, day, focusedDay) {
+          final normalizedDay = DateTime(day.year, day.month, day.day);
+          final status = _attendanceMap[normalizedDay];
+          
+          if (status != null) {
+            Color color;
+            switch (status) {
+              case 'Present':
+                color = const Color(0xFF10B981); // kStudentSuccess
+                break;
+              case 'Late':
+                color = const Color(0xFFF59E0B); // kStudentWarning
+                break;
+              case 'On Leave':
+                color = Colors.grey;
+                break;
+              default:
+                color = Colors.red;
+            }
+
+            return Container(
+              margin: const EdgeInsets.all(6),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+              ),
+              child: Text(
+                '${day.day}',
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
               ),
             );
           }
-          // Absent logic (before today and after start of semester)
-          if (d.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)) && 
-              d.isAfter(DateTime(2025, 2, 10)) && d.weekday != DateTime.sunday) {
-            return Positioned(
-              bottom: 4,
-              child: Container(
-                width: 5,
-                height: 5,
-                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+          
+          // Absent logic (before today and after start of sem)
+          if (normalizedDay.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)) && 
+              normalizedDay.isAfter(DateTime(2025, 2, 10))) {
+            final color = Colors.red;
+            return Container(
+              margin: const EdgeInsets.all(6),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '${day.day}',
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
               ),
             );
           }
           return null;
         },
+      ),
+      headerStyle: const HeaderStyle(
+        formatButtonVisible: false,
+        titleCentered: true,
+        titleTextStyle: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w800,
+        ),
       ),
       onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
     );
@@ -198,24 +264,23 @@ class _WardenStudentCalendarState extends State<WardenStudentCalendar> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: kPrimary.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: kPrimary.withValues(alpha: 0.05)),
+        color: kPrimary.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildLegendItem(Colors.green, 'Present'),
-              _buildLegendItem(Colors.orange, 'Late'),
+              _buildLegendItem(const Color(0xFF10B981), 'Present'),
+              _buildLegendItem(const Color(0xFFF59E0B), 'Late'),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildLegendItem(Colors.blue, 'On Leave'),
+              _buildLegendItem(Colors.grey, 'On Leave'),
               _buildLegendItem(Colors.red, 'Absent'),
             ],
           ),
@@ -224,17 +289,28 @@ class _WardenStudentCalendarState extends State<WardenStudentCalendar> {
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
-    return SizedBox(
-      width: 80,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54)),
-        ],
-      ),
+  Widget _buildLegendItem(Color color, String label, {bool isGrey = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: isGrey ? Colors.black38 : Colors.black87,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

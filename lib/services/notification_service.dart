@@ -16,6 +16,8 @@ class NotificationService {
   dynamic _localNotifications;
 
   Future<void> init(String uid) async {
+    if (kIsWeb) return; // Completely disable notifications on web as per request
+
     // Request permission
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,

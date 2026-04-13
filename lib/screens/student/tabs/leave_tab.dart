@@ -52,24 +52,35 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
               subtitle: 'Your leave application history will appear here.',
             );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final l = list[i];
-              return StudentExpandableLeaveCard(
-                seqId: l.seqId,
-                status: l.status,
-                fromDate: l.fromDate,
-                toDate: l.toDate,
-                reason: l.reason,
-                address: l.address,
-                parentName: l.parentName,
-                parentRelation: l.parentRelation,
-                parentContact: l.parentContact,
-                checkInTime: l.checkInTime,
-              );
-            },
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 22, 20, 8),
+                child: StudentSectionLabel("LEAVES"),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  itemCount: list.length,
+                  itemBuilder: (context, i) {
+                    final l = list[i];
+                    return StudentExpandableLeaveCard(
+                      seqId: l.seqId,
+                      status: l.status,
+                      fromDate: l.fromDate,
+                      toDate: l.toDate,
+                      reason: l.reason,
+                      address: l.address,
+                      parentName: l.parentName,
+                      parentRelation: l.parentRelation,
+                      parentContact: l.parentContact,
+                      checkInTime: l.checkInTime,
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),

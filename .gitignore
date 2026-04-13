@@ -15,9 +15,14 @@ node_modules/
 .firebase/
 .gemini/
 .antigravity/
+.qoder/
 release_outputs/
 analyze.txt
 flutter_analyze*.txt
+
+# Crash logs
+crash_log_*.log
+hs_err_pid*.log
 
 # IntelliJ related
 *.iml
@@ -25,51 +30,53 @@ flutter_analyze*.txt
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# VS Code
+.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
 /coverage/
+pubspec.lock
+
+# Flutter generated plugin registrants
+**/ios/Runner/GeneratedPluginRegistrant.h
+**/ios/Runner/GeneratedPluginRegistrant.m
+
+# Android build
 /android/build/
 **/android/app/build/
+**/android/.gradle/
+/android/local.properties
 *.apk
 *.aab
-*.ipa
 
-# iOS/macOS related
+# iOS related
 **/ios/Flutter/.last_build_id
 **/ios/Flutter/Generated.xcconfig
 **/ios/Flutter/flutter_export_environment.sh
 **/ios/Flutter/App.framework
 **/ios/Flutter/Flutter.framework
 **/ios/Flutter/Flutter.podspec
-**/ios/Flutter/Generated.xcconfig
 **/ios/Flutter/ephemeral/
 **/ios/.symlinks/
 **/ios/Pods/
 **/ios/ServiceDefinitions.json
-**/ios/Runner/GeneratedPluginRegistrant.h
-**/ios/Runner/GeneratedPluginRegistrant.m
-**/macos/Flutter/ephemeral/
-**/macos/Flutter/Generated.xcconfig
-**/macos/Flutter/flutter_export_environment.sh
-**/macos/Flutter/GeneratedPluginRegistrant.swift
+*.ipa
 
-# Windows related
-**/windows/flutter/ephemeral/
-**/windows/flutter/generated_config.cmake
+# Unused platforms
+linux/
+macos/
+windows/
 
-# Linux related
-**/linux/flutter/ephemeral/
-**/linux/flutter/generated_config.cmake
+# Web related
+/web/favicon.png.bak
 
 # Symbolication related
 app.*.symbols
@@ -77,29 +84,26 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android Studio build artifacts
 /android/app/debug
 /android/app/profile
 /android/app/release
 
 # Firebase secrets
 *-firebase-adminsdk-*.json
-# firebase.json - Don't ignore this, it's public config needed for CI/CD
 
 # Local JDK
 /jdk-17/
-
-# VS Code
-.vscode/
 
 # Local/Secret files
 .env*
 .env
 *.local
 coordinates.csv
+.secrets/
 vista-jklu-60d528d77b29.json
 
-# Firebase auto-generated options file — contains API keys.
+# Firebase auto-generated options file - contains API keys.
 # Regenerate with: flutterfire configure
 # IMPORTANT: Rotate the API keys in Firebase Console before committing this file.
 lib/firebase_options.dart
@@ -109,13 +113,13 @@ lib/firebase_options.dart
 **/*.jks
 **/*.keystore
 
-# Node modules in the scripts dir
+# Node modules
 **/scripts/node_modules/
 **/functions/node_modules/
+package-lock.json
 
 # Media backups
 old-media/
 
 # Extra Build Reports
 **/reports/
-

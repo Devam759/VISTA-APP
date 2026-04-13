@@ -20,6 +20,7 @@ class _ShortStayTabState extends State<ShortStayTab> {
   @override
   Widget build(BuildContext context) {
     return WardenTabScaffold<ShortStayRequest>(
+      title: 'Short Stays',
       sectionTitle: 'Short Stay Requests',
       tabs: const ['Pending', 'Approved', 'Completed', 'Rejected', 'All'],
       searchHint: 'Search student, ID, or room...',

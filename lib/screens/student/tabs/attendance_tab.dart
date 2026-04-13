@@ -56,7 +56,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
   }
 
   void _handleLeaveCheckIn(String leaveId) async {
-    if (!mounted) return;
+    if (!mounted || kIsWeb) return;
     setState(() => _isCheckingIn = true);
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -168,59 +168,68 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
               });
             }
 
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const StudentSectionLabel("Night Attendance"),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: kStudentPrimary.withValues(alpha: 0.05),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: kStudentPrimary.withValues(alpha: 0.03),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 22, 20, 16),
+                  child: StudentSectionLabel("NIGHT ATTENDANCE"),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                     children: [
-                      const Text(
-                        'Reporting Window',
-                        style: TextStyle(
-                          color: Colors.black45,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: kStudentPrimary.withValues(alpha: 0.05),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: kStudentPrimary.withValues(alpha: 0.03),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Reporting Window',
+                              style: TextStyle(
+                                color: Colors.black45,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Text(
+                              '10:00 PM - 10:30 PM',
+                              style: TextStyle(
+                                color: kStudentPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              'Late: 10:30 PM - 11:59 PM',
+                              style: TextStyle(
+                                color: kStudentPrimary.withValues(alpha: 0.5),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                            _buildMarkAttendanceButton(onLeave, hasValidStay),
+                            if (onLeave) _buildLeaveCheckInButton(approvedLeaves),
+                            const SizedBox(height: 40),
+                            _buildStatusText(onLeave, hasValidStay),
+                            const SizedBox(height: 32),
+                            _buildHistoryButton(context),
+                          ],
                         ),
                       ),
-                      const Text(
-                        '10:00 PM - 10:30 PM',
-                        style: TextStyle(
-                          color: kStudentPrimary,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(
-                        'Late: 10:30 PM - 11:59 PM',
-                        style: TextStyle(
-                          color: kStudentPrimary.withValues(alpha: 0.5),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      _buildMarkAttendanceButton(onLeave, hasValidStay),
-                      if (onLeave) _buildLeaveCheckInButton(approvedLeaves),
-                      const SizedBox(height: 40),
-                      _buildStatusText(onLeave, hasValidStay),
-                      const SizedBox(height: 32),
-                      _buildHistoryButton(context),
                     ],
                   ),
                 ),
@@ -599,7 +608,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
       }
 
       final now = DateTime.now();
-      final dateKey = "${now.year}-${now.month}-${now.day}";
+      final dateKey = "${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}";
       final existingSnap = await widget.fs.db
           .collection('attendance')
           .where('studentId', isEqualTo: widget.user.uid)
@@ -620,7 +629,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
         hostel: widget.user.hostel!,
         roomNumber: widget.user.roomNumber ?? 'N/A',
         timestamp: DateTime.now(),
-        status: isLateMarker ? 'Late' : 'Marked',
+        status: isLateMarker ? 'Late' : 'Present',
       );
       await widget.fs.markAttendance(attObj);
       if (mounted) _showSuccess('Attendance marked successfully!');

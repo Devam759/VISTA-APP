@@ -7,10 +7,11 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../services/firebase_service.dart';
 import '../../../models/vista_user.dart';
-import '../../../models/leave_request_model.dart';
 import '../../../models/short_stay_model.dart';
 import '../../../widgets/smooth_animations.dart';
 import 'warden_attendance_calendar.dart';
+import '../../../widgets/vista_date_picker.dart';
+import '../../../models/complaint_model.dart';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -19,6 +20,43 @@ import 'warden_attendance_calendar.dart';
 const Color kPrimary = Color(0xFF1E3A8A);
 const Color kAccent = Color(0xFF2563EB);
 const Color kBg = Color(0xFFF0F4FF);
+
+String shortHostelName(String? name) {
+  if (name == null) return '';
+  if (name == 'Short Stay') return 'SS';
+  final n = name.toLowerCase();
+  if (n.contains('boys hostel 1')) return 'BH1';
+  if (n.contains('boys hostel 2')) return 'BH2';
+  if (n.contains('girls hostel 1')) return 'GH1';
+  if (n.contains('girls hostel 2')) return 'GH2';
+  if (n.contains('staff')) return 'Staff';
+  // Fallback: take first letters of each word
+  return name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').join().toUpperCase();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HERO TITLE (MAIN PORTAL HEADING)
+// ─────────────────────────────────────────────────────────────────────────────
+class WardenHeroTitle extends StatelessWidget {
+  final String title;
+  const WardenHeroTitle(this.title, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w900,
+          fontSize: 32,
+          color: Color(0xFF1E293B),
+          letterSpacing: -1.0,
+        ),
+      ),
+    );
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED SECTION HEADER
@@ -31,6 +69,7 @@ class WardenSectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SmoothEntrance(
+      key: ValueKey('section_$text'),
       delay: const Duration(milliseconds: 100),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -75,6 +114,58 @@ class WardenSectionLabel extends StatelessWidget {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PENDING ATTENDANCE BANNER
+// ─────────────────────────────────────────────────────────────────────────────
+class PendingAttendanceBanner extends StatelessWidget {
+  final int count;
+  final VoidCallback onViewList;
+
+  const PendingAttendanceBanner({
+    super.key,
+    required this.count,
+    required this.onViewList,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '$count students pending attendance',
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+            TextButton(
+              onPressed: onViewList,
+              child: const Text(
+                'View List',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w900,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -186,187 +277,521 @@ class _WardenExpandableLeaveCardState extends State<WardenExpandableLeaveCard> {
   Widget build(BuildContext context) {
     final isApproved = widget.status == 'Approved';
     final isRejected = widget.status == 'Rejected';
+    final isPending = widget.status == 'Pending';
     final statusColor = isApproved ? Colors.green : (isRejected ? Colors.redAccent : Colors.orange);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // CONTRACTED VIEW
-          HoverEffect(
-            child: InkWell(
-              onTap: () => setState(() => _isExpanded = !_isExpanded),
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (isApproved ? Colors.green : (isRejected ? Colors.redAccent : kPrimary)).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        widget.seqId,
-                        style: TextStyle(
-                          color: isApproved ? Colors.green : (isRejected ? Colors.redAccent : kPrimary),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.studentName.toUpperCase(),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          letterSpacing: 1.2,
-                          color: isApproved ? Colors.green : (isRejected ? Colors.redAccent : kPrimary),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        widget.status.toUpperCase(),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    AnimatedRotation(
-                      turns: _isExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOutCubic,
-                      child: const Icon(Icons.expand_more, color: Colors.black26),
-                    ),
-                  ],
-                ),
-              ),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: kPrimary.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
-          ),
-
-          // EXPANDED VIEW WITH ANIMATION
-          ClipRect(
-            child: AnimatedSize(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeInOutCubic,
-              alignment: Alignment.topCenter,
-              child: !_isExpanded
-                  ? const SizedBox(width: double.infinity, height: 0)
-                    : Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          ],
+        ),
+        child: Column(
+          children: [
+            // CONTRACTED VIEW
+            HoverEffect(
+              child: InkWell(
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (isApproved ? Colors.green : (isRejected ? Colors.redAccent : kPrimary)).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          widget.seqId,
+                          style: TextStyle(
+                            color: isApproved ? Colors.green : (isRejected ? Colors.redAccent : kPrimary),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Divider(height: 1, thickness: 0.5),
-                            const SizedBox(height: 16),
-                            // DURATION SECTION
-                            const WardenSubSectionLabel('Leave Duration'),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: WardenReadOnlyInput(
-                                    label: 'From',
-                                    value: DateFormat('dd MMM, hh:mm a').format(widget.fromDate),
-                                    icon: Icons.login_rounded,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: WardenReadOnlyInput(
-                                    label: 'To',
-                                    value: DateFormat('dd MMM, hh:mm a').format(widget.toDate),
-                                    icon: Icons.logout_rounded,
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              widget.studentName.toUpperCase(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                                color: Color(0xFF1E293B),
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 16),
-                            // DETAILS SECTION
-                            const WardenSubSectionLabel('Leave Details'),
-                            WardenReadOnlyInput(
-                              label: 'Reason for leave',
-                              value: widget.reason,
-                              icon: Icons.info_outline_rounded,
+                            Text(
+                              '${DateFormat('dd MMM').format(widget.fromDate)} - ${DateFormat('dd MMM').format(widget.toDate)}',
+                              style: const TextStyle(
+                                color: Colors.black38,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            const SizedBox(height: 12),
-                            WardenReadOnlyInput(
-                              label: 'Address during leave',
-                              value: widget.address,
-                              icon: Icons.location_on_outlined,
-                            ),
-                            const SizedBox(height: 16),
-                            // CONTACT SECTION
-                            const WardenSubSectionLabel('Parent Information'),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: WardenReadOnlyInput(
-                                    label: 'Name',
-                                    value: '${widget.parentName} (${widget.parentRelation})',
-                                    icon: Icons.person_outline,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: WardenReadOnlyInput(
-                                    label: 'Mobile',
-                                    value: widget.parentContact,
-                                    icon: Icons.phone_android_rounded,
-                                    trailing: IconButton(
-                                      onPressed: () async {
-                                        final phone = widget.parentContact.replaceAll(RegExp(r'[^\d+]'), '');
-                                        final Uri telUri = Uri.parse('tel:$phone');
-                                        if (await canLaunchUrl(telUri)) {
-                                          await launchUrl(telUri, mode: LaunchMode.externalApplication);
-                                        }
-                                      },
-                                      icon: const Icon(Icons.call_rounded, color: Colors.green, size: 16),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (widget.actions != null) ...[
-                              const SizedBox(height: 24),
-                              widget.actions!,
-                            ],
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          widget.status.toUpperCase(),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        duration: const Duration(milliseconds: 300),
+                        turns: _isExpanded ? 0.5 : 0,
+                        child: const Icon(
+                          Icons.expand_more,
+                          color: Colors.black26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+
+            // EXPANDED VIEW
+            if (_isExpanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Divider(height: 1, thickness: 0.5),
+                    const SizedBox(height: 16),
+                    // DURATION SECTION
+                    const WardenSubSectionLabel('Leave Duration'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'From',
+                            value: DateFormat('dd MMM, hh:mm a').format(widget.fromDate),
+                            icon: Icons.login_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'To',
+                            value: DateFormat('dd MMM, hh:mm a').format(widget.toDate),
+                            icon: Icons.logout_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // DETAILS SECTION
+                    const WardenSubSectionLabel('Leave Details'),
+                    WardenReadOnlyInput(
+                      label: 'Reason for leave',
+                      value: widget.reason,
+                      icon: Icons.info_outline_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    WardenReadOnlyInput(
+                      label: 'Address during leave',
+                      value: widget.address,
+                      icon: Icons.location_on_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    // CONTACT SECTION
+                    const WardenSubSectionLabel('Parent Information'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'Name',
+                            value: '${widget.parentName} (${widget.parentRelation})',
+                            icon: Icons.person_outline,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'Mobile',
+                            value: widget.parentContact,
+                            icon: Icons.phone_android_rounded,
+                            trailing: IconButton(
+                              onPressed: () async {
+                                final phone = widget.parentContact.replaceAll(RegExp(r'[^\d+]'), '');
+                                final Uri telUri = Uri.parse('tel:$phone');
+                                if (await canLaunchUrl(telUri)) {
+                                  await launchUrl(telUri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              icon: const Icon(Icons.call_rounded, color: Colors.green, size: 16),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (isPending && widget.actions != null) ...[
+                      const SizedBox(height: 24),
+                      widget.actions!,
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLAINT CARD (EXPANDABLE)
+// ─────────────────────────────────────────────────────────────────────────────
+class WardenExpandableComplaintCard extends StatefulWidget {
+  final Complaint complaint;
+  final VistaUser warden; // To check role for resolution authority
+  final FirebaseService fs;
+
+  const WardenExpandableComplaintCard({
+    super.key,
+    required this.complaint,
+    required this.warden,
+    required this.fs,
+  });
+
+  @override
+  State<WardenExpandableComplaintCard> createState() => _WardenExpandableComplaintCardState();
+}
+
+class _WardenExpandableComplaintCardState extends State<WardenExpandableComplaintCard> {
+  bool _isExpanded = false;
+
+  bool _canUserResolve() {
+    final complaint = widget.complaint;
+    final userRole = widget.warden.role;
+
+    // RULE: If escalated to Chief Warden, only Chief Warden can resolve.
+    if (complaint.targetRoles.contains('Chief Warden')) {
+      return userRole == UserRole.chiefWarden;
+    }
+
+    // RULE: If escalated to Head Warden, only Head Warden or Chief Warden can resolve.
+    if (complaint.targetRoles.contains('Head Warden')) {
+      return userRole == UserRole.headWarden || userRole == UserRole.chiefWarden;
+    }
+
+    // Default: Warden can resolve if it's not escalated beyond them.
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isResolved = widget.complaint.status == 'Resolved' || widget.complaint.status == 'Confirmed';
+    final statusColor = isResolved ? Colors.green : (widget.complaint.isEscalated ? Colors.redAccent : Colors.orange);
+    final canResolve = _canUserResolve();
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: kPrimary.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // CONTRACTED VIEW
+            HoverEffect(
+              child: InkWell(
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (widget.complaint.isEscalated ? Colors.redAccent : kPrimary).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          widget.complaint.seqId,
+                          style: TextStyle(
+                            color: widget.complaint.isEscalated ? Colors.redAccent : kPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.complaint.studentName.toUpperCase(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                                color: Color(0xFF1E293B),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              widget.complaint.title,
+                              style: const TextStyle(
+                                color: Colors.black45,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          widget.complaint.status.toUpperCase(),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        duration: const Duration(milliseconds: 300),
+                        turns: _isExpanded ? 0.5 : 0,
+                        child: const Icon(
+                          Icons.expand_more,
+                          color: Colors.black26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // EXPANDED VIEW
+            if (_isExpanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Divider(height: 1, thickness: 0.5),
+                    const SizedBox(height: 16),
+                    
+                    // DATE & STATUS ROW
+                    Row(
+                      children: [
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'Reported On',
+                            value: DateFormat('dd MMM, hh:mm a').format(widget.complaint.createdAt),
+                            icon: Icons.calendar_today_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'Level',
+                            value: widget.complaint.isEscalated ? 'ESCALATED' : 'STANDARD',
+                            icon: Icons.shield_outlined,
+                            color: widget.complaint.isEscalated ? Colors.redAccent : Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // DESCRIPTION SECTION
+                    const WardenSubSectionLabel('Issue Description'),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: kBg.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        widget.complaint.description.isEmpty ? 'No description provided.' : widget.complaint.description,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF334155),
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // ATTACHMENT SECTION
+                    if (widget.complaint.imageUrl != null) ...[
+                      const WardenSubSectionLabel('Attachment'),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => WardenImageViewer(
+                              imageUrl: widget.complaint.imageUrl!,
+                              title: 'Attachment: Ticket #${widget.complaint.seqId}',
+                            ),
+                          ),
+                        ),
+                        child: Hero(
+                          tag: widget.complaint.imageUrl!,
+                          child: Container(
+                            height: 180,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              image: DecorationImage(
+                                image: NetworkImage(widget.complaint.imageUrl!),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.3)],
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.fullscreen_rounded, color: Colors.white, size: 40),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // ACTIONS SECTION
+                    if (!isResolved) ...[
+                      if (canResolve)
+                        ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              await widget.fs.updateComplaintStatus(widget.complaint.id, 'Resolved');
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Issue marked as resolved.'),
+                                    backgroundColor: Colors.green,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Failed: $e')),
+                                );
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: const Text('MARK AS RESOLVED', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.black12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.lock_clock_outlined, size: 16, color: Colors.black26),
+                              const SizedBox(width: 8),
+                              Text(
+                                widget.complaint.targetRoles.contains('Chief Warden') 
+                                  ? 'Awaiting Chief Warden Check' 
+                                  : 'Awaiting Head Warden Check',
+                                style: const TextStyle(
+                                  color: Colors.black38,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STYLED CARD
@@ -416,6 +841,7 @@ class WardenReadOnlyInput extends StatelessWidget {
   final String value;
   final IconData? icon;
   final Widget? trailing;
+  final Color? color;
 
   const WardenReadOnlyInput({
     super.key,
@@ -423,6 +849,7 @@ class WardenReadOnlyInput extends StatelessWidget {
     required this.value,
     this.icon,
     this.trailing,
+    this.color,
   });
 
   @override
@@ -463,10 +890,10 @@ class WardenReadOnlyInput extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B),
+                    color: color ?? const Color(0xFF1E293B),
                   ),
                 ),
               ],
@@ -625,7 +1052,8 @@ class WardenSearchAction extends StatelessWidget {
         onTap: onTap,
         child: Container(
           height: 56,
-          width: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          constraints: const BoxConstraints(minWidth: 56),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -1174,23 +1602,12 @@ class WardenStudentListItem extends StatelessWidget {
 class WardenUIUtils {
   /// Standardized Date Picker for all Warden views
   static Future<DateTime?> showWardenDatePicker(BuildContext context, {DateTime? initialDate}) async {
-    return await showDatePicker(
+    return await showVistaDatePicker(
       context: context,
       initialDate: initialDate ?? DateTime.now(),
-      firstDate: DateTime(2024),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: kPrimary,
-              onPrimary: Colors.white,
-              onSurface: kPrimary,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      firstDate: DateTime(2025, 1, 1),
+      lastDate: DateTime.now(),
+      primaryColor: kPrimary,
     );
   }
 
@@ -1388,6 +1805,101 @@ class WardenUIUtils {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
+
+  static void showPendingAttendanceList(BuildContext context, List<dynamic> defaulters) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SafeArea(
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Pending Attendance',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${defaulters.length}',
+                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: defaulters.length,
+                  itemBuilder: (context, i) {
+                    final record = defaulters[i];
+                    final student = record.student;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      child: ListTile(
+                        title: Text(
+                          '${student.name} (${shortHostelName(student.hostel)} - ${student.roomNumber ?? "N/A"})',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF1E293B)),
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            student.phoneNumber ?? 'No Number',
+                            style: const TextStyle(fontSize: 13, color: Colors.black45, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        trailing: Material(
+                          color: kPrimary.withValues(alpha: 0.1),
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            icon: const Icon(Icons.call_rounded, color: kPrimary, size: 20),
+                            onPressed: () async {
+                               final phone = (student.phoneNumber ?? '').replaceAll(RegExp(r'[^\d+]'), '');
+                               final Uri telUri = Uri.parse('tel:$phone');
+                               if (await canLaunchUrl(telUri)) await launchUrl(telUri, mode: LaunchMode.externalApplication);
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Reusable Card for Short Stay Requests
@@ -1499,103 +2011,77 @@ class WardenShortStayCard extends StatelessWidget {
   }
 }
 
-/// Reusable Card for Leave Requests
-class WardenLeaveCard extends StatelessWidget {
-  final LeaveRequest leave;
-  final VistaUser currentWarden;
-  final Function(LeaveRequest)? onApprove;
-  final Function(LeaveRequest)? onDeny;
+class WardenImageViewer extends StatelessWidget {
+  final String imageUrl;
+  final String title;
 
-  const WardenLeaveCard({
+  const WardenImageViewer({
     super.key,
-    required this.leave,
-    required this.currentWarden,
-    this.onApprove,
-    this.onDeny,
+    required this.imageUrl,
+    required this.title,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isPending = leave.status == 'Pending';
-    final statusColor = leave.status == 'Approved' ? Colors.green : (leave.status == 'Rejected' ? Colors.red : Colors.orange);
-
-    return WardenCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.person, color: kAccent, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${leave.seqId} - ${leave.studentName}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  leave.status.toUpperCase(),
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Scaffold(
+        backgroundColor: Colors.black.withValues(alpha: 0.9),
+        body: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Hero(
+                  tag: imageUrl,
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    },
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          WardenReadOnlyInput(label: 'Reason', value: leave.reason, icon: Icons.description_outlined),
-          WardenReadOnlyInput(
-            label: 'Duration',
-            value: '${DateFormat("dd MMM").format(leave.fromDate)} - ${DateFormat("dd MMM").format(leave.toDate)}',
-            icon: Icons.date_range,
-          ),
-          if (isPending && onApprove != null && onDeny != null) ...[
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: HoverEffect(
-                    child: OutlinedButton(
-                      onPressed: () => onDeny!(leave),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        side: const BorderSide(color: Colors.redAccent),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('REJECT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-                    ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: Material(
+                color: Colors.transparent,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    title,
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: HoverEffect(
-                    child: ElevatedButton(
-                      onPressed: () => onApprove!(leave),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      child: const Text('APPROVE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
+
+

@@ -17,6 +17,8 @@ class Complaint {
   final bool isNotified;
   final String lastStatusNotified;
   final String seqId;
+  final DateTime? resolvedAt;
+  final String? imageUrl;
 
   Complaint({
     required this.id,
@@ -35,6 +37,8 @@ class Complaint {
     this.isNotified = false,
     this.lastStatusNotified = 'Pending',
     this.seqId = '',
+    this.resolvedAt,
+    this.imageUrl,
   });
 
   Map<String, dynamic> toMap({bool forCreate = false}) {
@@ -57,6 +61,12 @@ class Complaint {
       map['studentConfirmed'] = studentConfirmed;
       map['isEscalated'] = isEscalated;
       map['seqId'] = seqId;
+      if (resolvedAt != null) {
+        map['resolvedAt'] = Timestamp.fromDate(resolvedAt!);
+      }
+      if (imageUrl != null) {
+        map['imageUrl'] = imageUrl;
+      }
     }
 
     return map;
@@ -83,6 +93,8 @@ class Complaint {
       lastStatusNotified:
           map['lastStatusNotified'] ?? (map['status'] ?? 'Pending'),
       seqId: map['seqId'] ?? '',
+      resolvedAt: (map['resolvedAt'] as Timestamp?)?.toDate(),
+      imageUrl: map['imageUrl'] as String?,
     );
   }
 }

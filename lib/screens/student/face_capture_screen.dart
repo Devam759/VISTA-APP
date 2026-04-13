@@ -101,7 +101,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
   }
 
   void _onFrame(CameraImage image) async {
-    if (_isProcessingFrame || _processing || _livenessConfirmed) return;
+    if (!mounted || _isProcessingFrame || _processing || _livenessConfirmed) return;
     _isProcessingFrame = true;
 
     try {
@@ -109,6 +109,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
       if (inputImage == null) return;
 
       final faces = await _detector.processImage(inputImage);
+      if (!mounted) return;
 
       if (faces.isEmpty) {
         if (mounted) {
@@ -136,7 +137,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
         _livenessConfirmed = true;
         debugPrint('Liveness confirmed. Processing face…');
         // Hands-free trigger!
-        await _processDetectedFace(face);
+        _processDetectedFace(face);
       } else {
         if (mounted) {
           setState(() {
@@ -241,6 +242,23 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
     return nv21;
   }
 
+  Future<void> _stopCamera() async {
+    if (_cam == null) return;
+    
+    // We do NOT call stopImageStream here because it triggers native crashes 
+    // on specific hardware. Disposing the controller handles it safely.
+    try {
+      final oldController = _cam;
+      _cam = null; // Remove reference immediately for UI safety
+      if (mounted) setState(() {}); // Trigger UI update to unmount preview
+      
+      await oldController!.dispose();
+      debugPrint('VISTA: Camera disposed successfully.');
+    } catch (e) {
+      debugPrint('VISTA: Error during camera disposal: $e');
+    }
+  }
+
   Future<void> _processDetectedFace(Face _) async {
     // We ignore the face from the stream for the final embedding.
     // Instead, we take a high-res photo for better accuracy.
@@ -251,26 +269,43 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
     });
 
     try {
+      if (_cam == null || !_cam!.value.isInitialized) return;
+
       // 1. Take Photo
       final XFile photo = await _cam!.takePicture();
+      
+      // SHUT DOWN CAMERA IMMEDIATELY after capture to stop background frame production
+      await _stopCamera();
+      
+      if (!mounted) return;
+      
       final bytes = await photo.readAsBytes();
+      if (!mounted) return;
+
       debugPrint('Captured photo size: ${bytes.length} bytes');
-      final img.Image? fullImage = img.decodeImage(bytes);
+      
+      // OFF-LOAD HEAVY PROCESSING TO BACKGROUND ISOLATE
+      final img.Image? fullImage = await compute(_vstDecodeImage, bytes);
+      
       if (fullImage == null) throw 'Failed to decode captured photo';
       debugPrint('Decoded image size: ${fullImage.width}x${fullImage.height}');
 
-      // 2. Detect face in high-res photo to get precise bounding box
-      final orientedImage = img.bakeOrientation(fullImage);
+      // 2. Detect face in high-res photo
+      // Baker orientation in background
+      final orientedImage = await compute(_vstBakeOrientation, fullImage);
 
       final inputImage = InputImage.fromFilePath(photo.path);
       List<Face> faces = await _detector.processImage(inputImage);
+      if (!mounted) return;
       
       // Fallback: If high-res detection fails, try using the orientation-baked image
       if (faces.isEmpty) {
         debugPrint('ML Kit failed on high-res file. Retrying with baked file...');
         final bakedPath = '${photo.path}_baked.jpg';
         await File(bakedPath).writeAsBytes(img.encodeJpg(orientedImage));
+        if (!mounted) return;
         faces = await _detector.processImage(InputImage.fromFilePath(bakedPath));
+        if (!mounted) return;
       }
 
       if (faces.isEmpty) throw 'No face detected in high-res photo. Please hold steady and try again.';
@@ -296,6 +331,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
       // 4. Generate Embedding via MobileFaceNet
       setState(() => _statusMessage = 'Generating Embedding…');
       final embedding = await _frs.getEmbedding(croppedFace);
+      if (!mounted) return;
       _lastEmbedding = embedding;
 
       if (widget.mode == FaceCaptureMode.registration) {
@@ -391,7 +427,7 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
 
   @override
   void dispose() {
-    _cam?.dispose();
+    _stopCamera();
     _detector.close();
     super.dispose();
   }
@@ -460,8 +496,23 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          CameraPreview(_cam!),
-                          _OvalOverlay(active: _blinkCount >= _blinkTarget),
+                          if (!_processing) ...[
+                            CameraPreview(_cam!),
+                            _OvalOverlay(active: _blinkCount >= _blinkTarget),
+                          ] else
+                            const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  VISTALoader(size: 80, color: Color(0xFF10B981)),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Processing face…',
+                                    style: TextStyle(color: Colors.white, fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -641,4 +692,16 @@ class _OvalPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_OvalPainter old) => old.active != active;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BACKGROUND PROCESSING HELPERS (Top-level for compute())
+// ─────────────────────────────────────────────────────────────────────────────
+
+img.Image? _vstDecodeImage(Uint8List bytes) {
+  return img.decodeImage(bytes);
+}
+
+img.Image _vstBakeOrientation(img.Image image) {
+  return img.bakeOrientation(image);
 }

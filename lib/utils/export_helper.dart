@@ -53,11 +53,11 @@ class ExportHelper {
       ];
 
       for (var d in dates) {
-        final dateStr = "${d.year}-${d.month}-${d.day}";
+        final dateStr = "${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}";
         final att = attendance.firstWhere(
           (a) =>
               a.studentId == s.uid &&
-              "${a.timestamp.year}-${a.timestamp.month}-${a.timestamp.day}" ==
+              "${a.timestamp.day.toString().padLeft(2, '0')}-${a.timestamp.month.toString().padLeft(2, '0')}-${a.timestamp.year}" ==
                   dateStr,
           orElse: () => Attendance(
             id: 'absent',
@@ -141,11 +141,11 @@ class ExportHelper {
           ];
 
           for (var d in dates) {
-            final dateStr = "${d.year}-${d.month}-${d.day}";
+            final dateStr = "${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}";
             final att = attendance.firstWhere(
               (a) =>
                   a.studentId == s.uid &&
-                  "${a.timestamp.year}-${a.timestamp.month}-${a.timestamp.day}" ==
+                  "${a.timestamp.day.toString().padLeft(2, '0')}-${a.timestamp.month.toString().padLeft(2, '0')}-${a.timestamp.year}" ==
                       dateStr,
               orElse: () => Attendance(
                 id: 'absent',
@@ -213,7 +213,7 @@ class ExportHelper {
 
     for (var a in filteredData) {
       rows.add([
-        DateFormat('dd/MM/yyyy').format(a.timestamp),
+        DateFormat('dd-MM-yyyy').format(a.timestamp),
         a.studentId,
         a.studentName,
         a.hostel,
@@ -277,13 +277,13 @@ class ExportHelper {
       );
 
       rows.add([
-        DateFormat('dd/MM/yyyy').format(l.createdAt),
+        DateFormat('dd-MM-yyyy').format(l.createdAt),
         l.studentName,
         student.roomNumber ?? '',
         InputSanitizer.formatPhoneWithCountryCode(student.phoneNumber ?? l.studentContact),
         student.email,
-        DateFormat('dd/MM/yyyy').format(l.fromDate),
-        DateFormat('dd/MM/yyyy').format(l.toDate),
+        DateFormat('dd-MM-yyyy').format(l.fromDate),
+        DateFormat('dd-MM-yyyy').format(l.toDate),
         l.reason,
         l.status,
         l.address,
@@ -364,7 +364,7 @@ class ExportHelper {
 
     for (var c in filteredData) {
       rows.add([
-        DateFormat('dd/MM/yyyy').format(c.createdAt),
+        DateFormat('dd-MM-yyyy').format(c.createdAt),
         c.isAnonymous ? 'Anonymous' : c.studentName,
         c.title,
         c.description,
@@ -434,12 +434,12 @@ class ExportHelper {
         r.reason,
         r.parentName,
         InputSanitizer.formatPhoneWithCountryCode(r.parentContact),
-        DateFormat('dd/MM/yyyy HH:mm').format(r.checkInDate),
-        DateFormat('dd/MM/yyyy HH:mm').format(r.checkOutDate),
+        DateFormat('dd-MM-yyyy HH:mm').format(r.checkInDate),
+        DateFormat('dd-MM-yyyy HH:mm').format(r.checkOutDate),
         r.status,
         r.appliedHostel,
         r.roomNumber ?? '',
-        DateFormat('dd/MM/yyyy HH:mm').format(r.createdAt),
+        DateFormat('dd-MM-yyyy HH:mm').format(r.createdAt),
       ]);
     }
 

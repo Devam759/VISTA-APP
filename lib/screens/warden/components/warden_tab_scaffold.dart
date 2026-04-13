@@ -28,6 +28,7 @@ class WardenTabScaffold<T> extends StatefulWidget {
   final IconData? emptyIcon;
   final String? emptyTitle;
   final String? emptySubtitle;
+  final bool showCount;
 
   const WardenTabScaffold({
     super.key,
@@ -48,6 +49,7 @@ class WardenTabScaffold<T> extends StatefulWidget {
     this.emptyIcon,
     this.emptyTitle,
     this.emptySubtitle,
+    this.showCount = false,
   });
 
   @override
@@ -57,7 +59,6 @@ class WardenTabScaffold<T> extends StatefulWidget {
 class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with TickerProviderStateMixin {
   late TabController _tabController;
   late TextEditingController _searchCtrl;
-  String _query = '';
 
   @override
   void initState() {
@@ -70,7 +71,7 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
     });
     
     _searchCtrl.addListener(() {
-      if (mounted) setState(() => _query = _searchCtrl.text);
+      if (mounted) setState(() {});
     });
   }
 
@@ -86,23 +87,10 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
     return Scaffold(
       backgroundColor: kBg,
       body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (widget.title != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.title!,
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 28, letterSpacing: -0.5, color: Color(0xFF1E293B)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             Padding(
-              padding: EdgeInsets.fromLTRB(20, widget.title == null ? 22 : 8, 20, 8),
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
               child: Row(
                 children: [
                   Expanded(
@@ -149,9 +137,11 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
                 controller: _tabController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: widget.children ?? widget.tabs.map((tab) => _GenericFilteredList<T>(
+                  key: ValueKey('tab_$tab'),
                   tab: tab,
-                  query: _query,
+                  query: _searchCtrl.text,
                   sectionTitle: widget.sectionTitle,
+                  showCount: widget.showCount,
                   streamFactory: widget.streamFactory!,
                   itemBuilder: widget.itemBuilder!,
                   filterLogic: widget.filterLogic!,
@@ -179,8 +169,10 @@ class _GenericFilteredList<T> extends StatefulWidget {
   final IconData? emptyIcon;
   final String? emptyTitle;
   final String? emptySubtitle;
+  final bool showCount;
 
   const _GenericFilteredList({
+    super.key,
     required this.tab,
     required this.query,
     this.sectionTitle,
@@ -191,6 +183,7 @@ class _GenericFilteredList<T> extends StatefulWidget {
     this.emptyIcon,
     this.emptyTitle,
     this.emptySubtitle,
+    required this.showCount,
   });
 
   @override
@@ -227,7 +220,7 @@ class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with A
           children: [
             if (widget.extraHeaderBuilder != null) widget.extraHeaderBuilder!(allItems),
             if (widget.sectionTitle != null)
-              WardenSectionLabel(widget.sectionTitle!, count: filtered.length),
+              WardenSectionLabel(widget.sectionTitle!, count: (widget.showCount && widget.tab == 'All') ? filtered.length : null),
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),

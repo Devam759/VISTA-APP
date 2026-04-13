@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -31,18 +32,22 @@ class _StudentDashboardState extends State<StudentDashboard> {
   final FirebaseService _firebaseService = FirebaseService();
   int _selectedIndex = 0;
   late PageController _pageController;
-  bool _checkingPermissions = true;
-  bool _permissionsGranted = false;
+  bool _checkingPermissions = !kIsWeb;
+  bool _permissionsGranted = kIsWeb; // Default to true on web to bypass blocker
   final List<StreamSubscription> _subscriptions = [];
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
-    _checkPermissions();
+    if (!kIsWeb) {
+      _checkPermissions();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupStudentListeners();
-      _initNotifications();
+      if (!kIsWeb) {
+        _initNotifications();
+      }
     });
   }
 

@@ -27,7 +27,7 @@ class Attendance {
       'roomNumber': roomNumber,
       'timestamp': Timestamp.fromDate(timestamp),
       'status': status,
-      'date': "${timestamp.year}-${timestamp.month}-${timestamp.day}",
+      'date': "${timestamp.day.toString().padLeft(2, '0')}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.year}",
     };
   }
 

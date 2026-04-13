@@ -30,7 +30,9 @@ class _StudentsTabState extends State<StudentsTab> {
             final shortStays = ssSnap.data ?? [];
 
             return WardenTabScaffold<VistaUser>(
+              title: 'Residents',
               sectionTitle: 'Hostel Students',
+              showCount: true,
               searchHint: 'Search by student name, room...',
               tabs: const ['All', 'In Campus', 'On Leave', 'Short Stay'],
               streamFactory: () => widget.fs.getUnifiedStudentsStream(widget.warden.hostel),

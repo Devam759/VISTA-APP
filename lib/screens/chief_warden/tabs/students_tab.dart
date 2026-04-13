@@ -3,7 +3,6 @@ import '../../../models/vista_user.dart';
 import '../../../models/leave_request_model.dart';
 import '../../../models/short_stay_model.dart';
 import '../../../services/firebase_service.dart';
-import '../../../utils/export_helper.dart';
 import '../../warden/components/warden_components.dart';
 import '../../warden/components/warden_tab_scaffold.dart';
 
@@ -35,38 +34,6 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
     super.dispose();
   }
 
-  void _exportFiltered(List<VistaUser> students, List<LeaveRequest> leaves, List<ShortStayRequest> shortStays) async {
-    final tab = ['All', 'In Campus', 'On Leave', 'Short Stay'][_tabController.index];
-    final query = _searchCtrl.text;
-
-    final filtered = students.where((student) {
-        final matchesSearch = student.name.toLowerCase().contains(query.toLowerCase()) ||
-            (student.roomNumber ?? '').toLowerCase().contains(query.toLowerCase());
-        if (!matchesSearch) return false;
-
-        final matchesHostel = _hostelFilter == 'All' || student.hostel == _hostelFilter;
-        if (!matchesHostel) return false;
-
-        final now = DateTime.now();
-        final hasActiveShortStay = shortStays.any((ss) =>
-            ss.studentId == student.uid &&
-            ss.status == 'Approved' &&
-            ss.actualCheckOutTime == null &&
-            !now.isBefore(ss.checkInDate) &&
-            !now.isAfter(ss.checkOutDate));
-        if ((student.isDayScholar || student.hasUsedShortStay) && !hasActiveShortStay) return false;
-
-        final onLeave = FirebaseService.isStudentOnLeave(student.uid, leaves);
-        final onShortStay = FirebaseService.isStudentOnShortStay(student.uid, shortStays);
-
-        if (tab == 'On Leave') return onLeave;
-        if (tab == 'Short Stay') return onShortStay;
-        if (tab == 'In Campus') return !onLeave && !onShortStay;
-        return true; 
-    }).toList();
-
-    await ExportHelper.exportStudents(filtered, _hostelFilter);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,11 +49,11 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
             return StreamBuilder<List<VistaUser>>(
               stream: widget.fs.getUnifiedStudentsStream('All'),
               builder: (context, studentSnap) {
-                final allStudents = studentSnap.data ?? [];
 
                 return WardenTabScaffold<VistaUser>(
-                  title: 'Students',
-                  sectionTitle: 'University Students',
+                  title: 'Residents',
+                  sectionTitle: 'Hostel Students',
+                  showCount: true,
                   searchHint: 'Search by student name, room...',
                   searchCtrl: _searchCtrl,
                   tabController: _tabController,
@@ -94,11 +61,6 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
                   actionWidget: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      WardenSearchAction(
-                        onTap: () => _exportFiltered(allStudents, leaves, shortStays),
-                        child: const Icon(Icons.file_download_outlined, color: Colors.black54, size: 22),
-                      ),
-                      const SizedBox(width: 8),
                       WardenSearchAction(
                         onTap: () => WardenUIUtils.showHostelFilter(
                           context: context,

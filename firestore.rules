@@ -98,7 +98,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.studentId == uid()
         // Enforce valid status value on creation.
-        && request.resource.data.status in ['Present', 'Absent']
+        && request.resource.data.status in ['Present', 'Absent', 'Late']
         // Timestamp must equal server-request time (within 60 seconds tolerance
         // accepted by Firestore; client cannot forge a timestamp in the past).
         && request.resource.data.timestamp == request.time;
@@ -161,16 +161,23 @@ service cloud.firestore {
       );
 
       allow update: if isSignedIn() && (
-        // Student may: edit while Pending (no sensitive fields), or confirm resolution.
-        // Students CANNOT escalate — only staff can.
+        // Student may: edit while Pending, confirm resolution, or escalate.
         (resource.data.studentId == uid() && (
+          // 1. Edit basic info while pending
           (resource.data.status == 'Pending'
             && !request.resource.data.diff(resource.data).affectedKeys()
                 .hasAny(['status', 'studentId', 'resolvedBy', 'remarks',
                           'resolvedAt', 'isEscalated', 'targetRole', 'targetRoles'])) ||
+          // 2. Confirm resolution
           (request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['status', 'studentConfirmed'])
-            && request.resource.data.status == 'Confirmed')
+            && request.resource.data.status == 'Confirmed') ||
+          // 3. Escalate (move to next authority)
+          (request.resource.data.isEscalated == true
+            && request.resource.data.status == 'Pending'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'isEscalated', 'studentConfirmed',
+                          'targetRole', 'targetRoles', 'resolvedAt']))
         )) ||
         // Staff can update including escalation, but must use valid status.
         (isStaff() && validComplaintStatus())

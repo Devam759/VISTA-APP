@@ -5,6 +5,7 @@ import '../../../models/leave_request_model.dart';
 import '../../../services/firebase_service.dart';
 import '../components/warden_components.dart';
 import '../components/warden_tab_scaffold.dart';
+import '../../../widgets/hover_effect.dart';
 
 class LeavesTab extends StatefulWidget {
   final VistaUser warden;
@@ -21,7 +22,8 @@ class _LeavesTabState extends State<LeavesTab> {
   @override
   Widget build(BuildContext context) {
     return WardenTabScaffold<LeaveRequest>(
-      sectionTitle: 'Leave Management',
+      title: 'Leave Requests',
+      sectionTitle: 'Leave Requests',
       tabs: const ['All', 'Pending', 'Approved', 'Rejected'],
       searchQueryPlaceholder: 'Search student or room...',
       actionWidget: WardenSearchAction(
@@ -52,11 +54,51 @@ class _LeavesTabState extends State<LeavesTab> {
       emptyIcon: Icons.beach_access_rounded,
       emptyTitle: 'No Leave Requests',
       emptySubtitle: 'Student leave requests will appear here once submitted.',
-      itemBuilder: (context, leave) => WardenLeaveCard(
-        leave: leave,
-        currentWarden: widget.warden,
-        onApprove: (l) => widget.fs.updateLeaveStatus(l.id, 'Approved', actorUid: widget.warden.uid),
-        onDeny: (l) => widget.fs.updateLeaveStatus(l.id, 'Rejected', actorUid: widget.warden.uid),
+      itemBuilder: (context, leave) => WardenExpandableLeaveCard(
+        seqId: leave.seqId,
+        studentName: leave.studentName,
+        status: leave.status,
+        fromDate: leave.fromDate,
+        toDate: leave.toDate,
+        reason: leave.reason,
+        address: leave.address,
+        parentName: leave.parentName,
+        parentRelation: leave.parentRelation,
+        parentContact: leave.parentContact,
+        actions: Row(
+          children: [
+            Expanded(
+              child: HoverEffect(
+                child: OutlinedButton(
+                  onPressed: () => widget.fs.updateLeaveStatus(leave.id, 'Rejected', actorUid: widget.warden.uid),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('REJECT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: HoverEffect(
+                child: ElevatedButton(
+                  onPressed: () => widget.fs.updateLeaveStatus(leave.id, 'Approved', actorUid: widget.warden.uid),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: const Text('APPROVE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       filterLogic: (leave, tab, query) {
         if (tab != 'All' && leave.status != tab) return false;

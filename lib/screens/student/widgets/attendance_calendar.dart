@@ -35,22 +35,38 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
     _loadAttendance();
   }
 
-  void _loadAttendance() {
-    _sub = widget.fs.getStudentAttendance(widget.student.uid).listen((list) {
+  void _loadAttendance() async {
+    try {
+      final attendanceList = await widget.fs.getStudentAttendance(widget.student.uid).first;
+      final leaves = await widget.fs.getStudentLeaves(widget.student.uid).first;
+      final approvedLeaves = leaves.where((l) => l.status == 'Approved').toList();
+
       final Map<DateTime, String> map = {};
-      for (var a in list) {
+      for (var a in attendanceList) {
         final d = DateTime(a.timestamp.year, a.timestamp.month, a.timestamp.day);
         map[d] = a.status;
       }
+
+      for (var l in approvedLeaves) {
+        var curr = DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day);
+        final end = DateTime(l.toDate.year, l.toDate.month, l.toDate.day);
+        while (!curr.isAfter(end)) {
+          if (!map.containsKey(curr)) {
+            map[curr] = 'On Leave';
+          }
+          curr = curr.add(const Duration(days: 1));
+        }
+      }
+
       if (mounted) {
         setState(() {
           _attendanceMap = map;
           _isLoading = false;
         });
       }
-    }, onError: (e) {
+    } catch (e) {
       if (mounted) setState(() => _isLoading = false);
-    });
+    }
   }
 
   @override
@@ -183,7 +199,20 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
           final normalizedDay = DateTime(day.year, day.month, day.day);
           final status = _attendanceMap[normalizedDay];
           if (status != null) {
-            Color color = status == 'Marked' ? kStudentSuccess : kStudentWarning;
+            Color color;
+            switch (status) {
+              case 'Present':
+                color = kStudentSuccess;
+                break;
+              case 'Late':
+                color = kStudentWarning;
+                break;
+              case 'On Leave':
+                color = Colors.grey;
+                break;
+              default:
+                color = kStudentDanger;
+            }
             return Container(
               margin: const EdgeInsets.all(6),
               alignment: Alignment.center,
@@ -191,6 +220,24 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
                 color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
                 border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+              ),
+              child: Text(
+                '${day.day}',
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
+            );
+          }
+
+          // Absent logic (before today and after start of sem)
+          if (normalizedDay.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)) && 
+              normalizedDay.isAfter(DateTime(2025, 2, 10))) {
+            final color = kStudentDanger;
+            return Container(
+              margin: const EdgeInsets.all(6),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
               child: Text(
                 '${day.day}',
@@ -224,7 +271,8 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
         children: [
           _buildLegendItem(kStudentSuccess, 'Present'),
           _buildLegendItem(kStudentWarning, 'Late'),
-          _buildLegendItem(Colors.grey.withValues(alpha: 0.3), 'Holiday/Absent', isGrey: true),
+          _buildLegendItem(kStudentDanger, 'Absent'),
+          _buildLegendItem(Colors.grey, 'On Leave'),
         ],
       ),
     );

@@ -179,6 +179,7 @@ class _WardenDashboardState extends State<WardenDashboard> {
 
   Widget _buildHeader(VistaUser warden, AuthProvider authProvider) {
     return SmoothEntrance(
+      key: const ValueKey('warden_portal_header'),
       delay: const Duration(milliseconds: 100),
       offset: const Offset(0, -20),
       child: Container(

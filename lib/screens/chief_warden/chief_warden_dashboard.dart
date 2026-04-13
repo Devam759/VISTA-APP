@@ -235,7 +235,7 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
       ShortStayTab(warden: warden, fs: _fs),
     ];
 
-    const labels = ['Students', 'Attendance', 'Leaves', 'Complaints', 'Annexure-F'];
+    const labels = ['Students', 'Attendance', 'Leaves', 'Complaints', 'Short Stay'];
     const icons = [
       (off: Icons.groups_outlined, on: Icons.groups),
       (off: Icons.assignment_ind_outlined, on: Icons.assignment_ind),
@@ -258,7 +258,7 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          padding: const EdgeInsets.all(12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(5, (i) {
@@ -313,42 +313,42 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
             ),
             child: SafeArea(
               bottom: false,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final hPad = constraints.maxWidth > 900 ? (constraints.maxWidth - 900) / 2 : 16.0;
-                  return Padding(
-                    padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Image.asset('assets/images/jklu_logo_darkbg_bgremove.png', height: 40),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'VISTA (CW)',
-                              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              onPressed: _showExportDialog,
-                              icon: const Icon(Icons.download_rounded, color: Colors.white, size: 20),
-                              tooltip: 'Export Data',
-                            ),
-                            const SizedBox(width: 4),
-                            IconButton(
-                              onPressed: () => authProvider.signOut(),
-                              icon: const Icon(Icons.logout_rounded, color: Colors.white60, size: 20),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text('Welcome ${warden.name} Sir', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2)),
-                      ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Image.asset('assets/images/jklu_logo_darkbg_bgremove.png', height: 40),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'VISTA',
+                      style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2),
                     ),
-                  );
-                },
-              ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
+                      child: const Text('All Hostels', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _showExportDialog,
+                      icon: const Icon(Icons.file_download_outlined, color: Colors.white, size: 22),
+                      tooltip: 'Export Data',
+                    ),
+                    IconButton(
+                      onPressed: () => authProvider.signOut(),
+                      icon: const Icon(Icons.logout_rounded, color: Colors.white60, size: 20),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text('Welcome ${warden.name} Sir', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2)),
+              ],
+            ),
+          ),
             ),
           ),
           Expanded(

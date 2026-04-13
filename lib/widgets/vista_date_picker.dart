@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../screens/warden/components/warden_components.dart';
 
 Future<DateTime?> showVistaDatePicker({
   required BuildContext context,
@@ -9,7 +8,7 @@ Future<DateTime?> showVistaDatePicker({
   Color? primaryColor,
 }) async {
   DateTime tempDate = initialDate;
-  final themeColor = primaryColor ?? kPrimary;
+  final themeColor = primaryColor ?? const Color(0xFF1E3A8A);
   final finalLastDate = lastDate ?? DateTime.now().add(const Duration(days: 90));
 
   return showDialog<DateTime>(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../widgets/hover_effect.dart';
+import '../../../models/complaint_model.dart';
+import '../../../services/firebase_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STUDENT THEME CONSTANTS
@@ -10,6 +12,7 @@ const kStudentAccent = Color(0xFF2563EB);
 const kStudentBg = Color(0xFFF0F4FF);
 const kStudentSuccess = Color(0xFF10B981);
 const kStudentWarning = Color(0xFFF59E0B);
+const kStudentDanger = Color(0xFFEF4444);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED WIDGETS
@@ -512,6 +515,298 @@ class StudentReadOnlyInput extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLAINT COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+class StudentExpandableComplaintCard extends StatefulWidget {
+  final Complaint complaint;
+  final FirebaseService fs;
+
+  const StudentExpandableComplaintCard({
+    super.key,
+    required this.complaint,
+    required this.fs,
+  });
+
+  @override
+  State<StudentExpandableComplaintCard> createState() => _StudentExpandableComplaintCardState();
+}
+
+class _StudentExpandableComplaintCardState extends State<StudentExpandableComplaintCard> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isConfirmed = widget.complaint.status == 'Confirmed';
+    final isResolved = widget.complaint.status == 'Resolved';
+    final isEscalated = widget.complaint.isEscalated;
+    
+    Color statusColor;
+    String statusText = widget.complaint.status.toUpperCase();
+
+    if (isConfirmed) {
+      statusColor = kStudentSuccess;
+    } else if (isResolved) {
+      statusColor = kStudentAccent;  // Blue color to prompt action
+      statusText = 'REVIEW NOW';     // Clearer call to action
+    } else if (isEscalated) {
+      statusColor = kStudentDanger;
+    } else {
+      statusColor = kStudentWarning;
+    }
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: kStudentPrimary.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // CONTRACTED VIEW
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: kStudentPrimary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          widget.complaint.seqId,
+                          style: const TextStyle(
+                            color: kStudentPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.complaint.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: Color(0xFF1E293B),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              DateFormat('dd MMM, hh:mm a').format(widget.complaint.createdAt),
+                              style: TextStyle(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          statusText,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        duration: const Duration(milliseconds: 300),
+                        turns: _isExpanded ? 0.5 : 0,
+                        child: const Icon(
+                          Icons.expand_more,
+                          color: Colors.black26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // EXPANDED VIEW
+            if (_isExpanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Divider(height: 1, thickness: 0.5),
+                    const SizedBox(height: 16),
+                    
+                    // DESCRIPTION SECTION
+                    const Text(
+                      'ISSUE DESCRIPTION',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        color: Colors.black38,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: kStudentBg.withValues(alpha: 1.0),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        widget.complaint.description,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF334155),
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // ATTACHMENT SECTION
+                    if (widget.complaint.imageUrl != null) ...[
+                      const Text(
+                        'ATTACHMENT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
+                          color: Colors.black38,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          widget.complaint.imageUrl!,
+                          height: 240,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 240,
+                              color: kStudentBg,
+                              child: const Center(child: CircularProgressIndicator()),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // RESOLUTION STATUS FOR STUDENT
+                    if (widget.complaint.status == 'Resolved') ...[
+                      const Divider(height: 32),
+                      const Text(
+                        'IS YOUR ISSUE RESOLVED?',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                await widget.fs.updateComplaintStatus(widget.complaint.id, 'Confirmed');
+                                if (mounted) {
+                                  scaffoldMessenger.showSnackBar(
+                                    const SnackBar(content: Text('Thank you for your feedback!')),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: kStudentSuccess,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              child: const Text('YES, RESOLVED', style: TextStyle(fontWeight: FontWeight.w900)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () async {
+                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                if (widget.complaint.targetRoles.contains('Chief Warden')) {
+                                  scaffoldMessenger.showSnackBar(
+                                    const SnackBar(content: Text('Limit reached: Already escalated to Chief Warden.')),
+                                  );
+                                  return;
+                                }
+                                await widget.fs.escalateComplaint(widget.complaint);
+                                if (mounted) {
+                                  scaffoldMessenger.showSnackBar(
+                                    const SnackBar(content: Text('Issue escalated further.')),
+                                  );
+                                }
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: kStudentDanger,
+                                side: const BorderSide(color: kStudentDanger, width: 2),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('NO, ESCALATE', style: TextStyle(fontWeight: FontWeight.w900)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

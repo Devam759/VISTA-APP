@@ -74,6 +74,7 @@ class ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProviderS
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         WardenSearchHeader(
           controller: _searchCtrl,
@@ -160,9 +161,9 @@ class ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProviderS
             controller: _tabController,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _FilteredComplaintList(status: 'Pending', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, wardenHostel: widget.warden.hostel),
-              _FilteredComplaintList(status: 'Resolved', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, wardenHostel: widget.warden.hostel),
-              _FilteredComplaintList(status: 'Escalated', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, wardenHostel: widget.warden.hostel),
+              _FilteredComplaintList(status: 'Pending', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, warden: widget.warden),
+              _FilteredComplaintList(status: 'Resolved', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, warden: widget.warden),
+              _FilteredComplaintList(status: 'Escalated', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, warden: widget.warden),
             ],
           ),
         ),
@@ -177,7 +178,7 @@ class _FilteredComplaintList extends StatefulWidget {
   final DateTime? selectedDate;
   final String hostelFilter;
   final FirebaseService fs;
-  final String? wardenHostel;
+  final VistaUser warden;
 
   const _FilteredComplaintList({
     required this.status,
@@ -185,7 +186,7 @@ class _FilteredComplaintList extends StatefulWidget {
     this.selectedDate,
     required this.hostelFilter,
     required this.fs,
-    this.wardenHostel,
+    required this.warden,
   });
 
   @override
@@ -200,7 +201,7 @@ class _FilteredComplaintListState extends State<_FilteredComplaintList> with Aut
   Widget build(BuildContext context) {
     super.build(context);
     return StreamBuilder<List<Complaint>>(
-      stream: widget.fs.getComplaintsForRole('Head Warden', widget.wardenHostel),
+      stream: widget.fs.getComplaintsForRole('Head Warden', widget.warden.hostel),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const ComplaintListSkeleton();
@@ -216,7 +217,7 @@ class _FilteredComplaintListState extends State<_FilteredComplaintList> with Aut
         }
 
         if (widget.status == 'Pending') {
-          list = list.where((c) => c.status == 'Pending' && !c.isEscalated).toList();
+          list = list.where((c) => c.status == 'Pending').toList();
         } else if (widget.status == 'Resolved') {
           list = list.where((c) => c.status == 'Resolved' || c.status == 'Confirmed').toList();
         } else if (widget.status == 'Escalated') {
@@ -249,99 +250,17 @@ class _FilteredComplaintListState extends State<_FilteredComplaintList> with Aut
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            WardenSectionLabel('${widget.status} Complaints', count: list.length),
+            WardenSectionLabel('Complaint Records', count: list.length),
             Expanded(
               child: ListView.builder(
                 itemCount: list.length,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemBuilder: (context, i) {
                   final c = list[i];
-                  final resolved = c.status == 'Resolved' || c.status == 'Confirmed';
-                  return WardenCard(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: resolved ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            resolved ? Icons.check_circle_outline : Icons.assignment_late_outlined,
-                            color: resolved ? Colors.green : Colors.orange,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${c.seqId}: (${c.hostel}) ${c.title}',
-                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1E293B)),
-                                    ),
-                                  ),
-                                  Text(
-                                    DateFormat('dd MMM').format(c.createdAt),
-                                    style: TextStyle(fontSize: 10, color: kPrimary.withValues(alpha: 0.4), fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                c.description,
-                                style: const TextStyle(color: Colors.black54, fontSize: 13),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: resolved ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      (!resolved && c.isEscalated)
-                                          ? 'ESCALATED'
-                                          : (c.status == 'Confirmed' ? 'RESOLVED' : c.status.toUpperCase()),
-                                      style: TextStyle(
-                                        color: (!resolved && c.isEscalated) ? Colors.redAccent : (resolved ? Colors.green : Colors.orange),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                  if (!resolved) ...[
-                                    const Spacer(),
-                                    ElevatedButton(
-                                      onPressed: () => widget.fs.updateComplaintStatus(c.id, 'Resolved'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: kPrimary,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        elevation: 0,
-                                      ),
-                                      child: const Text('Resolve'),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  return WardenExpandableComplaintCard(
+                    complaint: c,
+                    warden: widget.warden,
+                    fs: widget.fs,
                   );
                 },
               ),

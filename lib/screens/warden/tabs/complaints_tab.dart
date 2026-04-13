@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../models/vista_user.dart';
+import '../../../models/complaint_model.dart';
 import '../../../services/firebase_service.dart';
-import '../../../utils/sanitizer.dart';
-import '../../../widgets/skeleton_loader.dart';
-import '../../../providers/warden_provider.dart';
 import '../components/warden_components.dart';
 import '../components/warden_tab_scaffold.dart';
 import '../../../widgets/hover_effect.dart';
@@ -18,30 +15,9 @@ class ComplaintsTab extends StatefulWidget {
   State<ComplaintsTab> createState() => _ComplaintsTabState();
 }
 
-class _ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProviderStateMixin {
+class _ComplaintsTabState extends State<ComplaintsTab> {
   final TextEditingController _searchCtrl = TextEditingController();
-  late TabController _tabController;
-  String _searchQuery = '';
   DateTime? _selectedDate;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() => setState(() {}));
-    _searchCtrl.addListener(() {
-      if (mounted) {
-        setState(() => _searchQuery = InputSanitizer.sanitize(_searchCtrl.text));
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _searchCtrl.dispose();
-    super.dispose();
-  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -62,18 +38,29 @@ class _ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProvider
         );
       },
     );
-    if (picked != null) {
+    if (picked != null && picked != _selectedDate) {
       setState(() => _selectedDate = picked);
     }
   }
 
   @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Determine role string for Firestore query
+    String roleStr = 'Warden';
+    if (widget.warden.role == UserRole.headWarden) roleStr = 'Head Warden';
+    if (widget.warden.role == UserRole.chiefWarden) roleStr = 'Chief Warden';
+
     return Column(
       children: [
         if (_selectedDate != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
               children: [
                 Container(
@@ -101,209 +88,69 @@ class _ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProvider
               ],
             ),
           ),
-        Expanded(
-          child: WardenTabScaffold(
-            searchCtrl: _searchCtrl,
-            searchHint: 'Search by title, ID, or student...',
-            actionWidget: WardenSearchAction(
-              onTap: () => _selectDate(context),
-              child: HoverEffect(
-                child: Icon(
-                  Icons.calendar_today_rounded,
-                  color: _selectedDate != null ? kPrimary : Colors.black54,
-                  size: 22,
+            Expanded(
+              child: WardenTabScaffold<Complaint>(
+                title: 'Complaints',
+                searchCtrl: _searchCtrl,
+                searchHint: 'Search ID, title, student...',
+                tabs: const ['Pending', 'Resolved', 'Escalated'],
+                actionWidget: WardenSearchAction(
+                  onTap: () => _selectDate(context),
+                  child: HoverEffect(
+                    child: Icon(
+                      Icons.calendar_today_rounded,
+                      color: _selectedDate != null ? kPrimary : Colors.black54,
+                      size: 20,
+                    ),
+                  ),
                 ),
+                streamFactory: () => FirebaseService().getComplaintsForRole(roleStr, widget.warden.hostel ?? ''),
+                itemBuilder: (context, complaint) {
+                  return WardenExpandableComplaintCard(
+                    complaint: complaint,
+                    warden: widget.warden,
+                    fs: FirebaseService(),
+                  );
+                },
+                filterLogic: (complaint, tab, query) {
+                  // 1. Status Filter
+                  bool matchesStatus = false;
+                  if (tab == 'Pending') {
+                    matchesStatus = complaint.status == 'Pending';
+                  } else if (tab == 'Resolved') {
+                    matchesStatus = (complaint.status == 'Resolved' || complaint.status == 'Confirmed');
+                  } else if (tab == 'Escalated') {
+                    matchesStatus = complaint.isEscalated;
+                  }
+
+                  if (!matchesStatus) return false;
+
+                  // 2. Date Filter
+                  if (_selectedDate != null) {
+                    final cDate = complaint.createdAt;
+                    if (cDate.year != _selectedDate!.year ||
+                        cDate.month != _selectedDate!.month ||
+                        cDate.day != _selectedDate!.day) {
+                      return false;
+                    }
+                  }
+
+                  // 3. Search Filter
+                  if (query.isEmpty) return true;
+                  final q = query.toLowerCase();
+                  return complaint.title.toLowerCase().contains(q) ||
+                      complaint.studentName.toLowerCase().contains(q) ||
+                      complaint.seqId.toLowerCase().contains(q);
+                },
+                emptyIcon: Icons.assignment_outlined,
+                emptyTitle: 'No complaints found',
+                emptySubtitle: 'Try adjusting your filters or search query',
+                sectionTitle: 'Complaint Records',
               ),
             ),
-            tabs: const ['Pending', 'Resolved', 'Escalated'],
-            tabController: _tabController,
-            children: [
-              _FilteredComplaintList(status: 'Pending', searchQuery: _searchQuery, selectedDate: _selectedDate),
-              _FilteredComplaintList(status: 'Resolved', searchQuery: _searchQuery, selectedDate: _selectedDate),
-              _FilteredComplaintList(status: 'Escalated', searchQuery: _searchQuery, selectedDate: _selectedDate),
-            ],
-          ),
-        ),
       ],
     );
   }
 }
 
-class _FilteredComplaintList extends StatefulWidget {
-  final String status;
-  final String searchQuery;
-  final DateTime? selectedDate;
-
-  const _FilteredComplaintList({
-    required this.status,
-    required this.searchQuery,
-    this.selectedDate,
-  });
-
-  @override
-  State<_FilteredComplaintList> createState() => _FilteredComplaintListState();
-}
-
-class _FilteredComplaintListState extends State<_FilteredComplaintList> with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    final wardenProv = Provider.of<WardenProvider>(context);
-
-    if (wardenProv.isLoading && wardenProv.complaints.isEmpty) {
-      return const ComplaintListSkeleton();
-    }
-
-    var list = wardenProv.complaints;
-
-    // Filters
-    if (widget.searchQuery.isNotEmpty) {
-      list = list.where((c) =>
-          c.title.toLowerCase().contains(widget.searchQuery.toLowerCase()) ||
-          c.seqId.toLowerCase().contains(widget.searchQuery.toLowerCase()) ||
-          c.studentName.toLowerCase().contains(widget.searchQuery.toLowerCase())).toList();
-    }
-
-    if (widget.status == 'Pending') {
-      list = list.where((c) => c.status == 'Pending' && !c.isEscalated).toList();
-    } else if (widget.status == 'Resolved') {
-      list = list.where((c) => c.status == 'Resolved' || c.status == 'Confirmed').toList();
-    } else if (widget.status == 'Escalated') {
-      list = list.where((c) => c.isEscalated).toList();
-    }
-
-    if (widget.selectedDate != null) {
-      list = list.where((c) {
-        final target = DateTime(widget.selectedDate!.year, widget.selectedDate!.month, widget.selectedDate!.day);
-        final created = DateTime(c.createdAt.year, c.createdAt.month, c.createdAt.day);
-        return target.isAtSameMomentAs(created);
-      }).toList();
-    }
-
-    if (list.isEmpty) {
-      return const WardenEmptyState(
-        icon: Icons.inbox_outlined,
-        title: 'No Complaints Found',
-        subtitle: 'Try adjusting your search or filters',
-      );
-    }
-
-    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        WardenSectionLabel('Complaint Records', count: list.length),
-        Expanded(
-          child: ListView.builder(
-            itemCount: list.length,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            physics: const BouncingScrollPhysics(),
-            itemBuilder: (context, i) {
-              final c = list[i];
-              final resolved = c.status == 'Resolved' || c.status == 'Confirmed';
-              return WardenCard(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: resolved ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        resolved ? Icons.check_circle_outline : Icons.assignment_late_outlined,
-                        color: resolved ? Colors.green : Colors.orange,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${c.seqId}: ${c.title}',
-                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1E293B)),
-                                ),
-                              ),
-                              Text(
-                                DateFormat('dd MMM').format(c.createdAt),
-                                style: TextStyle(fontSize: 10, color: kPrimary.withValues(alpha: 0.4), fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            c.description,
-                            style: const TextStyle(color: Colors.black54, fontSize: 13),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: resolved ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  (!resolved && c.isEscalated)
-                                      ? 'ESCALATED'
-                                      : (c.status == 'Confirmed' ? 'RESOLVED' : c.status.toUpperCase()),
-                                  style: TextStyle(
-                                    color: (!resolved && c.isEscalated) ? Colors.redAccent : (resolved ? Colors.green : Colors.orange),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                              if (!resolved) ...[
-                                const Spacer(),
-                                if (c.targetRoles.contains('Head Warden') || c.isEscalated)
-                                  const Text(
-                                    'ESCALATED',
-                                    style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                                  )
-                                else
-                                  HoverEffect(
-                                    child: ElevatedButton(
-                                      onPressed: () => FirebaseService().updateComplaintStatus(c.id, 'Resolved'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: kPrimary,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        elevation: 0,
-                                      ),
-                                      child: const Text('Resolve'),
-                                    ),
-                                  ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
 
