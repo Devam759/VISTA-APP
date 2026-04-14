@@ -5,7 +5,9 @@
 
 const admin = require('firebase-admin');
 const https = require('https');
-const sa = require('../vista-jklu-firebase-adminsdk-fbsvc-913cb243b4.json');
+const path = require('path');
+const saPath = path.resolve(__dirname, '../.secrets/vista-adminsdk.json');
+const sa = require(saPath);
 
 admin.initializeApp({ credential: admin.credential.cert(sa) });
 

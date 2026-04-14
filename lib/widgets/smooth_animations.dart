@@ -7,6 +7,7 @@ class SmoothEntrance extends StatefulWidget {
   final Duration duration;
   final Duration delay;
   final Offset offset;
+  final bool enabled;
 
   const SmoothEntrance({
     super.key,
@@ -14,7 +15,9 @@ class SmoothEntrance extends StatefulWidget {
     this.duration = const Duration(milliseconds: 600),
     this.delay = Duration.zero,
     this.offset = const Offset(0, 30),
+    this.enabled = true,
   });
+
 
   @override
   State<SmoothEntrance> createState() => _SmoothEntranceState();
@@ -38,9 +41,13 @@ class _SmoothEntranceState extends State<SmoothEntrance> with SingleTickerProvid
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
 
-    Future.delayed(widget.delay, () {
-      if (mounted) _controller.forward();
-    });
+    if (widget.enabled) {
+      Future.delayed(widget.delay, () {
+        if (mounted) _controller.forward();
+      });
+    } else {
+      _controller.value = 1.0;
+    }
   }
 
   @override

@@ -74,7 +74,7 @@ class VistaUser {
       'isAccountActive': isAccountActive,
       'registrationNo': registrationNo,
        'isMicrosoftLinked': isMicrosoftLinked,
-      'Hasapprovedshortstay': hasActiveShortStay,
+      'hasActiveShortStay': hasActiveShortStay,
       'createdAt': FieldValue.serverTimestamp(),
     };
 
@@ -141,7 +141,7 @@ class VistaUser {
       registrationNo: map['registrationNo']?.toString(),
       isAccountActive: map['isAccountActive'] ?? true, // Default to true if missing (legacy/warden docs)
        isMicrosoftLinked: map['isMicrosoftLinked'] == true,
-      hasActiveShortStay: map['Hasapprovedshortstay'] == true,
+      hasActiveShortStay: map['hasActiveShortStay'] == true,
     );
   }
 }

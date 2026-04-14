@@ -8,7 +8,9 @@ import '../services/firebase_service.dart';
 
 class WardenProvider with ChangeNotifier {
   final FirebaseService _fs = FirebaseService();
-  final String hostel;
+  final String initialHostel;
+  final String role;
+  String? _currentHostelFilter;
 
   // Subscriptions
   final List<StreamSubscription> _subscriptions = [];
@@ -32,11 +34,13 @@ class WardenProvider with ChangeNotifier {
   bool _hasNewComplaints = false;
   bool _hasNewShortStays = false;
 
-  WardenProvider(this.hostel) {
+  WardenProvider(this.initialHostel, {this.role = 'Warden'}) {
+    _currentHostelFilter = initialHostel.isEmpty || initialHostel == 'All' ? 'All' : initialHostel;
     _initStreams();
   }
 
   // Getters
+  String? get currentHostelFilter => _currentHostelFilter;
   bool get hasNewRegistrations => _hasNewRegistrations;
   bool get hasNewLeaves => _hasNewLeaves;
   bool get hasNewComplaints => _hasNewComplaints;
@@ -53,12 +57,29 @@ class WardenProvider with ChangeNotifier {
   List<ShortStayRequest> get shortStays => _shortStays;
   bool get isLoading => _isLoading;
 
+  void updateHostelFilter(String? newFilter) {
+    if (_currentHostelFilter == newFilter) return;
+    _currentHostelFilter = newFilter;
+    debugPrint('[WardenProvider] Filter changed to: $newFilter');
+    _clearSubscriptions();
+    _initStreams();
+    notifyListeners();
+  }
+
+  void _clearSubscriptions() {
+    for (var sub in _subscriptions) {
+      sub.cancel();
+    }
+    _subscriptions.clear();
+  }
+
   void _initStreams() {
-    debugPrint('[WardenProvider] Initializing streams for hostel: $hostel');
+    final filter = _currentHostelFilter; // null means 'All'
+    debugPrint('[WardenProvider] Initializing streams with filter: $filter');
 
     // 1. Pending Registrations
     _subscriptions.add(
-      _fs.getPendingRegistrations(hostel).listen((list) {
+      _fs.getPendingRegistrations(filter).listen((list) {
         if (list.length > _pendingRegistrations.length) {
           _hasNewRegistrations = true;
         }
@@ -69,7 +90,7 @@ class WardenProvider with ChangeNotifier {
 
     // 2. Pending Leaves
     _subscriptions.add(
-      _fs.getPendingLeaves(hostel).listen((list) {
+      _fs.getPendingLeaves(filter).listen((list) {
         if (list.length > _pendingLeaves.length) {
           _hasNewLeaves = true;
         }
@@ -80,7 +101,7 @@ class WardenProvider with ChangeNotifier {
 
     // 3. Complaints
     _subscriptions.add(
-      _fs.getComplaintsForRole('Warden', hostel).listen((list) {
+      _fs.getComplaintsForRole(role, filter).listen((list) {
         final pending = list.where((c) => c.status == 'Pending').toList();
         if (pending.length > _pendingComplaints.length) {
           _hasNewComplaints = true;
@@ -92,7 +113,7 @@ class WardenProvider with ChangeNotifier {
 
     // 4. Short Stays
     _subscriptions.add(
-      _fs.getPendingShortStays(hostel).listen((list) {
+      _fs.getPendingShortStays(filter).listen((list) {
         if (list.length > _pendingShortStays.length) {
           _hasNewShortStays = true;
         }
@@ -104,7 +125,7 @@ class WardenProvider with ChangeNotifier {
     // 5. Students
     _isLoading = true;
     _subscriptions.add(
-      _fs.getHostelStudents(hostel).listen((list) {
+      _fs.getHostelStudents(filter).listen((list) {
         _students = list;
         _isLoading = false;
         notifyListeners();
@@ -113,16 +134,15 @@ class WardenProvider with ChangeNotifier {
 
     // 6. All Leaves
     _subscriptions.add(
-      _fs.getHostelLeaves(hostel).listen((list) {
+      _fs.getHostelLeaves(filter).listen((list) {
         _leaves = list;
         notifyListeners();
       }),
     );
 
-    // 7. All Complaints (Already handled by role/hostel in stream 3, but let's separate for clarity if needed)
-    // Actually stream 3 was filtering for 'Pending'. We need full history too.
+    // 7. All Complaints
     _subscriptions.add(
-      _fs.getComplaintsForRole('Warden', hostel).listen((list) {
+      _fs.getComplaintsForRole(role, filter).listen((list) {
         _complaints = list;
         notifyListeners();
       }),
@@ -130,7 +150,7 @@ class WardenProvider with ChangeNotifier {
 
     // 8. All Short Stays
     _subscriptions.add(
-      _fs.getHostelShortStays(hostel).listen((list) {
+      _fs.getHostelShortStays(filter).listen((list) {
         _shortStays = list;
         notifyListeners();
       }),
@@ -161,9 +181,7 @@ class WardenProvider with ChangeNotifier {
   @override
   void dispose() {
     debugPrint('[WardenProvider] Disposing streams');
-    for (var sub in _subscriptions) {
-      sub.cancel();
-    }
+    _clearSubscriptions();
     super.dispose();
   }
 }

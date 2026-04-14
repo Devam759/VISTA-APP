@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/vista_user.dart';
@@ -44,10 +44,9 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> _init() async {
-    debugPrint("VISTA: AuthProvider initializing...");
-    // 1. Check for current user first
+    if (kDebugMode) debugPrint("VISTA: AuthProvider initializing...");
     if (_firebaseService.currentUser != null) {
-      debugPrint("VISTA: Found existing user: ${_firebaseService.currentUser!.email}. Fetching profile...");
+      if (kDebugMode) debugPrint("VISTA: Found existing user. Fetching profile...");
       await fetchUserProfile(_firebaseService.currentUser!.uid);
     }
 
@@ -56,7 +55,7 @@ class AuthProvider with ChangeNotifier {
 
     // 3. Start listening to auth changes
     _firebaseService.userStream.listen((user) async {
-      debugPrint("VISTA: Auth state changed. User: ${user?.email ?? 'null'}");
+      if (kDebugMode) debugPrint("VISTA: Auth state changed.");
       if (_suppressAuthChanges) {
         debugPrint("VISTA: Auth changes suppressed.");
         return;
@@ -193,13 +192,17 @@ class AuthProvider with ChangeNotifier {
     _suppressAuthChanges = true;
     notifyListeners();
     try {
-      // Check phone uniqueness first
+      // Create the Firebase Auth account first (so we're authenticated for Firestore reads)
+      final credential = await _firebaseService.signUp(email, password);
+
+      // Check phone uniqueness (now authenticated, so Firestore rules allow the read)
       final ownerEmail = await _firebaseService.getPhoneNumberOwner(phoneNumber);
       if (ownerEmail != null && ownerEmail != email) {
+        // Phone is taken — clean up the auth account we just created
+        await credential.user?.delete();
         throw Exception('This phone number is already registered with another account ($ownerEmail).');
       }
 
-      final credential = await _firebaseService.signUp(email, password);
       final newUser = VistaUser(
         uid: credential.user!.uid,
         name: _normalizeName(name),

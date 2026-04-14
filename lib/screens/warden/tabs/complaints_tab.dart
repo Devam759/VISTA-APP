@@ -3,8 +3,11 @@ import 'package:intl/intl.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/complaint_model.dart';
 import '../../../services/firebase_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/warden_provider.dart';
 import '../components/warden_components.dart';
 import '../components/warden_tab_scaffold.dart';
+import '../../../widgets/skeleton_loader.dart';
 import '../../../widgets/hover_effect.dart';
 
 class ComplaintsTab extends StatefulWidget {
@@ -89,63 +92,67 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
             ),
           ),
             Expanded(
-              child: WardenTabScaffold<Complaint>(
-                title: 'Complaints',
-                searchCtrl: _searchCtrl,
-                searchHint: 'Search ID, title, student...',
-                tabs: const ['Pending', 'Resolved', 'Escalated'],
-                actionWidget: WardenSearchAction(
-                  onTap: () => _selectDate(context),
-                  child: HoverEffect(
-                    child: Icon(
-                      Icons.calendar_today_rounded,
-                      color: _selectedDate != null ? kPrimary : Colors.black54,
-                      size: 20,
+              child: Consumer<WardenProvider>(
+                builder: (context, wp, _) {
+                  return WardenTabScaffold<Complaint>(
+                    title: 'Complaints',
+                    searchCtrl: _searchCtrl,
+                    searchHint: 'Search ID, title...',
+                    tabs: const ['Pending', 'Resolved', 'Escalated'],
+                    actionWidget: WardenSearchAction(
+                      onTap: () => _selectDate(context),
+                      child: HoverEffect(
+                        child: Icon(
+                          Icons.calendar_today_rounded,
+                          color: _selectedDate != null ? kPrimary : Colors.black54,
+                          size: 20,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                streamFactory: () => FirebaseService().getComplaintsForRole(roleStr, widget.warden.hostel ?? ''),
-                itemBuilder: (context, complaint) {
-                  return WardenExpandableComplaintCard(
-                    complaint: complaint,
-                    warden: widget.warden,
-                    fs: FirebaseService(),
+                    streamFactory: () => FirebaseService().getComplaintsForRole(roleStr, wp.currentHostelFilter),
+                    loadingWidget: const ComplaintListSkeleton(),
+                    itemBuilder: (context, complaint) {
+                      return WardenExpandableComplaintCard(
+                        complaint: complaint,
+                        warden: widget.warden,
+                        fs: FirebaseService(),
+                      );
+                    },
+                    filterLogic: (complaint, tab, query) {
+                      // 1. Status Filter
+                      bool matchesStatus = false;
+                      if (tab == 'Pending') {
+                        matchesStatus = complaint.status == 'Pending';
+                      } else if (tab == 'Resolved') {
+                        matchesStatus = (complaint.status == 'Resolved' || complaint.status == 'Confirmed');
+                      } else if (tab == 'Escalated') {
+                        matchesStatus = complaint.isEscalated;
+                      }
+
+                      if (!matchesStatus) return false;
+
+                      // 2. Date Filter
+                      if (_selectedDate != null) {
+                        final cDate = complaint.createdAt;
+                        if (cDate.year != _selectedDate!.year ||
+                            cDate.month != _selectedDate!.month ||
+                            cDate.day != _selectedDate!.day) {
+                          return false;
+                        }
+                      }
+
+                      // 3. Search Filter
+                      if (query.isEmpty) return true;
+                      final q = query.toLowerCase();
+                      return complaint.title.toLowerCase().contains(q) ||
+                          complaint.seqId.toLowerCase().contains(q);
+                    },
+                    emptyIcon: Icons.assignment_outlined,
+                    emptyTitle: wp.currentHostelFilter == null ? 'No complaints in any hostel' : 'No complaints in ${wp.currentHostelFilter}',
+                    emptySubtitle: 'Try adjusting your filters or search query',
+                    sectionTitle: 'Complaint Records',
                   );
-                },
-                filterLogic: (complaint, tab, query) {
-                  // 1. Status Filter
-                  bool matchesStatus = false;
-                  if (tab == 'Pending') {
-                    matchesStatus = complaint.status == 'Pending';
-                  } else if (tab == 'Resolved') {
-                    matchesStatus = (complaint.status == 'Resolved' || complaint.status == 'Confirmed');
-                  } else if (tab == 'Escalated') {
-                    matchesStatus = complaint.isEscalated;
-                  }
-
-                  if (!matchesStatus) return false;
-
-                  // 2. Date Filter
-                  if (_selectedDate != null) {
-                    final cDate = complaint.createdAt;
-                    if (cDate.year != _selectedDate!.year ||
-                        cDate.month != _selectedDate!.month ||
-                        cDate.day != _selectedDate!.day) {
-                      return false;
-                    }
-                  }
-
-                  // 3. Search Filter
-                  if (query.isEmpty) return true;
-                  final q = query.toLowerCase();
-                  return complaint.title.toLowerCase().contains(q) ||
-                      complaint.studentName.toLowerCase().contains(q) ||
-                      complaint.seqId.toLowerCase().contains(q);
-                },
-                emptyIcon: Icons.assignment_outlined,
-                emptyTitle: 'No complaints found',
-                emptySubtitle: 'Try adjusting your filters or search query',
-                sectionTitle: 'Complaint Records',
+                }
               ),
             ),
       ],

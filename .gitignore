@@ -18,7 +18,9 @@ node_modules/
 .qoder/
 release_outputs/
 analyze.txt
+analysis_output.txt
 flutter_analyze*.txt
+
 
 # Crash logs
 crash_log_*.log
@@ -89,8 +91,13 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Firebase secrets
+# Firebase secrets (service account keys — NEVER commit)
 *-firebase-adminsdk-*.json
+
+# Firebase platform config files (contain live API keys)
+# Regenerate: flutterfire configure
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
 # Local JDK
 /jdk-17/
@@ -123,3 +130,23 @@ old-media/
 
 # Extra Build Reports
 **/reports/
+
+# Temporary and OS-specific files
+*.tmp
+*.temp
+*.bak
+**/.DS_Store
+**/Thumbs.db
+.directory
+.fvm/
+.shelf/
+
+# Local Python environments (if any)
+env/
+venv/
+.env/
+.venv/
+bin/
+lib64/
+include/
+pyvenv.cfg

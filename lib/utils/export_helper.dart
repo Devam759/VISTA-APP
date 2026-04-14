@@ -352,8 +352,8 @@ class ExportHelper {
     }
     List<List<dynamic>> rows = [
       [
+        'Ticket ID',
         'Date',
-        'Student',
         'Title',
         'Description',
         'Status',
@@ -364,8 +364,8 @@ class ExportHelper {
 
     for (var c in filteredData) {
       rows.add([
+        c.seqId,
         DateFormat('dd-MM-yyyy').format(c.createdAt),
-        c.isAnonymous ? 'Anonymous' : c.studentName,
         c.title,
         c.description,
         c.status,

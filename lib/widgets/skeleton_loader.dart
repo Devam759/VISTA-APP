@@ -49,7 +49,7 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -58,10 +58,10 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
                 0.5 + _animation.value * 0.1,
                 0.9 + _animation.value * 0.1,
               ],
-              colors: [
-                Colors.grey.shade200,
-                Colors.grey.shade100,
-                Colors.grey.shade200,
+              colors: const [
+                Color(0xFFF1F5F9), // Slate 100
+                Color(0xFFF8FAFC), // Slate 50
+                Color(0xFFF1F5F9), // Slate 100
               ],
             ),
           ),
@@ -77,38 +77,39 @@ class StudentListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      itemCount: 6,
+      itemCount: 8,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         return Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade100),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
           ),
           child: Row(
             children: [
-              const SkeletonLoader(
-                width: 48,
-                height: 48,
-                borderRadius: BorderRadius.all(Radius.circular(24)),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SkeletonLoader(width: 120, height: 14),
+                    const SkeletonLoader(width: 140, height: 16),
                     const SizedBox(height: 8),
-                    const SkeletonLoader(width: 80, height: 10),
+                    const SkeletonLoader(width: 90, height: 12),
                   ],
                 ),
               ),
-              const SkeletonLoader(width: 60, height: 24),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  SkeletonLoader(width: 40, height: 10),
+                  SizedBox(height: 6),
+                  SkeletonLoader(width: 60, height: 14, borderRadius: BorderRadius.all(Radius.circular(6))),
+                ],
+              ),
             ],
           ),
         );
@@ -130,19 +131,29 @@ class AttendanceListSkeleton extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade100),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
           ),
           child: Row(
             children: [
-              const SkeletonLoader(width: 40, height: 14),
-              const Spacer(),
-              const SkeletonLoader(width: 80, height: 14),
-              const SizedBox(width: 20),
-              const SkeletonLoader(width: 60, height: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SkeletonLoader(width: 130, height: 16),
+                    const SizedBox(height: 8),
+                    const SkeletonLoader(width: 160, height: 12),
+                  ],
+                ),
+              ),
+              const SkeletonLoader(
+                width: 75,
+                height: 28,
+                borderRadius: BorderRadius.all(Radius.circular(20)),
+              ),
             ],
           ),
         );
@@ -162,11 +173,11 @@ class ComplaintListSkeleton extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.shade100),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,16 +186,16 @@ class ComplaintListSkeleton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const SkeletonLoader(width: 150, height: 18),
-                  const SkeletonLoader(width: 70, height: 24),
+                  const SkeletonLoader(width: 70, height: 26, borderRadius: BorderRadius.all(Radius.circular(20))),
                 ],
               ),
-              const SizedBox(height: 12),
-              const SkeletonLoader(width: double.infinity, height: 12),
-              const SizedBox(height: 6),
-              const SkeletonLoader(width: 200, height: 12),
               const SizedBox(height: 16),
-              const Divider(height: 1),
-              const SizedBox(height: 12),
+              const SkeletonLoader(width: double.infinity, height: 12),
+              const SizedBox(height: 8),
+              const SkeletonLoader(width: 200, height: 12),
+              const SizedBox(height: 20),
+              Container(height: 1, color: const Color(0xFFF1F5F9)),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   const SkeletonLoader(width: 100, height: 14),
@@ -206,16 +217,16 @@ class LeaveListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      itemCount: 4,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      itemCount: 5,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade100),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
           ),
           child: Row(
             children: [
@@ -224,12 +235,16 @@ class LeaveListSkeleton extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SkeletonLoader(width: 180, height: 16),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     const SkeletonLoader(width: 120, height: 12),
                   ],
                 ),
               ),
-              const SkeletonLoader(width: 80, height: 28),
+              const SkeletonLoader(
+                width: 85,
+                height: 30,
+                borderRadius: BorderRadius.all(Radius.circular(20)),
+              ),
             ],
           ),
         );
@@ -245,15 +260,15 @@ class ShortStaySkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       itemCount: 5,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade100),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,14 +276,14 @@ class ShortStaySkeleton extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SkeletonLoader(width: 100, height: 16),
-                  const SkeletonLoader(width: 70, height: 24),
+                  const SkeletonLoader(width: 120, height: 18),
+                  const SkeletonLoader(width: 75, height: 26, borderRadius: BorderRadius.all(Radius.circular(20))),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               const SkeletonLoader(width: double.infinity, height: 12),
-              const SizedBox(height: 8),
-              const SkeletonLoader(width: 150, height: 12),
+              const SizedBox(height: 10),
+              const SkeletonLoader(width: 180, height: 12),
             ],
           ),
         );
@@ -290,18 +305,19 @@ class DashboardSummarySkeleton extends StatelessWidget {
             children: [
               Expanded(
                 child: Container(
-                  height: 100,
+                  height: 110,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
                   ),
                   child: const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SkeletonLoader(width: 40, height: 12),
-                        SizedBox(height: 8),
-                        SkeletonLoader(width: 30, height: 24),
+                        SkeletonLoader(width: 50, height: 12),
+                        SizedBox(height: 10),
+                        SkeletonLoader(width: 40, height: 28),
                       ],
                     ),
                   ),
@@ -310,18 +326,19 @@ class DashboardSummarySkeleton extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Container(
-                  height: 100,
+                  height: 110,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
                   ),
                   child: const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SkeletonLoader(width: 40, height: 12),
-                        SizedBox(height: 8),
-                        SkeletonLoader(width: 30, height: 24),
+                        SkeletonLoader(width: 50, height: 12),
+                        SizedBox(height: 10),
+                        SkeletonLoader(width: 40, height: 28),
                       ],
                     ),
                   ),
@@ -331,18 +348,19 @@ class DashboardSummarySkeleton extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Container(
-            height: 100,
+            height: 110,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
             ),
             child: const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SkeletonLoader(width: 60, height: 12),
-                  SizedBox(height: 8),
-                  SkeletonLoader(width: 40, height: 24),
+                  SkeletonLoader(width: 80, height: 12),
+                  SizedBox(height: 10),
+                  SkeletonLoader(width: 50, height: 32),
                 ],
               ),
             ),

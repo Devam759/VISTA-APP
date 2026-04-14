@@ -6,7 +6,8 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
-import 'screens/student/student_dashboard.dart';
+import 'screens/student/hosteller_dashboard.dart';
+import 'screens/student/day_scholar_dashboard.dart';
 import 'screens/warden/warden_dashboard.dart';
 import 'screens/head_warden/head_warden_dashboard.dart';
 import 'screens/chief_warden/chief_warden_dashboard.dart';
@@ -61,30 +62,29 @@ Future<void> _initializeFirebase() async {
     );
     
     if (!kIsWeb) {
-      // Activate App Check with Native Debug Provider configuration
       await FirebaseAppCheck.instance.activate(
         providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
         providerApple: const AppleDebugProvider(),
       );
 
       if (kDebugMode) {
-        // We wait a tiny bit for the native provider to sync
+        // Only print the debug token in debug mode — it must never appear in production logs.
         Future.delayed(const Duration(seconds: 1), () async {
           try {
             final token = await FirebaseAppCheck.instance.getToken(true);
             debugPrint("\n\n${"=" * 60}");
-            debugPrint("VISTA: APP CHECK DEBUG TOKEN (Hardcoded in strings.xml):");
-            debugPrint(token ?? "Failed to retrieve - check console");
+            debugPrint("VISTA: APP CHECK DEBUG TOKEN:");
+            debugPrint(token ?? "Failed to retrieve");
             debugPrint("ACTION: Add the above UUID to Firebase Console -> App Check");
             debugPrint("=" * 60 + "\n\n");
           } catch (e) {
-             debugPrint("VISTA: Could not fetch App Check token yet (Attempting background...): $e");
+            debugPrint("VISTA: Could not fetch App Check token: $e");
           }
         });
       }
     }
   } catch (e) {
-    debugPrint("VISTA: Firebase initialization failed: $e");
+    if (kDebugMode) debugPrint("VISTA: Firebase initialization failed: $e");
   }
 }
 
@@ -113,7 +113,11 @@ class VistaApp extends StatelessWidget {
           '/signup': (context) => const SignupScreen(),
           '/pending': (context) => const PendingApprovalScreen(),
           '/mandatory-link': (context) => const MandatoryLinkScreen(),
-          '/student': (context) => const StudentDashboard(),
+          '/student': (context) {
+            final user = Provider.of<AuthProvider>(context, listen: false).userProfile;
+            if (user?.isDayScholar ?? false) return const DayScholarDashboard();
+            return const HostellerDashboard();
+          },
           '/warden': (context) => const WardenDashboard(),
           '/head-warden': (context) => const HeadWardenDashboard(),
           '/chief-warden': (context) => const ChiefWardenDashboard(),
@@ -129,7 +133,9 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    debugPrint("VISTA: AuthWrapper Building. isLoading: ${authProvider.isLoading}, firebaseUser: ${authProvider.firebaseUser?.email}, userProfile: ${authProvider.userProfile != null ? 'EXISTS' : 'NULL'}");
+    if (kDebugMode) {
+      debugPrint("VISTA: AuthWrapper Building. isLoading: ${authProvider.isLoading}, firebaseUser: ${authProvider.firebaseUser?.email != null ? '[redacted]' : 'null'}, userProfile: ${authProvider.userProfile != null ? 'EXISTS' : 'NULL'}");
+    }
 
     if (authProvider.isLoading) {
       return Scaffold(
@@ -193,7 +199,8 @@ class AuthWrapper extends StatelessWidget {
         if (!user.isAccountActive || hostellerNeedsApproval) {
           return const PendingApprovalScreen();
         }
-        return const StudentDashboard();
+        if (user.isDayScholar) return const DayScholarDashboard();
+        return const HostellerDashboard();
       case UserRole.warden:
         return const WardenDashboard();
       case UserRole.headWarden:

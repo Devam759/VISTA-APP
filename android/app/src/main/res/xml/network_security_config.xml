@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  M4 — Certificate Pinning / Network Security Configuration
+  This file restricts network traffic for the VISTA app on Android:
+  - Enforces HTTPS-only for all connections (no cleartext HTTP).
+  - Disallows user-installed CA certificates in release builds,
+    which prevents trivial MITM interception via Burp Suite / Charles
+    when a user installs a rogue CA.
+  - Debug builds retain access to user CAs so developers can use proxies.
+
+  Reference: https://developer.android.com/training/articles/security-config
+-->
+<network-security-config>
+
+    <!-- ── Production: no user/system CAs trusted beyond Android defaults ── -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust only system (pre-installed) CAs in release builds -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- ── Debug builds: allow user CAs so devs can inspect HTTPS traffic ── -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+
+    <!-- ── Firebase / Google domains: enforce TLS, trust system CAs only ── -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">firebaseapp.com</domain>
+        <domain includeSubdomains="true">firebaseio.com</domain>
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">firebasestorage.googleapis.com</domain>
+        <domain includeSubdomains="true">identitytoolkit.googleapis.com</domain>
+        <domain includeSubdomains="true">login.microsoftonline.com</domain>
+        <domain includeSubdomains="true">graph.microsoft.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+</network-security-config>

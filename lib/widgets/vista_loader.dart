@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
 
 class VISTALoader extends StatelessWidget {
   final double size;
@@ -15,37 +14,30 @@ class VISTALoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = color ?? const Color(0xFF1E3A8A);
+    
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: size,
-            height: size,
-            child: Lottie.asset(
-              'assets/animation/loading_animation_blue.lottie',
-              width: size,
-              height: size,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                // Fallback to standard loader if lottie fails for any reason
-                return Center(
-                  child: CircularProgressIndicator(
-                    color: color ?? const Color(0xFF1E3A8A),
-                    strokeWidth: 3,
-                  ),
-                );
-              },
+            width: size * 0.25, // Smaller radius for the classic indicator
+            height: size * 0.25,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              backgroundColor: primaryColor.withValues(alpha: 0.1),
             ),
           ),
           if (message != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
               message!,
               style: TextStyle(
-                color: color ?? const Color(0xFF1E3A8A),
+                color: primaryColor.withValues(alpha: 0.8),
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
               ),
               textAlign: TextAlign.center,
             ),

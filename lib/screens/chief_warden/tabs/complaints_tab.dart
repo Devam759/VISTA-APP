@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/warden_provider.dart';
 import 'package:intl/intl.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/complaint_model.dart';
@@ -19,7 +21,6 @@ class ComplaintsTab extends StatefulWidget {
 class _ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProviderStateMixin {
   String _searchQuery = '';
   final TextEditingController _searchCtrl = TextEditingController();
-  String _hostelFilter = 'All';
   DateTime? _selectedDate;
   late TabController _tabController;
 
@@ -87,28 +88,9 @@ class _ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProvider
                 child: const Icon(Icons.calendar_today_rounded, color: Colors.black54, size: 22),
               ),
               const SizedBox(width: 8),
-              WardenSearchAction(
-                child: PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.apartment_rounded,
-                    color: _hostelFilter == 'All' ? Colors.black54 : kPrimary,
-                    size: 22,
-                  ),
-                  tooltip: 'Filter by Hostel',
-                  padding: EdgeInsets.zero,
-                  onSelected: (val) => setState(() => _hostelFilter = val),
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'All', child: Text('All Hostels')),
-                    const PopupMenuItem(value: 'BH1', child: Text('BH1')),
-                    const PopupMenuItem(value: 'BH2', child: Text('BH2')),
-                    const PopupMenuItem(value: 'GH1', child: Text('GH1')),
-                    const PopupMenuItem(value: 'GH2', child: Text('GH2')),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
+      ),
+    ),
         if (_selectedDate != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -161,9 +143,9 @@ class _ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProvider
             controller: _tabController,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _FilteredComplaintList(status: 'Pending', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, warden: widget.warden),
-              _FilteredComplaintList(status: 'Resolved', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, warden: widget.warden),
-              _FilteredComplaintList(status: 'Escalated', searchQuery: _searchQuery, selectedDate: _selectedDate, hostelFilter: _hostelFilter, fs: widget.fs, warden: widget.warden),
+              _FilteredComplaintList(status: 'Pending', searchQuery: _searchQuery, selectedDate: _selectedDate, fs: widget.fs, warden: widget.warden),
+              _FilteredComplaintList(status: 'Resolved', searchQuery: _searchQuery, selectedDate: _selectedDate, fs: widget.fs, warden: widget.warden),
+              _FilteredComplaintList(status: 'Escalated', searchQuery: _searchQuery, selectedDate: _selectedDate, fs: widget.fs, warden: widget.warden),
             ],
           ),
         ),
@@ -176,7 +158,6 @@ class _FilteredComplaintList extends StatefulWidget {
   final String status;
   final String searchQuery;
   final DateTime? selectedDate;
-  final String hostelFilter;
   final FirebaseService fs;
   final VistaUser warden;
 
@@ -184,7 +165,6 @@ class _FilteredComplaintList extends StatefulWidget {
     required this.status,
     required this.searchQuery,
     this.selectedDate,
-    required this.hostelFilter,
     required this.fs,
     required this.warden,
   });
@@ -200,8 +180,11 @@ class _FilteredComplaintListState extends State<_FilteredComplaintList> with Aut
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final wp = Provider.of<WardenProvider>(context);
+    final hostelFilter = wp.currentHostelFilter ?? 'All';
+
     return StreamBuilder<List<Complaint>>(
-      stream: widget.fs.getComplaintsForRole('Chief Warden', 'All'),
+      stream: widget.fs.getComplaintsForRole('Chief Warden', hostelFilter),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) return const ComplaintListSkeleton();
         var list = snap.data ?? [];
@@ -210,8 +193,7 @@ class _FilteredComplaintListState extends State<_FilteredComplaintList> with Aut
         if (widget.searchQuery.isNotEmpty) {
           list = list.where((c) =>
               c.title.toLowerCase().contains(widget.searchQuery.toLowerCase()) ||
-              c.seqId.toLowerCase().contains(widget.searchQuery.toLowerCase()) ||
-              c.studentName.toLowerCase().contains(widget.searchQuery.toLowerCase())).toList();
+              c.seqId.toLowerCase().contains(widget.searchQuery.toLowerCase())).toList();
         }
 
         if (widget.status == 'Pending') {
@@ -222,8 +204,8 @@ class _FilteredComplaintListState extends State<_FilteredComplaintList> with Aut
           list = list.where((c) => c.isEscalated).toList();
         }
 
-        if (widget.hostelFilter != 'All') {
-          list = list.where((c) => c.hostel == widget.hostelFilter).toList();
+        if (hostelFilter != 'All') {
+          list = list.where((c) => c.hostel == hostelFilter).toList();
         }
 
         if (widget.selectedDate != null) {

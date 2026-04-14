@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/warden_provider.dart';
 import 'package:intl/intl.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/attendance_record.dart';
@@ -6,6 +8,7 @@ import '../../../services/firebase_service.dart';
 import '../../warden/components/warden_components.dart';
 import '../../warden/components/warden_tab_scaffold.dart';
 import '../../warden/components/warden_attendance_calendar.dart';
+import '../../../widgets/skeleton_loader.dart';
 
 class AttendanceTab extends StatefulWidget {
   final VistaUser warden;
@@ -17,7 +20,6 @@ class AttendanceTab extends StatefulWidget {
 }
 
 class _AttendanceTabState extends State<AttendanceTab> {
-  String _hostelFilter = 'All';
   DateTime _selectedDate = DateTime.now();
 
   @override
@@ -25,10 +27,13 @@ class _AttendanceTabState extends State<AttendanceTab> {
     final now = DateTime.now();
     final isLateWindow = now.hour >= 22;
 
+    final wp = Provider.of<WardenProvider>(context);
+    final hostelFilter = wp.currentHostelFilter ?? 'All';
+
     return WardenTabScaffold<AttendanceRecord>(
       title: 'Daily Attendance',
       sectionTitle: 'Attendance Records',
-      tabs: const ['All', 'Marked', 'Late', 'On Leave', 'Absent'],
+      tabs: const ['All', 'Present', 'Late', 'On Leave', 'Absent'],
       searchQueryPlaceholder: 'Search student or room...',
       actionWidget: Row(
         mainAxisSize: MainAxisSize.min,
@@ -50,22 +55,10 @@ class _AttendanceTabState extends State<AttendanceTab> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          WardenSearchAction(
-            onTap: () => WardenUIUtils.showHostelFilter(
-              context: context,
-              currentFilter: _hostelFilter == 'All' ? null : _hostelFilter,
-              onSelected: (val) => setState(() => _hostelFilter = val ?? 'All'),
-            ),
-            child: Icon(
-              Icons.apartment_rounded,
-              color: _hostelFilter == 'All' ? Colors.black54 : kPrimary,
-              size: 22,
-            ),
-          ),
         ],
       ),
-      streamFactory: () => widget.fs.getUnifiedAttendanceStream('All', _selectedDate),
+      streamFactory: () => widget.fs.getUnifiedAttendanceStream(wp.currentHostelFilter, _selectedDate),
+      loadingWidget: const AttendanceListSkeleton(),
       emptyIcon: Icons.how_to_reg_rounded,
       emptyTitle: 'No Attendance Records',
       emptySubtitle: 'Student attendance records for this date will appear here.',
@@ -74,7 +67,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
         if (isLateWindow && defaulters.isNotEmpty) {
           return PendingAttendanceBanner(
             count: defaulters.length,
-            onViewList: () => WardenUIUtils.showPendingAttendanceList(context, defaulters),
+            onViewList: () => WardenUIUtils.showPendingAttendanceList(context, defaulters, wardenUid: widget.warden.uid, wardenName: widget.warden.name),
           );
         }
         return const SizedBox.shrink();
@@ -93,8 +86,8 @@ class _AttendanceTabState extends State<AttendanceTab> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Room ${record.student.roomNumber ?? "N/A"} • ${shortHostelName(record.student.hostel)}',
-                    style: const TextStyle(color: Colors.black45, fontSize: 12, fontWeight: FontWeight.w500),
+                    '${getFullHostelName(record.student.hostel)} - ${record.student.roomNumber ?? "N/A"}',
+                    style: const TextStyle(color: Colors.black45, fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -105,7 +98,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
         ),
       ),
       filterLogic: (record, tab, query) {
-        if (_hostelFilter != 'All' && record.student.hostel != _hostelFilter) return false;
+        if (hostelFilter != 'All' && record.student.hostel != hostelFilter) return false;
         if (tab != 'All' && record.status != tab) return false;
         if (query.isNotEmpty) {
           final q = query.toLowerCase();
@@ -120,7 +113,6 @@ class _AttendanceTabState extends State<AttendanceTab> {
     Color color;
     switch (status) {
       case 'Present':
-      case 'Marked':
         color = const Color(0xFF10B981); // Green
         break;
       case 'Late':

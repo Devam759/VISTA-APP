@@ -272,9 +272,19 @@ class _FaceCaptureScreenState extends State<FaceCaptureScreen> {
       if (_cam == null || !_cam!.value.isInitialized) return;
 
       // 1. Take Photo
+      // Pre-emptive stop of stream to stabilize hardware for capture
+      try {
+        await _cam!.stopImageStream();
+      } catch (e) {
+        debugPrint('VISTA: Failed to stop image stream (non-critical): $e');
+      }
+
       final XFile photo = await _cam!.takePicture();
       
-      // SHUT DOWN CAMERA IMMEDIATELY after capture to stop background frame production
+      // SHUT DOWN CAMERA AFTER capture (with safety buffer)
+      // We add a small delay to allow native camera callbacks (shutter sound, metadata) to finish
+      // before we blow away the controller.
+      await Future.delayed(const Duration(milliseconds: 200));
       await _stopCamera();
       
       if (!mounted) return;

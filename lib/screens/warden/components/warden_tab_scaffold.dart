@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../widgets/vista_loader.dart';
+import '../../../widgets/skeleton_loader.dart';
 import 'warden_components.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,6 +23,7 @@ class WardenTabScaffold<T> extends StatefulWidget {
   final TextEditingController? searchCtrl;
   final Widget? extraHeader;
   final Widget Function(List<T>)? extraHeaderBuilder;
+  final Widget? loadingWidget;
 
   // Empty state customization
   final IconData? emptyIcon;
@@ -46,6 +47,7 @@ class WardenTabScaffold<T> extends StatefulWidget {
     this.searchCtrl,
     this.extraHeader,
     this.extraHeaderBuilder,
+    this.loadingWidget,
     this.emptyIcon,
     this.emptyTitle,
     this.emptySubtitle,
@@ -132,6 +134,8 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
                 tabs: widget.tabs.map((t) => Tab(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(t)))).toList(),
               ),
             ),
+            if (widget.sectionTitle != null)
+              WardenSectionLabel(widget.sectionTitle!, animate: false), // Keep header static on rebuilds
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -146,6 +150,7 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
                   itemBuilder: widget.itemBuilder!,
                   filterLogic: widget.filterLogic!,
                   extraHeaderBuilder: widget.extraHeaderBuilder,
+                  loadingWidget: widget.loadingWidget,
                   emptyIcon: widget.emptyIcon,
                   emptyTitle: widget.emptyTitle,
                   emptySubtitle: widget.emptySubtitle,
@@ -170,6 +175,7 @@ class _GenericFilteredList<T> extends StatefulWidget {
   final String? emptyTitle;
   final String? emptySubtitle;
   final bool showCount;
+  final Widget? loadingWidget;
 
   const _GenericFilteredList({
     super.key,
@@ -180,6 +186,7 @@ class _GenericFilteredList<T> extends StatefulWidget {
     required this.itemBuilder,
     required this.filterLogic,
     this.extraHeaderBuilder,
+    this.loadingWidget,
     this.emptyIcon,
     this.emptyTitle,
     this.emptySubtitle,
@@ -201,7 +208,7 @@ class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with A
       stream: widget.streamFactory(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: VISTALoader(color: kPrimary));
+          return widget.loadingWidget ?? const StudentListSkeleton();
         }
 
         final allItems = snapshot.data ?? [];
@@ -219,8 +226,6 @@ class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with A
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.extraHeaderBuilder != null) widget.extraHeaderBuilder!(allItems),
-            if (widget.sectionTitle != null)
-              WardenSectionLabel(widget.sectionTitle!, count: (widget.showCount && widget.tab == 'All') ? filtered.length : null),
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),

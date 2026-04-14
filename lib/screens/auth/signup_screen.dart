@@ -618,13 +618,14 @@ class _SignupScreenState extends State<SignupScreen> {
                           padding: const EdgeInsets.all(4),
                           child: Row(
                             children: [
-                              HoverEffect(child: _buildIDTypeButton('Roll Number', _idType == 'Roll Number')),
-                              HoverEffect(child: _buildIDTypeButton('Registration Number', _idType == 'Registration Number')),
+                              Expanded(child: HoverEffect(child: _buildIDTypeButton('Roll Number', _idType == 'Roll Number'))),
+                              Expanded(child: HoverEffect(child: _buildIDTypeButton('Registration Number', _idType == 'Registration Number'))),
                             ],
                           ),
                         ),
                         const SizedBox(height: 12),
                         TextField(
+                          key: ValueKey(_idType),
                           controller: _idController,
                           decoration: InputDecoration(
                             labelText: _idType,
@@ -748,32 +749,30 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildIDTypeButton(String type, bool isSelected) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _idType = type),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : null,
-          ),
-          child: Text(
-            type,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
-            ),
+    return GestureDetector(
+      onTap: () => setState(() => _idType = type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        child: Text(
+          type,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? const Color(0xFF1E3A8A) : Colors.grey.shade600,
           ),
         ),
       ),

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:rxdart/rxdart.dart';
 import '../models/vista_user.dart';
 import '../models/attendance_model.dart';
 import '../models/leave_request_model.dart';
@@ -14,6 +15,13 @@ import '../utils/rate_limiter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'audit_logger.dart';
+
+// ── Institutional tenant configuration ──────────────────────────────────────
+// JKLU Microsoft 365 tenant. Using 'common' would allow ANY Microsoft account
+// to authenticate — not just JKLU institutional accounts.
+// To find your tenant ID: https://login.microsoftonline.com/<yourdomain>/.well-known/openid-configuration
+const _kJkluTenantId = 'jklu.edu.in'; // Domain-based fallback (safe default)
+// If you have the GUID, prefer it: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
 
 // ── Immutable status whitelists (defence-in-depth alongside Firestore rules) ──
 const _kLeaveStatuses       = {'Pending', 'Approved', 'Rejected', 'Cancelled'};
@@ -90,9 +98,13 @@ class FirebaseService {
     String tenantId = 'common';
     try {
       if (dotenv.isInitialized) {
-        tenantId = dotenv.env['MICROSOFT_TENANT_ID'] ?? 'common';
+        tenantId = dotenv.env['MICROSOFT_TENANT_ID'] ?? _kJkluTenantId;
+      } else {
+        tenantId = _kJkluTenantId; // Never fall back to 'common'
       }
-    } catch (_) {}
+    } catch (_) {
+      tenantId = _kJkluTenantId; // Never fall back to 'common'
+    }
     
     final provider = OAuthProvider('microsoft.com');
     provider.setCustomParameters({
@@ -153,7 +165,7 @@ class FirebaseService {
     final provider = OAuthProvider('microsoft.com');
     provider.setCustomParameters({
       'prompt': 'select_account',
-      'tenant': 'common',
+      'tenant': _kJkluTenantId, // L3: always restrict to JKLU tenant
     });
     provider.addScope('email');
     provider.addScope('profile');
@@ -438,7 +450,7 @@ class FirebaseService {
     });
   }
 
-  Future<void> updateLeaveStatus(String id, String status, {String? actorUid}) async {
+  Future<void> updateLeaveStatus(String id, String status, {String? actionUid}) async {
     if (!_kLeaveStatuses.contains(status)) {
       throw ArgumentError(
         'Invalid leave status "$status". '
@@ -446,9 +458,9 @@ class FirebaseService {
       );
     }
     await _db.collection('leave_requests').doc(id).update({'status': status});
-    if (actorUid != null) {
+    if (actionUid != null) {
       AuditLogger.logSync(
-        uid: actorUid,
+        uid: actionUid,
         event: AuditEvent.statusChange,
         detail: 'leave_requests/$id → $status',
       );
@@ -578,7 +590,8 @@ class FirebaseService {
     String status, {
     String? roomNumber,
     String? allotmentHostel,
-    String? actionBy,
+    String? actionUid,
+    String? actionByName,
   }) async {
     if (!_kShortStayStatuses.contains(status)) {
       throw ArgumentError(
@@ -588,41 +601,74 @@ class FirebaseService {
     }
     final Map<String, dynamic> data = {'status': status};
     if (roomNumber != null) data['roomNumber'] = roomNumber;
-    if (allotmentHostel != null) data['appliedHostel'] = allotmentHostel;
+    if (allotmentHostel != null) {
+      data['allotmentHostel'] = allotmentHostel;
+      data['appliedHostel'] = allotmentHostel;
+    }
     
-    if (actionBy != null) {
+    if (actionByName != null) {
       if (status == 'Approved') {
-        data['approvedBy'] = actionBy;
+        data['approvedBy'] = actionByName;
+        // Handle Extension Approval
+        final snap = await _db.collection('short_stay_requests').doc(id).get();
+        if (snap.exists && snap.data()?['pendingToDate'] != null) {
+          data['checkOutDate'] = snap.data()!['pendingToDate'];
+          data['pendingToDate'] = FieldValue.delete();
+        }
       } else if (status == 'Rejected') {
-        data['rejectedBy'] = actionBy;
+        data['rejectedBy'] = actionByName;
+        // Handle Extension Rejection
+        final snap = await _db.collection('short_stay_requests').doc(id).get();
+        if (snap.exists && snap.data()?['pendingToDate'] != null) {
+          // If an extension was requested and we are 'Rejecting' it,
+          // we should ideally keep the stay 'Approved' but clear the extension.
+          // However, if the user moved it to 'Pending', the 'Rejected' status here
+          // will reject the WHOLE stay. 
+          // If the user wants to ONLY reject extension, they need a separate action.
+          // For now, we follow the standard flow: Rejecting a Pending request rejects it.
+          data['pendingToDate'] = FieldValue.delete();
+        }
       }
     }
 
     await _db.collection('short_stay_requests').doc(id).update(data);
-    if (actionBy != null) {
+    if (actionUid != null) {
       AuditLogger.logSync(
-        uid: actionBy,
+        uid: actionUid,
         event: AuditEvent.statusChange,
         detail: 'short_stay_requests/$id → $status',
       );
     }
 
-    if (status == 'Approved') {
-      final snap = await _db.collection('short_stay_requests').doc(id).get();
-      if (snap.exists) {
-        final studentId = snap.data()?['studentId'];
-        if (studentId != null) {
+    final snap = await _db.collection('short_stay_requests').doc(id).get();
+    if (snap.exists) {
+      final studentId = snap.data()?['studentId'];
+      if (studentId != null) {
+        if (status == 'Approved') {
           final userSnap = await _db.collection('users').doc(studentId).get();
           if (userSnap.exists) {
             final userData = userSnap.data()!;
             final userUpdates = <String, dynamic>{
               'hasUsedShortStay': true,
-              'Hasapprovedshortstay': true,
+              'hasActiveShortStay': true,
             };
-            // If the student is still in 'Short Stay' category, move them to the actual hostel
             if (userData['hostel'] == 'Short Stay' && allotmentHostel != null) {
               userUpdates['hostel'] = allotmentHostel;
               if (roomNumber != null) userUpdates['roomNumber'] = roomNumber;
+            }
+            await _db.collection('users').doc(studentId).update(userUpdates);
+          }
+        } else if (status == 'Completed' || status == 'Rejected' || status == 'Cancelled') {
+          final userSnap = await _db.collection('users').doc(studentId).get();
+          if (userSnap.exists) {
+            final userData = userSnap.data()!;
+            final userUpdates = <String, dynamic>{
+              'hasActiveShortStay': false,
+            };
+            // Automatically revert Day Scholars' hostel to 'Short Stay' and clear room
+            if (userData['userType'] == 'Day Scholar' || userData['hostel'] != 'Short Stay') {
+               userUpdates['hostel'] = 'Short Stay';
+               userUpdates['roomNumber'] = null;
             }
             await _db.collection('users').doc(studentId).update(userUpdates);
           }
@@ -640,9 +686,18 @@ class FirebaseService {
         'actualCheckOutTime': FieldValue.serverTimestamp(),
       });
       if (studentId != null) {
-        await _db.collection('users').doc(studentId).update({
-          'Hasapprovedshortstay': false,
-        });
+        final userSnap = await _db.collection('users').doc(studentId).get();
+        if (userSnap.exists) {
+          final userData = userSnap.data()!;
+          final userUpdates = <String, dynamic>{
+            'hasActiveShortStay': false,
+          };
+          if (userData['userType'] == 'Day Scholar') {
+            userUpdates['hostel'] = 'Short Stay';
+            userUpdates['roomNumber'] = null;
+          }
+          await _db.collection('users').doc(studentId).update(userUpdates);
+        }
       }
     }
   }
@@ -650,6 +705,7 @@ class FirebaseService {
   Future<void> requestShortStayExtension(String id, DateTime newToDate) {
     return _db.collection('short_stay_requests').doc(id).update({
       'pendingToDate': Timestamp.fromDate(newToDate),
+      'status': 'Pending', // Move back to pending for Warden to approve
     });
   }
 
@@ -678,6 +734,7 @@ class FirebaseService {
         isEscalated: complaint.isEscalated,
         createdAt: complaint.createdAt,
         seqId: '',
+        imageUrl: complaint.imageUrl,
       );
       await _db.collection('complaints').add(updatedComplaint.toMap(forCreate: true));
     });
@@ -725,7 +782,7 @@ class FirebaseService {
         });
   }
 
-  Future<void> updateComplaintStatus(String id, String status, {String? actorUid}) async {
+  Future<void> updateComplaintStatus(String id, String status, {String? actionUid}) async {
     if (!_kComplaintStatuses.contains(status)) {
       throw ArgumentError(
         'Invalid complaint status "$status". '
@@ -745,9 +802,9 @@ class FirebaseService {
     } else {
       await _db.collection('complaints').doc(id).update({'status': status});
     }
-    if (actorUid != null) {
+    if (actionUid != null) {
       AuditLogger.logSync(
-        uid: actorUid,
+        uid: actionUid,
         event: AuditEvent.statusChange,
         detail: 'complaints/$id → $status',
       );
@@ -805,12 +862,12 @@ class FirebaseService {
     );
   }
 
-  Future<void> approveStudent(String uid, String roomNumber, {String? actionBy}) {
-    if (actionBy != null) {
+  Future<void> approveStudent(String uid, String roomNumber, {String? actionUid}) {
+    if (actionUid != null) {
       AuditLogger.logSync(
-        uid: actionBy,
+        uid: actionUid,
         event: AuditEvent.statusChange,
-        detail: 'Approved student $uid',
+        detail: 'Approved student $uid with room $roomNumber',
       );
     }
     return _db.collection('users').doc(uid).update({
@@ -820,10 +877,10 @@ class FirebaseService {
     });
   }
 
-  Future<void> denyStudent(String uid, {String? actionBy}) {
-    if (actionBy != null) {
+  Future<void> denyStudent(String uid, {String? actionUid}) async {
+    if (actionUid != null) {
       AuditLogger.logSync(
-        uid: actionBy,
+        uid: actionUid,
         event: AuditEvent.statusChange,
         detail: 'Denied student $uid',
       );
@@ -983,23 +1040,23 @@ class FirebaseService {
     final dateStr = '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
     final startOfDay = DateTime(date.year, date.month, date.day);
 
-    return getHostelStudents(hostel ?? 'All').asyncMap((students) async {
-      // Get attendance for the specific day
-      final attendanceList = await getHostelAttendance(hostel, dateStr).first;
-      // Get approved leaves to check for "On Leave" status
-      final leaveRequests = await getApprovedLeaves(hostel).first;
+    return CombineLatestStream.combine3(
+      getHostelStudents(hostel ?? 'All'),
+      getHostelAttendance(hostel, dateStr),
+      getApprovedLeaves(hostel),
+      (List<VistaUser> students, List<Attendance> attendanceList, List<LeaveRequest> leaveRequests) {
+        return students.map((student) {
+          final att = attendanceList.where((a) => a.studentId == student.uid).firstOrNull;
+          final onLeave = leaveRequests.any((l) =>
+              l.studentId == student.uid &&
+              l.checkInTime == null &&
+              !startOfDay.isBefore(DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day)) &&
+              !startOfDay.isAfter(DateTime(l.toDate.year, l.toDate.month, l.toDate.day)));
 
-      return students.map((student) {
-        final att = attendanceList.where((a) => a.studentId == student.uid).firstOrNull;
-        final onLeave = leaveRequests.any((l) =>
-            l.studentId == student.uid &&
-            l.checkInTime == null && // Fix: Student is NOT on leave if they checked in early
-            !startOfDay.isBefore(DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day)) &&
-            !startOfDay.isAfter(DateTime(l.toDate.year, l.toDate.month, l.toDate.day)));
-
-        return AttendanceRecord(student, att, onLeave: onLeave);
-      }).toList();
-    });
+          return AttendanceRecord(student, att, onLeave: onLeave);
+        }).toList();
+      },
+    );
   }
 
   /// Unified stream for fetching and searching leaves across portals.
@@ -1050,5 +1107,40 @@ class FirebaseService {
     return approvedShortStays.any(
       (ss) => ss.studentId == uid && ss.status == 'Approved' && ss.checkInDate.isBefore(now) && ss.checkOutDate.isAfter(now),
     );
+  }
+
+  /// Sends a manual attendance reminder to a student.
+  Future<void> sendAttendanceNudge({
+    required String studentId,
+    required String wardenId,
+    required String wardenName,
+    required String hostel,
+  }) async {
+    await _db.collection('notifications').add({
+      'studentId': studentId,
+      'wardenId': wardenId,
+      'title': 'Attendance Reminder',
+      'body': 'Warden $wardenName from $hostel is requesting you to mark your attendance.',
+      'type': 'attendance_nudge',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // Also log the nudge in audit logs
+    AuditLogger.logSync(
+      uid: wardenId,
+      event: AuditEvent.statusChange,
+      detail: 'Sent attendance nudge to student $studentId',
+    );
+  }
+
+  /// Stream of notifications for a specific student.
+  Stream<List<Map<String, dynamic>>> getStudentNotifications(String studentId) {
+    return _db
+        .collection('notifications')
+        .where('studentId', isEqualTo: studentId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}).toList());
   }
 }

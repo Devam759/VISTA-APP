@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -150,7 +151,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
                 .toList();
 
             bool hasValidStay = true;
-            if (widget.user.hostel == 'Short Stay') {
+            if (widget.user.isDayScholar || widget.user.hostel == 'Short Stay') {
               final now = DateTime.now();
               final today = DateTime(now.year, now.month, now.day);
               hasValidStay = approvedStays.any((stay) {
@@ -395,12 +396,17 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
                           children: [
                             const Icon(Icons.touch_app_rounded, color: Colors.white, size: 40),
                             const SizedBox(height: 8),
-                            Text(_isValidTime() ? (_isLate() ? 'LATE' : 'TAP TO MARK') : 'CLOSED',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.2)),
+                            Text(
+                              !hasValidStay
+                                  ? 'NO ACTIVE STAY'
+                                  : _isValidTime()
+                                      ? (_isLate() ? 'LATE' : 'TAP TO MARK')
+                                      : 'CLOSED',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.0)),
                           ],
                         ),
             ),
@@ -578,6 +584,23 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
 
       if (mounted) setState(() => _isMarking = true);
 
+      // Extra Hardening: Double check Short Stay status for Day Scholars
+      if (widget.user.isDayScholar || widget.user.hostel == 'Short Stay') {
+        final stays = await widget.fs.getStudentShortStays(widget.user.uid).first;
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final hasValidStay = stays.any((stay) {
+          if (stay.status != 'Approved') return false;
+          final from = DateTime(stay.checkInDate.year, stay.checkInDate.month, stay.checkInDate.day);
+          final to = DateTime(stay.checkOutDate.year, stay.checkOutDate.month, stay.checkOutDate.day);
+          return !today.isBefore(from) && !today.isAfter(to);
+        });
+        if (!hasValidStay) {
+          _showError('No active or approved short stay found for today.');
+          return;
+        }
+      }
+
       if (!kIsWeb && !bypassGeofence) {
         bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!serviceEnabled) {
@@ -596,12 +619,51 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
           _showError('Mock location detected! Please disable fake GPS apps to mark attendance.');
           return;
         }
+        // Client-side check: fast UX gate (also validated server-side independently).
         if (!_isPointInGeofence(position.latitude, position.longitude)) {
           _showError('You must be inside the college campus to mark attendance.');
           return;
         }
+
+        if (!_isValidTime()) {
+          _showError('Attendance not marked, try after 10:00 PM');
+          return;
+        }
+
+        final now = DateTime.now();
+        final dateKey = "${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}";
+        final isLateMarker = _isLate();
+
+        // ── Server-side geofence validation ──────────────────────────────────
+        // Calls validateAndMarkAttendance Cloud Function which independently
+        // validates the GPS position and writes the record — a Fake GPS app
+        // can spoof the client check above but cannot spoof this server check.
+        try {
+          final fn = FirebaseFunctions.instanceFor(region: 'asia-south1')
+              .httpsCallable('validateAndMarkAttendance');
+          await fn.call({
+            'latitude':    position.latitude,
+            'longitude':   position.longitude,
+            'status':      isLateMarker ? 'Late' : 'Present',
+            'hostel':      widget.user.hostel ?? '',
+            'roomNumber':  widget.user.roomNumber ?? 'N/A',
+            'studentName': widget.user.name,
+            'date':        dateKey,
+          });
+          if (mounted) _showSuccess('Attendance marked successfully!');
+        } on FirebaseFunctionsException catch (e) {
+          if (e.code == 'already-exists') {
+            _showError('Attendance already marked for today.');
+          } else if (e.code == 'failed-precondition') {
+            _showError(e.message ?? 'You must be inside the JKLU campus.');
+          } else {
+            _showError(e.message ?? 'Failed to mark attendance. Try again.');
+          }
+        }
+        return; // Always return after server call path
       }
 
+      // Web fallback: direct write (no GPS available on web)
       if (!_isValidTime()) {
         _showError('Attendance not marked, try after 10:00 PM');
         return;

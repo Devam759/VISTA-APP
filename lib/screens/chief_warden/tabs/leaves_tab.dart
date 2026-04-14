@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/warden_provider.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/leave_request_model.dart';
 import '../../../services/firebase_service.dart';
 import '../../warden/components/warden_components.dart';
 import '../../warden/components/warden_tab_scaffold.dart';
+import '../../../widgets/skeleton_loader.dart';
 import '../../../widgets/hover_effect.dart';
 
 class LeavesTab extends StatefulWidget {
@@ -17,10 +20,12 @@ class LeavesTab extends StatefulWidget {
 
 class _LeavesTabState extends State<LeavesTab> {
   DateTime? _selectedDate;
-  String _hostelFilter = 'All';
 
   @override
   Widget build(BuildContext context) {
+    final wp = Provider.of<WardenProvider>(context);
+    final hostelFilter = wp.currentHostelFilter ?? 'All';
+
     return WardenTabScaffold<LeaveRequest>(
       title: 'Leave Requests',
       tabs: const ['All', 'Pending', 'Approved', 'Rejected'],
@@ -39,22 +44,10 @@ class _LeavesTabState extends State<LeavesTab> {
               size: 22,
             ),
           ),
-          const SizedBox(width: 8),
-          WardenSearchAction(
-            onTap: () => WardenUIUtils.showHostelFilter(
-              context: context,
-              currentFilter: _hostelFilter == 'All' ? null : _hostelFilter,
-              onSelected: (val) => setState(() => _hostelFilter = val ?? 'All'),
-            ),
-            child: Icon(
-              Icons.apartment_rounded,
-              color: _hostelFilter == 'All' ? Colors.black54 : kPrimary,
-              size: 22,
-            ),
-          ),
         ],
       ),
-      streamFactory: () => widget.fs.getUnifiedLeavesStream('All'),
+      streamFactory: () => widget.fs.getUnifiedLeavesStream(hostelFilter),
+      loadingWidget: const LeaveListSkeleton(),
       emptyIcon: Icons.beach_access_rounded,
       emptyTitle: 'No Leave Requests',
       emptySubtitle: 'Student leave requests will appear here once submitted.',
@@ -74,7 +67,7 @@ class _LeavesTabState extends State<LeavesTab> {
             Expanded(
               child: HoverEffect(
                 child: OutlinedButton(
-                  onPressed: () => widget.fs.updateLeaveStatus(leave.id, 'Rejected', actorUid: widget.warden.uid),
+                  onPressed: () => widget.fs.updateLeaveStatus(leave.id, 'Rejected', actionUid: widget.warden.uid),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.redAccent,
                     side: const BorderSide(color: Colors.redAccent),
@@ -89,7 +82,7 @@ class _LeavesTabState extends State<LeavesTab> {
             Expanded(
               child: HoverEffect(
                 child: ElevatedButton(
-                  onPressed: () => widget.fs.updateLeaveStatus(leave.id, 'Approved', actorUid: widget.warden.uid),
+                  onPressed: () => widget.fs.updateLeaveStatus(leave.id, 'Approved', actionUid: widget.warden.uid),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
@@ -106,7 +99,7 @@ class _LeavesTabState extends State<LeavesTab> {
       ),
       filterLogic: (leave, tab, query) {
         if (tab != 'All' && leave.status != tab) return false;
-        if (_hostelFilter != 'All' && leave.hostel != _hostelFilter) return false;
+        if (hostelFilter != 'All' && leave.hostel != hostelFilter) return false;
         if (_selectedDate != null) {
           final d = _selectedDate!;
           if (leave.fromDate.isAfter(d) || leave.toDate.isBefore(d)) return false;

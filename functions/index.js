@@ -1,6 +1,6 @@
-const functions = require('firebase-functions/v1');
+﻿const functions = require('firebase-functions/v1');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
@@ -8,7 +8,7 @@ initializeApp();
 const db = getFirestore('default');
 const messaging = getMessaging();
 
-// ── FCM error codes that indicate a permanently invalid token ─────────────────
+// â”€â”€ FCM error codes that indicate a permanently invalid token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const STALE_TOKEN_ERRORS = new Set([
   'messaging/registration-token-not-registered',
   'messaging/invalid-registration-token',
@@ -161,11 +161,10 @@ async function sendNotificationToEligibleStudents() {
             if (!fcmToken || typeof fcmToken !== 'string') return;
             if (onLeaveStudentIds.has(uid)) return;
 
-            // Day scholars are eligible ONLY if they have an active, approved short stay flag AND current date falls within stay period
-            const isEligibleHosteller = !data.isDayScholar || (data.Hasapprovedshortstay === true && activeShortStayUids.has(uid));
-            const isMarked = isMissedReminder && markedStudentIds.has(uid);
+            // Day scholars are eligible ONLY if they have an active, approved short stay for the current date
+            const isEligibleHosteller = !data.isDayScholar || activeShortStayUids.has(uid);
 
-            if (isEligibleHosteller && !isMarked) {
+            if (isEligibleHosteller) {
                 tokens.push(fcmToken);
                 uids.push(uid);
             }
@@ -215,6 +214,50 @@ exports.nightAttendanceReminder = functions.region('asia-south1')
     .onRun(async (context) => {
         await sendNotificationToEligibleStudents();
     });
+
+/**
+ * Sends a push notification when a new manual nudge is created in the notifications collection.
+ */
+exports.sendManualNotification = functions.region('asia-south1').firestore.database('default').document('notifications/{id}').onCreate(async (snapshot, context) => {
+    const data = snapshot.data();
+    if (!data || !data.studentId) return;
+
+    try {
+        const studentSnap = await db.collection('users').doc(data.studentId).get();
+        if (!studentSnap.exists) return;
+
+        const student = studentSnap.data();
+        const fcmToken = student.fcmToken;
+
+        if (!fcmToken || typeof fcmToken !== 'string') {
+            console.log(`[sendManualNotification] No valid token for student ${data.studentId}`);
+            return;
+        }
+
+        const message = {
+            notification: {
+                title: data.title || 'Attendance Reminder',
+                body: data.body || 'Please mark your attendance.',
+            },
+            data: {
+                click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                type: data.type || 'attendance_nudge',
+            },
+            android: {
+                priority: 'high',
+                notification: {
+                    channelId: 'attendance_reminders',
+                },
+            },
+            token: fcmToken,
+        };
+
+        const response = await messaging.send(message);
+        console.log(`Success sending manual notification to ${data.studentId}:`, response);
+    } catch (error) {
+        console.error(`Error sending manual notification for ${context.params.id}:`, error);
+    }
+});
 
 /**
  * Real-time Triggers
@@ -406,7 +449,7 @@ const NOTIFIABLE_COLLECTIONS = new Set([
 exports.notifyStudentOnUpdate = functions.region('asia-south1').firestore.database('default').document('{col}/{id}').onUpdate(async (change, context) => {
     const col = context.params.col;
 
-    // Hard whitelist — ignore any collection not in our set.
+    // Hard whitelist â€” ignore any collection not in our set.
     if (!NOTIFIABLE_COLLECTIONS.has(col)) return;
 
     const oldData = change.before.data();
@@ -536,3 +579,116 @@ exports.autoProcessComplaints = functions.region('asia-south1')
             console.error('Error in autoProcessComplaints:', error);
         }
     });
+
+/**
+ * Scheduled function to clean up Firestore image references older than 90 days.
+ * Note: The actual file deletion is handled by the Storage Lifecycle Rule.
+ * Runs daily at 2:00 AM IST.
+ */
+exports.cleanupOldComplaintImages = functions.region('asia-south1')
+    .pubsub.schedule('0 2 * * *')
+    .timeZone('Asia/Kolkata')
+    .onRun(async (context) => {
+        const ninetyDaysAgo = new Date(Date.now() - (90 * 24 * 60 * 60 * 1000));
+        console.log(`Starting cleanup of image references older than: ${ninetyDaysAgo}`);
+
+        try {
+            const oldComplaintsSnap = await db.collection('complaints')
+                .where('imageUrl', '!=', null)
+                .where('createdAt', '<=', ninetyDaysAgo)
+                .get();
+
+            if (oldComplaintsSnap.empty) {
+                console.log('No old image references to clean up.');
+                return;
+            }
+
+            const batch = db.batch();
+            oldComplaintsSnap.forEach(doc => {
+                batch.update(doc.ref, {
+                    imageUrl: null,
+                    imageDeletedAt: FieldValue.serverTimestamp() // Log for auditing
+                });
+            });
+
+            await batch.commit();
+            console.log(`Successfully cleared ${oldComplaintsSnap.size} image references from Firestore.`);
+        } catch (error) {
+            console.error('Error in cleanupOldComplaintImages:', error);
+        }
+    });
+
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  H1 - Server-Side Geofence: validateAndMarkAttendance
+//  Callable HTTPS function: validates GPS server-side before writing attendance.
+//  Client usage: FirebaseFunctions.instanceFor(region:'asia-south1')
+//                  .httpsCallable('validateAndMarkAttendance').call({...})
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+const JKLU_GEOFENCE = [
+  [26.83578622, 75.65131165],[26.83740740, 75.65114535],
+  [26.83662239, 75.64845745],[26.83605158, 75.64818118],
+  [26.83546162, 75.65019753],[26.83460988, 75.65087344],
+  [26.83401423, 75.65117888],[26.83333241, 75.65138273],
+  [26.83262606, 75.65278552],[26.83388768, 75.65269735],
+  [26.83412283, 75.65222863],[26.83494166, 75.65249585],
+];
+
+function isInsideGeofence(lat, lng, polygon) {
+  let inside = false, j = polygon.length - 1;
+  for (let i = 0; i < polygon.length; i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+    if (((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi)) inside = !inside;
+    j = i;
+  }
+  return inside;
+}
+
+exports.validateAndMarkAttendance = functions.region('asia-south1').https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
+  const uid = context.auth.uid;
+  const { latitude, longitude, status, hostel, roomNumber, studentName, date } = data;
+
+  if (typeof latitude !== 'number' || typeof longitude !== 'number')
+    throw new functions.https.HttpsError('invalid-argument', 'lat/lng must be numbers.');
+  if (!['Present', 'Late'].includes(status))
+    throw new functions.https.HttpsError('invalid-argument', 'status must be Present or Late.');
+  if (!hostel || typeof hostel !== 'string')
+    throw new functions.https.HttpsError('invalid-argument', 'hostel required.');
+  if (!date || !/^\d{2}-\d{2}-\d{4}$/.test(date))
+    throw new functions.https.HttpsError('invalid-argument', 'date must be DD-MM-YYYY.');
+
+  // Server-side geofence - cannot be spoofed by Fake GPS
+  if (!isInsideGeofence(latitude, longitude, JKLU_GEOFENCE)) {
+    console.warn(`[geofence] UID ${uid} REJECTED at (${latitude},${longitude})`);
+    throw new functions.https.HttpsError('failed-precondition', 'You must be inside JKLU campus.');
+  }
+
+  const userSnap = await db.collection('users').doc(uid).get();
+  if (!userSnap.exists) throw new functions.https.HttpsError('not-found', 'Profile not found.');
+  const userDoc = userSnap.data();
+  if (!userDoc.isApproved || userDoc.isAccountActive === false)
+    throw new functions.https.HttpsError('permission-denied', 'Account not approved or inactive.');
+
+  const existing = await db.collection('attendance')
+    .where('studentId', '==', uid).where('date', '==', date).limit(1).get();
+  if (!existing.empty) throw new functions.https.HttpsError('already-exists', 'Attendance already marked today.');
+
+  await db.collection('attendance').add({
+    studentId: uid,
+    studentName: studentName || userDoc.name || '',
+    hostel,
+    roomNumber: roomNumber || 'N/A',
+    status,
+    date,
+    lat: latitude,
+    lng: longitude,
+    timestamp: FieldValue.serverTimestamp(),
+    markedViaServer: true,
+  });
+
+  console.log(`[geofence] SUCCESS: ${uid} marked ${status} on ${date}`);
+  return { success: true };
+});

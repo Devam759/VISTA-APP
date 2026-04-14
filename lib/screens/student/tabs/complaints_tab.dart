@@ -7,7 +7,6 @@ import '../../../services/firebase_service.dart';
 import '../../../utils/sanitizer.dart';
 import '../../../widgets/skeleton_loader.dart';
 import '../widgets/student_components.dart';
-import '../../../widgets/hover_effect.dart';
 import '../../../widgets/vista_loader.dart';
 
 class ComplaintsTab extends StatefulWidget {
@@ -24,16 +23,16 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: HoverEffect(
-        child: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.extended(
           heroTag: 'complaintFAB',
           onPressed: () => _showRaiseComplaintSheet(context),
           backgroundColor: kStudentPrimary,
           elevation: 4,
-          icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: const Text('RAISE ISSUE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          label: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text('RAISE ISSUE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          ),
         ),
-      ),
       body: StreamBuilder<List<Complaint>>(
         stream: widget.fs.getStudentComplaints(widget.user.uid),
         builder: (context, snap) {
@@ -42,14 +41,6 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
           }
           final list = snap.data ?? [];
           
-          if (list.isEmpty) {
-            return const StudentEmptyState(
-              icon: Icons.assignment_late_outlined,
-              title: 'No Issues Raised',
-              subtitle: 'Your complaint history will appear here once you raise any.',
-            );
-          }
-
           // Sort by creation date
           list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
@@ -61,17 +52,23 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
                 child: StudentSectionLabel("COMPLAINTS"),
               ),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100), // Extra bottom padding for FAB
-                  itemCount: list.length,
-                  itemBuilder: (context, i) {
-                    final c = list[i];
-                    return StudentExpandableComplaintCard(
-                      complaint: c,
-                      fs: widget.fs,
-                    );
-                  },
-                ),
+                child: list.isEmpty
+                    ? const StudentEmptyState(
+                        icon: Icons.assignment_late_outlined,
+                        title: 'No Issues Raised',
+                        subtitle: 'Your complaint history will appear here once you raise any.',
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 100), // Extra bottom padding for FAB
+                        itemCount: list.length,
+                        itemBuilder: (context, i) {
+                          final c = list[i];
+                          return StudentExpandableComplaintCard(
+                            complaint: c,
+                            fs: widget.fs,
+                          );
+                        },
+                      ),
               ),
             ],
           );
@@ -216,8 +213,7 @@ class _RaiseComplaintSheetState extends State<_RaiseComplaintSheet> {
   }
 
   Widget _buildImageSourceBtn(IconData icon, String label, VoidCallback onTap) {
-    return HoverEffect(
-      child: InkWell(
+    return InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
@@ -235,8 +231,7 @@ class _RaiseComplaintSheetState extends State<_RaiseComplaintSheet> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Future<void> _submit() async {

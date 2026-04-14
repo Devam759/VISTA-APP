@@ -21,17 +21,39 @@ const Color kPrimary = Color(0xFF1E3A8A);
 const Color kAccent = Color(0xFF2563EB);
 const Color kBg = Color(0xFFF0F4FF);
 
-String shortHostelName(String? name) {
-  if (name == null) return '';
-  if (name == 'Short Stay') return 'SS';
-  final n = name.toLowerCase();
-  if (n.contains('boys hostel 1')) return 'BH1';
-  if (n.contains('boys hostel 2')) return 'BH2';
-  if (n.contains('girls hostel 1')) return 'GH1';
-  if (n.contains('girls hostel 2')) return 'GH2';
-  if (n.contains('staff')) return 'Staff';
-  // Fallback: take first letters of each word
-  return name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').join().toUpperCase();
+String getFullHostelName(String? code) {
+  if (code == null || code.isEmpty) return 'N/A';
+  
+  // Clean the code (remove extra spaces or case differences)
+  final c = code.trim().toUpperCase();
+  
+  // Mapping
+  switch (c) {
+    case 'BH1':
+    case 'B1':
+    case 'B':
+      return 'BH1';
+    case 'BH2':
+    case 'B2':
+      return 'BH2';
+    case 'GH1':
+    case 'G1':
+    case 'G':
+      return 'GH1';
+    case 'GH2':
+    case 'G2':
+      return 'GH2';
+    case 'SS':
+      return 'Short Stay';
+    case 'STAFF':
+      return 'Staff';
+    case 'DAY SCHOLAR':
+    case 'DS':
+      return 'Day Scholar';
+    default:
+      // If it's already a full name or unknown, return as is
+      return code;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,13 +86,16 @@ class WardenHeroTitle extends StatelessWidget {
 class WardenSectionLabel extends StatelessWidget {
   final String text;
   final int? count;
-  const WardenSectionLabel(this.text, {super.key, this.count});
+  final bool animate;
+  const WardenSectionLabel(this.text, {super.key, this.count, this.animate = true});
 
   @override
   Widget build(BuildContext context) {
     return SmoothEntrance(
       key: ValueKey('section_$text'),
+      enabled: animate,
       delay: const Duration(milliseconds: 100),
+
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Row(
@@ -124,7 +149,7 @@ class WardenSectionLabel extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // PENDING ATTENDANCE BANNER
 // ─────────────────────────────────────────────────────────────────────────────
-class PendingAttendanceBanner extends StatelessWidget {
+class PendingAttendanceBanner extends StatefulWidget {
   final int count;
   final VoidCallback onViewList;
 
@@ -135,38 +160,54 @@ class PendingAttendanceBanner extends StatelessWidget {
   });
 
   @override
+  State<PendingAttendanceBanner> createState() => _PendingAttendanceBannerState();
+}
+
+class _PendingAttendanceBannerState extends State<PendingAttendanceBanner> {
+  @override
   Widget build(BuildContext context) {
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.red.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '$count students pending attendance',
-                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            ),
-            TextButton(
-              onPressed: onViewList,
-              child: const Text(
-                'View List',
-                style: TextStyle(
+      child: InkWell(
+        onTap: widget.onViewList,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Pending Attendance',
+                style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w900,
-                  decoration: TextDecoration.underline,
+                  fontSize: 14,
+                  letterSpacing: 0.2,
                 ),
               ),
-            ),
-          ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${widget.count}',
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -398,7 +439,6 @@ class _WardenExpandableLeaveCardState extends State<WardenExpandableLeaveCard> {
                           child: WardenReadOnlyInput(
                             label: 'From',
                             value: DateFormat('dd MMM, hh:mm a').format(widget.fromDate),
-                            icon: Icons.login_rounded,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -406,7 +446,6 @@ class _WardenExpandableLeaveCardState extends State<WardenExpandableLeaveCard> {
                           child: WardenReadOnlyInput(
                             label: 'To',
                             value: DateFormat('dd MMM, hh:mm a').format(widget.toDate),
-                            icon: Icons.logout_rounded,
                           ),
                         ),
                       ],
@@ -417,13 +456,11 @@ class _WardenExpandableLeaveCardState extends State<WardenExpandableLeaveCard> {
                     WardenReadOnlyInput(
                       label: 'Reason for leave',
                       value: widget.reason,
-                      icon: Icons.info_outline_rounded,
                     ),
                     const SizedBox(height: 12),
                     WardenReadOnlyInput(
                       label: 'Address during leave',
                       value: widget.address,
-                      icon: Icons.location_on_outlined,
                     ),
                     const SizedBox(height: 16),
                     // CONTACT SECTION
@@ -434,7 +471,6 @@ class _WardenExpandableLeaveCardState extends State<WardenExpandableLeaveCard> {
                           child: WardenReadOnlyInput(
                             label: 'Name',
                             value: '${widget.parentName} (${widget.parentRelation})',
-                            icon: Icons.person_outline,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -442,7 +478,6 @@ class _WardenExpandableLeaveCardState extends State<WardenExpandableLeaveCard> {
                           child: WardenReadOnlyInput(
                             label: 'Mobile',
                             value: widget.parentContact,
-                            icon: Icons.phone_android_rounded,
                             trailing: IconButton(
                               onPressed: () async {
                                 final phone = widget.parentContact.replaceAll(RegExp(r'[^\d+]'), '');
@@ -516,218 +551,318 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
 
   @override
   Widget build(BuildContext context) {
-    final isResolved = widget.complaint.status == 'Resolved' || widget.complaint.status == 'Confirmed';
-    final statusColor = isResolved ? Colors.green : (widget.complaint.isEscalated ? Colors.redAccent : Colors.orange);
+    final isResolved =
+        widget.complaint.status == 'Resolved' ||
+        widget.complaint.status == 'Confirmed';
+    final statusColor = isResolved
+        ? Colors.green
+        : (widget.complaint.isEscalated ? Colors.redAccent : Colors.orange);
     final canResolve = _canUserResolve();
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      alignment: Alignment.topCenter,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: kPrimary.withValues(alpha: 0.05),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // CONTRACTED VIEW
-            HoverEffect(
-              child: InkWell(
-                onTap: () => setState(() => _isExpanded = !_isExpanded),
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: (widget.complaint.isEscalated ? Colors.redAccent : kPrimary).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          widget.complaint.seqId,
-                          style: TextStyle(
-                            color: widget.complaint.isEscalated ? Colors.redAccent : kPrimary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: kPrimary.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // CONTRACTED VIEW
+          InkWell(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          (widget.complaint.isEscalated
+                                  ? Colors.redAccent
+                                  : kPrimary)
+                              .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      widget.complaint.seqId,
+                      style: TextStyle(
+                        color: widget.complaint.isEscalated
+                            ? Colors.redAccent
+                            : kPrimary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.complaint.studentName.toUpperCase(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                                letterSpacing: 0.5,
-                                color: Color(0xFF1E293B),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              widget.complaint.title,
-                              style: const TextStyle(
-                                color: Colors.black45,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          widget.complaint.status.toUpperCase(),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      AnimatedRotation(
-                        duration: const Duration(milliseconds: 300),
-                        turns: _isExpanded ? 0.5 : 0,
-                        child: const Icon(
-                          Icons.expand_more,
-                          color: Colors.black26,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
-
-            // EXPANDED VIEW
-            if (_isExpanded)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Divider(height: 1, thickness: 0.5),
-                    const SizedBox(height: 16),
-                    
-                    // DATE & STATUS ROW
-                    Row(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: WardenReadOnlyInput(
-                            label: 'Reported On',
-                            value: DateFormat('dd MMM, hh:mm a').format(widget.complaint.createdAt),
-                            icon: Icons.calendar_today_rounded,
+                        Text(
+                          widget.complaint.title.toUpperCase(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                            color: Color(0xFF1E293B),
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: WardenReadOnlyInput(
-                            label: 'Level',
-                            value: widget.complaint.isEscalated ? 'ESCALATED' : 'STANDARD',
-                            icon: Icons.shield_outlined,
-                            color: widget.complaint.isEscalated ? Colors.redAccent : Colors.orange,
+                        Text(
+                          (widget.warden.role == UserRole.headWarden ||
+                                  widget.warden.role == UserRole.chiefWarden)
+                              ? "${widget.complaint.hostel} • ${DateFormat('dd MMM').format(widget.complaint.createdAt)}"
+                              : DateFormat('dd MMM').format(widget.complaint.createdAt),
+                          style: const TextStyle(
+                            color: Colors.black45,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                  const SizedBox(width: 8),
 
-                    // DESCRIPTION SECTION
-                    const WardenSubSectionLabel('Issue Description'),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: kBg.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        widget.complaint.description.isEmpty ? 'No description provided.' : widget.complaint.description,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF334155),
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // ATTACHMENT SECTION
-                    if (widget.complaint.imageUrl != null) ...[
-                      const WardenSubSectionLabel('Attachment'),
-                      GestureDetector(
-                        onTap: () => Navigator.push(
+                  // REPOSITIONED IMAGE THUMBNAIL (LEFT OF STATUS)
+                  if (widget.complaint.imageUrl != null &&
+                      widget.complaint.imageUrl!.isNotEmpty) ...[
+                    GestureDetector(
+                      onTap: () {
+                        final heroTag = 'header_${widget.complaint.id}';
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => WardenImageViewer(
                               imageUrl: widget.complaint.imageUrl!,
-                              title: 'Attachment: Ticket #${widget.complaint.seqId}',
+                              heroTag: heroTag,
+                              title: 'Ticket #${widget.complaint.seqId}',
                             ),
                           ),
-                        ),
-                        child: Hero(
-                          tag: widget.complaint.imageUrl!,
-                          child: Container(
-                            height: 180,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              image: DecorationImage(
-                                image: NetworkImage(widget.complaint.imageUrl!),
-                                fit: BoxFit.cover,
-                              ),
+                        );
+                      },
+                      child: Hero(
+                        tag: 'header_${widget.complaint.id}',
+                        child: Container(
+                          width: 32, // Slightly smaller to fit well with status
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.black.withValues(alpha: 0.05),
                             ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.3)],
-                                ),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.fullscreen_rounded, color: Colors.white, size: 40),
-                              ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(7),
+                            child: Image.network(
+                              widget.complaint.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.image_not_supported,
+                                      size: 14, color: Colors.black12),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                    ],
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      widget.complaint.status.toUpperCase(),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 300),
+                    turns: _isExpanded ? 0.5 : 0,
+                    child: const Icon(Icons.expand_more, color: Colors.black26),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-                    // ACTIONS SECTION
-                    if (!isResolved) ...[
-                      if (canResolve)
-                        ElevatedButton(
+          // EXPANDED VIEW
+          if (_isExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Divider(height: 1, thickness: 0.5),
+                  const SizedBox(height: 16),
+
+                  // DETAILS ROW
+                  Row(
+                    children: [
+                      Expanded(
+                        child: WardenReadOnlyInput(
+                          label: 'Ticket ID',
+                          value: "#${widget.complaint.seqId}",
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: WardenReadOnlyInput(
+                          label: 'Reported On',
+                          value: DateFormat('dd MMM, hh:mm a')
+                              .format(widget.complaint.createdAt),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // DESCRIPTION SECTION
+                  const WardenSubSectionLabel('Issue Description'),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: kBg.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      widget.complaint.description.isEmpty
+                          ? 'No description provided.'
+                          : widget.complaint.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF334155),
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ATTACHMENT SECTION
+                  if (widget.complaint.imageUrl != null && widget.complaint.imageUrl!.isNotEmpty) ...[
+                    const WardenSubSectionLabel('Attachment'),
+                    GestureDetector(
+                      onTap: () {
+                        final heroTag = 'body_${widget.complaint.id}';
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => WardenImageViewer(
+                              imageUrl: widget.complaint.imageUrl!,
+                              heroTag: heroTag,
+                              title: 'Ticket #${widget.complaint.seqId}',
+                            ),
+                          ),
+                        );
+                      },
+                      child: Hero(
+                        tag: 'body_${widget.complaint.id}',
+                        child: Container(
+                          height: 240,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A), // Premium Dark Slate background
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: Colors.black.withValues(alpha: 0.1)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              alignment: Alignment.center,
+                              children: [
+                                Image.network(
+                                  widget.complaint.imageUrl!,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.02),
+                                      child: const Center(
+                                          child: CircularProgressIndicator()),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    child: const Center(
+                                      child: Icon(Icons.image_not_supported,
+                                          color: Colors.black26),
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withValues(alpha: 0.2),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // ACTIONS SECTION
+                  if (!isResolved) ...[
+                    if (canResolve)
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withValues(alpha: 0.2),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
                           onPressed: () async {
                             try {
-                              await widget.fs.updateComplaintStatus(widget.complaint.id, 'Resolved');
+                              await widget.fs.updateComplaintStatus(
+                                  widget.complaint.id, 'Resolved');
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -748,45 +883,54 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            minimumSize: const Size(double.infinity, 52),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                             elevation: 0,
                           ),
-                          child: const Text('MARK AS RESOLVED', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.black12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.lock_clock_outlined, size: 16, color: Colors.black26),
-                              const SizedBox(width: 8),
-                              Text(
-                                widget.complaint.targetRoles.contains('Chief Warden') 
-                                  ? 'Awaiting Chief Warden Check' 
-                                  : 'Awaiting Head Warden Check',
-                                style: const TextStyle(
-                                  color: Colors.black38,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
+                          child: const Text(
+                            'MARK AS RESOLVED',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                    ],
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: Colors.black.withValues(alpha: 0.05)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              widget.complaint.targetRoles
+                                      .contains('Chief Warden')
+                                  ? 'AWAITING CHIEF WARDEN CHECK'
+                                  : 'AWAITING HEAD WARDEN CHECK',
+                              style: const TextStyle(
+                                color: Colors.black26,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
-                ),
+                ],
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -899,7 +1043,7 @@ class WardenReadOnlyInput extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) trailing!,
+          if (trailing != null) trailing,
         ],
       ),
     );
@@ -1276,14 +1420,9 @@ void showWardenStudentDetails({
                   icon: Icons.school_outlined,
                 ),
                 WardenReadOnlyInput(
-                  label: 'Hostel',
-                  value: student.hostel ?? 'Not Assigned',
-                  icon: Icons.apartment_rounded,
-                ),
-                WardenReadOnlyInput(
-                  label: 'Room Number',
-                  value: student.roomNumber ?? 'Not Assigned',
-                  icon: Icons.meeting_room_outlined,
+                  label: 'Location',
+                  value: '${getFullHostelName(student.hostel)} - ${student.roomNumber ?? "N/A"}',
+                  icon: Icons.location_on_outlined,
                 ),
                 WardenReadOnlyInput(
                   label: 'Phone',
@@ -1343,7 +1482,7 @@ void showWardenStudentDetails({
 // ─────────────────────────────────────────────────────────────────────────────
 // WARDEN REGISTRATION BANNER
 // ─────────────────────────────────────────────────────────────────────────────
-class WardenRegistrationBanner extends StatelessWidget {
+class WardenRegistrationBanner extends StatefulWidget {
   final List<VistaUser> pending;
   final bool isExpanded;
   final VoidCallback onTap;
@@ -1360,62 +1499,83 @@ class WardenRegistrationBanner extends StatelessWidget {
   });
 
   @override
+  State<WardenRegistrationBanner> createState() => _WardenRegistrationBannerState();
+}
+
+class _WardenRegistrationBannerState extends State<WardenRegistrationBanner> {
+  bool _isDismissed = false;
+
+  @override
   Widget build(BuildContext context) {
-    if (pending.isEmpty) return const SizedBox.shrink();
+    if (_isDismissed || widget.pending.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Column(
         children: [
           HoverEffect(
-            child: GestureDetector(
-              onTap: onTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: kPrimary,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: kPrimary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
+            child: Container(
+              decoration: BoxDecoration(
+                color: kPrimary,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: kPrimary.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: widget.onTap,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 16),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${widget.pending.length} Registration Request${widget.pending.length > 1 ? 's' : ''}',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
+                                  ),
+                                  Text(
+                                    widget.isExpanded ? 'Tap to hide details' : 'Tap to review and approve',
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(widget.isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: Colors.white70),
+                          ],
+                        ),
                       ),
-                      child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 16),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${pending.length} Registration Request${pending.length > 1 ? 's' : ''}',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
-                          ),
-                          Text(
-                            isExpanded ? 'Tap to hide details' : 'Tap to review and approve',
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: Colors.white70),
-                  ],
-                ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                    onPressed: () => setState(() => _isDismissed = true),
+                  ),
+                  const SizedBox(width: 4),
+                ],
               ),
             ),
           ),
-          if (isExpanded)
+          if (widget.isExpanded)
             Container(
               margin: const EdgeInsets.only(top: 8),
               decoration: BoxDecoration(
@@ -1431,7 +1591,7 @@ class WardenRegistrationBanner extends StatelessWidget {
                 ],
               ),
               child: Column(
-                children: pending.map((s) {
+                children: widget.pending.map((s) {
                   return Column(
                     children: [
                       Padding(
@@ -1461,7 +1621,7 @@ class WardenRegistrationBanner extends StatelessWidget {
                               children: [
                                 HoverEffect(
                                   child: GestureDetector(
-                                    onTap: () => onDeny(s),
+                                    onTap: () => widget.onDeny(s),
                                     child: Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
@@ -1476,7 +1636,7 @@ class WardenRegistrationBanner extends StatelessWidget {
                                 const SizedBox(width: 10),
                                 HoverEffect(
                                   child: GestureDetector(
-                                    onTap: () => onApprove(s),
+                                    onTap: () => widget.onApprove(s),
                                     child: Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
@@ -1493,7 +1653,7 @@ class WardenRegistrationBanner extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (s != pending.last) const Divider(height: 1, indent: 14, endIndent: 14),
+                      if (s != widget.pending.last) const Divider(height: 1, indent: 14, endIndent: 14),
                     ],
                   );
                 }).toList(),
@@ -1575,21 +1735,16 @@ class WardenStudentListItem extends StatelessWidget {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (showRoom)
+          if (showHostel || showRoom)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
                 Text(
-                  student.roomNumber ?? 'No Room',
+                  '${getFullHostelName(student.hostel)} - ${student.roomNumber ?? "N/A"}',
                   style: const TextStyle(fontWeight: FontWeight.w900, color: kPrimary, fontSize: 13),
                 ),
-              if (showHostel)
-                Text(
-                  student.hostel ?? 'N/A',
-                  style: const TextStyle(fontSize: 10, color: Colors.black26, fontWeight: FontWeight.w900),
-                ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );
@@ -1616,6 +1771,7 @@ class WardenUIUtils {
     required BuildContext context,
     required VistaUser student,
     required FirebaseService fs,
+    String? wardenUid,
   }) async {
     final ctrl = TextEditingController();
     bool isSubmitting = false;
@@ -1675,6 +1831,7 @@ class WardenUIUtils {
     required ShortStayRequest request,
     required FirebaseService fs,
     required String wardenName,
+    String? wardenUid,
     String? currentHostel,
   }) async {
     final roomCtrl = TextEditingController();
@@ -1729,7 +1886,8 @@ class WardenUIUtils {
                             'Approved',
                             roomNumber: roomCtrl.text.trim(),
                             allotmentHostel: selectedHostel,
-                            actionBy: wardenName,
+                            actionUid: wardenUid,
+                            actionByName: wardenName,
                           );
                           if (context.mounted) Navigator.pop(context);
                         } catch (e) {
@@ -1806,7 +1964,12 @@ class WardenUIUtils {
     );
   }
 
-  static void showPendingAttendanceList(BuildContext context, List<dynamic> defaulters) {
+  static void showPendingAttendanceList(
+    BuildContext context,
+    List<dynamic> defaulters, {
+    String? wardenUid,
+    String? wardenName,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1864,18 +2027,28 @@ class WardenUIUtils {
                     final record = defaulters[i];
                     final student = record.student;
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade100)),
                         title: Text(
-                          '${student.name} (${shortHostelName(student.hostel)} - ${student.roomNumber ?? "N/A"})',
+                          student.name,
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF1E293B)),
                         ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            student.phoneNumber ?? 'No Number',
-                            style: const TextStyle(fontSize: 13, color: Colors.black45, fontWeight: FontWeight.w600),
-                          ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(
+                              '${getFullHostelName(student.hostel)} - ${student.roomNumber ?? "N/A"}',
+                              style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w700, fontSize: 12),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              student.phoneNumber ?? 'No Number',
+                              style: const TextStyle(fontSize: 12, color: Colors.black45, fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
                         trailing: Material(
                           color: kPrimary.withValues(alpha: 0.1),
@@ -1903,12 +2076,15 @@ class WardenUIUtils {
 }
 
 /// Reusable Card for Short Stay Requests
-class WardenShortStayCard extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// SHORT STAY CARD (EXPANDABLE)
+// ─────────────────────────────────────────────────────────────────────────────
+class WardenExpandableShortStayCard extends StatefulWidget {
   final ShortStayRequest request;
   final VoidCallback? onApprove;
   final VoidCallback? onDeny;
 
-  const WardenShortStayCard({
+  const WardenExpandableShortStayCard({
     super.key,
     required this.request,
     this.onApprove,
@@ -1916,96 +2092,247 @@ class WardenShortStayCard extends StatelessWidget {
   });
 
   @override
+  State<WardenExpandableShortStayCard> createState() => _WardenExpandableShortStayCardState();
+}
+
+class _WardenExpandableShortStayCardState extends State<WardenExpandableShortStayCard> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final request = widget.request;
     final isPending = request.status == 'Pending';
     final isExtending = request.pendingToDate != null;
     final statusColor = request.status == 'Approved' ? Colors.green : (request.status == 'Rejected' ? Colors.red : Colors.orange);
 
-    return WardenCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.person, color: kPrimary, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${request.seqId} - ${request.studentName}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ),
-              if (isExtending)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                  child: const Text('EXTENSION PENDING', style: TextStyle(color: Colors.orange, fontSize: 9, fontWeight: FontWeight.bold)),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    request.status.toUpperCase(),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          WardenReadOnlyInput(label: 'Reason', value: request.reason, icon: Icons.description_outlined),
-          WardenReadOnlyInput(
-            label: 'Duration',
-            value: '${DateFormat("dd MMM").format(request.checkInDate)} - ${DateFormat("dd MMM").format(request.checkOutDate)}',
-            icon: Icons.date_range,
-          ),
-          if (request.roomNumber != null)
-            WardenReadOnlyInput(label: 'Room', value: '${request.allotmentHostel} / ${request.roomNumber}', icon: Icons.meeting_room_outlined),
-          if (isPending && onApprove != null && onDeny != null) ...[
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: HoverEffect(
-                    child: OutlinedButton(
-                      onPressed: onDeny,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        side: const BorderSide(color: Colors.redAccent),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('REJECT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: HoverEffect(
-                    child: ElevatedButton(
-                      onPressed: onApprove,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      child: const Text('APPROVE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                ),
-              ],
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: kPrimary.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
           ],
-        ],
+        ),
+        child: Column(
+          children: [
+            // CONTRACTED VIEW
+            HoverEffect(
+              child: InkWell(
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: kPrimary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          request.seqId,
+                          style: const TextStyle(
+                            color: kPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              request.studentName.toUpperCase(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                                color: Color(0xFF1E293B),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${DateFormat('dd MMM').format(request.checkInDate)} - ${DateFormat('dd MMM').format(request.checkOutDate)}',
+                              style: const TextStyle(
+                                color: Colors.black38,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // SPECIAL BADGE FOR EXTENSION
+                      if (isExtending)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'EXTENSION',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          request.status.toUpperCase(),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        duration: const Duration(milliseconds: 300),
+                        turns: _isExpanded ? 0.5 : 0,
+                        child: const Icon(
+                          Icons.expand_more,
+                          color: Colors.black26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // EXPANDED VIEW
+            if (_isExpanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Divider(height: 1, thickness: 0.5),
+                    const SizedBox(height: 16),
+                    // DURATION SECTION
+                    const WardenSubSectionLabel('Stay Duration'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'Check-in',
+                            value: DateFormat('dd MMM, hh:mm a').format(request.checkInDate),
+                            icon: null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'Check-out',
+                            value: DateFormat('dd MMM, hh:mm a').format(request.checkOutDate),
+                            icon: null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // PARENT DETAILS SECTION
+                    const WardenSubSectionLabel('Parent Details'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'Parent Name',
+                            value: request.parentName,
+                            icon: null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: WardenReadOnlyInput(
+                            label: 'Parent Contact',
+                            value: request.parentContact,
+                            icon: null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // DETAILS SECTION
+                    const WardenSubSectionLabel('Request Details'),
+                    WardenReadOnlyInput(
+                      label: 'Reason for visit',
+                      value: request.reason,
+                      icon: null,
+                    ),
+                      WardenReadOnlyInput(
+                        label: 'Allotted Location',
+                        value: '${getFullHostelName(request.allotmentHostel)} - ${request.roomNumber}',
+                        icon: Icons.location_on_outlined,
+                      ),
+                    // ACTIONS SECTION (Pinned to bottoms when pending)
+                    if (isPending && widget.onApprove != null && widget.onDeny != null) ...[
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: HoverEffect(
+                              child: OutlinedButton(
+                                onPressed: widget.onDeny,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.redAccent,
+                                  side: const BorderSide(color: Colors.redAccent),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: const Text('REJECT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: HoverEffect(
+                              child: ElevatedButton(
+                                onPressed: widget.onApprove,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                                child: const Text('APPROVE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -2014,11 +2341,13 @@ class WardenShortStayCard extends StatelessWidget {
 class WardenImageViewer extends StatelessWidget {
   final String imageUrl;
   final String title;
+  final String heroTag;
 
   const WardenImageViewer({
     super.key,
     required this.imageUrl,
     required this.title,
+    required this.heroTag,
   });
 
   @override
@@ -2034,7 +2363,7 @@ class WardenImageViewer extends StatelessWidget {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Hero(
-                  tag: imageUrl,
+                  tag: heroTag,
                   child: Image.network(
                     imageUrl,
                     fit: BoxFit.contain,
@@ -2042,6 +2371,20 @@ class WardenImageViewer extends StatelessWidget {
                       if (progress == null) return child;
                       return const Center(
                         child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.white54, size: 60),
+                          const SizedBox(height: 16),
+                          Text(
+                            "Failed to load image\nCheck your internet connection",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                          ),
+                        ],
                       );
                     },
                   ),

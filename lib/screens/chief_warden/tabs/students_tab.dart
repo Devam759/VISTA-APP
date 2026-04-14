@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/warden_provider.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/leave_request_model.dart';
 import '../../../models/short_stay_model.dart';
@@ -19,7 +21,6 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
   final TextEditingController _searchCtrl = TextEditingController();
   late TabController _tabController;
   bool _showRequests = false;
-  String _hostelFilter = 'All';
 
   @override
   void initState() {
@@ -37,6 +38,9 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final wp = Provider.of<WardenProvider>(context);
+    final hostelFilter = wp.currentHostelFilter ?? 'All';
+
     return StreamBuilder<List<LeaveRequest>>(
       stream: widget.fs.getApprovedLeaves('All'),
       builder: (context, leaveSnap) {
@@ -47,7 +51,7 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
             final shortStays = ssSnap.data ?? [];
 
             return StreamBuilder<List<VistaUser>>(
-              stream: widget.fs.getUnifiedStudentsStream('All'),
+              stream: widget.fs.getUnifiedStudentsStream(hostelFilter),
               builder: (context, studentSnap) {
 
                 return WardenTabScaffold<VistaUser>(
@@ -58,24 +62,8 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
                   searchCtrl: _searchCtrl,
                   tabController: _tabController,
                   tabs: const ['All', 'In Campus', 'On Leave', 'Short Stay'],
-                  actionWidget: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      WardenSearchAction(
-                        onTap: () => WardenUIUtils.showHostelFilter(
-                          context: context,
-                          currentFilter: _hostelFilter == 'All' ? null : _hostelFilter,
-                          onSelected: (val) => setState(() => _hostelFilter = val ?? 'All'),
-                        ),
-                        child: Icon(
-                          Icons.apartment_rounded,
-                          color: _hostelFilter == 'All' ? Colors.black54 : kPrimary,
-                          size: 22,
-                        ),
-                      ),
-                    ],
-                  ),
-                  streamFactory: () => widget.fs.getUnifiedStudentsStream('All'),
+                  actionWidget: const SizedBox.shrink(),
+                  streamFactory: () => widget.fs.getUnifiedStudentsStream(hostelFilter),
                   emptyIcon: Icons.people_outline_rounded,
                   emptyTitle: 'No Students Found',
                   emptySubtitle: 'No students registered in the university yet.',
@@ -89,11 +77,12 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
                           pending: pending,
                           isExpanded: _showRequests,
                           onTap: () => setState(() => _showRequests = !_showRequests),
-                          onDeny: (s) => widget.fs.denyStudent(s.uid),
+                          onDeny: (s) => widget.fs.denyStudent(s.uid, actionUid: widget.warden.uid),
                           onApprove: (s) => WardenUIUtils.showRoomAssignmentDialog(
                             context: context,
                             student: s,
                             fs: widget.fs,
+                            wardenUid: widget.warden.uid,
                           ),
                         );
                       },
@@ -104,7 +93,7 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
                         (student.roomNumber ?? '').toLowerCase().contains(query.toLowerCase());
                     if (!matchesSearch) return false;
 
-                    final matchesHostel = _hostelFilter == 'All' || student.hostel == _hostelFilter;
+                    final matchesHostel = hostelFilter == 'All' || student.hostel == hostelFilter;
                     if (!matchesHostel) return false;
 
                     final now = DateTime.now();

@@ -11,6 +11,7 @@ import '../../widgets/export_dialog.dart';
 
 import '../../widgets/skeleton_loader.dart';
 import '../warden/components/warden_components.dart';
+import '../../providers/warden_provider.dart';
 
 // Tabs
 import 'tabs/students_tab.dart';
@@ -201,9 +202,14 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
+    _clearMarkers(index);
   }
 
   void _clearMarkers(int index) {
+    if (!mounted) return;
+    // Hide notification alert if we're on the target tab
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    
     setState(() {
       _selectedIndex = index;
       if (index == 0) _hasNewRegistrations = false;
@@ -244,10 +250,14 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
       (off: Icons.hotel_outlined, on: Icons.hotel),
     ];
 
-    return WardenResponsiveWrapper(
-      child: Scaffold(
-      backgroundColor: _kBg,
-      bottomNavigationBar: Container(
+    return ChangeNotifierProvider<WardenProvider>(
+      create: (_) => WardenProvider('', role: 'Chief Warden'),
+      child: Consumer<WardenProvider>(
+        builder: (context, wp, _) {
+          return WardenResponsiveWrapper(
+            child: Scaffold(
+            backgroundColor: _kBg,
+            bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -327,10 +337,36 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
                       style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2),
                     ),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
-                      child: const Text('All Hostels', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                    PopupMenuButton<String>(
+                      onSelected: (val) => wp.updateHostelFilter(val),
+                      offset: const Offset(0, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(value: 'All', child: Text('All Hostels')),
+                        const PopupMenuItem(value: 'BH1', child: Text('BH1')),
+                        const PopupMenuItem(value: 'BH2', child: Text('BH2')),
+                        const PopupMenuItem(value: 'GH1', child: Text('GH1')),
+                        const PopupMenuItem(value: 'GH2', child: Text('GH2')),
+                      ],
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              wp.currentHostelFilter == 'All' || wp.currentHostelFilter == null ? 'All Hostels' : wp.currentHostelFilter!,
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 14),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
@@ -373,5 +409,8 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
       ),
     ),
   );
+},
+),
+);
 }
 }

@@ -1,0 +1,59 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Helper: signed-in check ──────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ── Helper: resolve requester's Firestore role ───────────────────────
+    // NOTE: Storage rules can read Firestore via firestore.get().
+    function getUserRole() {
+      return firestore.get(
+        /databases/(default)/documents/users/$(request.auth.uid)
+      ).data.role;
+    }
+
+    function isStaff() {
+      return getUserRole() in ['warden', 'headWarden', 'chiefWarden'];
+    }
+
+    // ── Face / biometric images ─────────────────────────────────────────
+    // Only the owning student (upload) or any staff (read for verification).
+    // No public access, no listing, no deletion from client.
+    match /face_images/{uid}/{allPaths=**} {
+      allow read:   if isSignedIn() && (request.auth.uid == uid || isStaff());
+      allow create: if isSignedIn()
+                    && request.auth.uid == uid
+                    && request.resource.contentType.matches('image/.*')
+                    && request.resource.size < 5 * 1024 * 1024; // 5 MB cap
+      allow update, delete: if false;
+    }
+
+    // ── Complaint images ────────────────────────────────────────────────
+    // Student uploads their own complaint image; staff can read.
+    match /complaints/{uid}/{allPaths=**} {
+      allow read:   if isSignedIn() && (request.auth.uid == uid || isStaff());
+      allow create: if isSignedIn()
+                    && request.auth.uid == uid
+                    && request.resource.contentType.matches('image/.*')
+                    && request.resource.size < 10 * 1024 * 1024; // 10 MB cap
+      allow update, delete: if false;
+    }
+
+    // ── Warden / staff uploads (e.g. notice images) ─────────────────────
+    match /staff_uploads/{allPaths=**} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn() && isStaff()
+                    && request.resource.size < 20 * 1024 * 1024;
+      allow update, delete: if false;
+    }
+
+    // ── Default: deny everything not explicitly matched ──────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

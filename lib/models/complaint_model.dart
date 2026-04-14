@@ -48,10 +48,10 @@ class Complaint {
       'title': title,
       'description': description,
       'hostel': hostel,
-      'targetRole': targetRoles.isNotEmpty ? targetRoles.first : 'Warden',
       'targetRoles': targetRoles,
       'status': status,
       'isAnonymous': isAnonymous,
+      'targetRole': targetRole,
       'isNotified': isNotified,
       'lastStatusNotified': lastStatusNotified,
       'createdAt': FieldValue.serverTimestamp(),
@@ -64,9 +64,10 @@ class Complaint {
       if (resolvedAt != null) {
         map['resolvedAt'] = Timestamp.fromDate(resolvedAt!);
       }
-      if (imageUrl != null) {
-        map['imageUrl'] = imageUrl;
-      }
+    }
+
+    if (imageUrl != null) {
+      map['imageUrl'] = imageUrl;
     }
 
     return map;

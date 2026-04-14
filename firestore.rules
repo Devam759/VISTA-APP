@@ -65,11 +65,14 @@ service cloud.firestore {
         isStaff()
       );
 
-      // Create: only the user themselves, as a student, not pre-approved.
+      // Create: only the user themselves, as a student.
+      // Day Scholars (isDayScholar == true) may self-approve; hostellers must start unapproved.
       allow create: if isSignedIn()
         && uid() == userId
         && request.resource.data.role == 'student'
-        && request.resource.data.isApproved == false
+        && (request.resource.data.isApproved == false
+            || (request.resource.data.isApproved == true
+                && request.resource.data.isDayScholar == true))
         // Block injection of privileged fields at creation time.
         && !request.resource.data.keys().hasAny(['fcmToken', 'hasUsedShortStay']);
       allow update: if isSignedIn() && (
@@ -228,14 +231,27 @@ service cloud.firestore {
           (resource.data.status == 'Pending'
             && !request.resource.data.diff(resource.data).affectedKeys()
                 .hasAny(['status', 'studentId', 'approvedBy', 'rejectedBy', 'actualCheckOutTime'])) ||
-          (resource.data.status == 'Approved'
-            && request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['status', 'actualCheckOutTime'])
-            && request.resource.data.status == 'Completed')
+          (resource.data.status == 'Approved' && (
+            // 1. Mark as completed/check-out
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'actualCheckOutTime'])
+              && request.resource.data.status == 'Completed') ||
+            // 2. Request extension (move back to Pending for warden review)
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pendingToDate', 'status'])
+              && request.resource.data.status == 'Pending')
+          ))
         )) ||
         (isStaff() && validShortStayStatus())
       );
 
+      allow delete: if false;
+    }
+
+    // ── NOTIFICATIONS ──────────────────────────────────────────────────────
+    match /notifications/{id} {
+      allow read: if isSignedIn() && (resource.data.studentId == uid());
+      allow create: if isSignedIn() && isStaff();
+      allow update: if isSignedIn() && resource.data.studentId == uid()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
       allow delete: if false;
     }
 

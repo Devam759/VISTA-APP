@@ -7,7 +7,6 @@ import '../../../services/firebase_service.dart';
 import '../../../utils/sanitizer.dart';
 import '../../../widgets/skeleton_loader.dart';
 import '../widgets/student_components.dart';
-import '../../../widgets/hover_effect.dart';
 import '../../../widgets/vista_loader.dart';
 import '../../../widgets/vista_date_picker.dart';
 
@@ -29,15 +28,16 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
     super.build(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: HoverEffect(
-        child: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
           heroTag: 'leaveFAB',
           onPressed: () => _showLeaveDialog(context),
           backgroundColor: kStudentPrimary,
           elevation: 4,
-          child: const Icon(Icons.add_rounded, color: Colors.white),
+          label: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text('APPLY NOW', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          ),
         ),
-      ),
       body: StreamBuilder<List<LeaveRequest>>(
         stream: widget.fs.getStudentLeaves(widget.user.uid),
         builder: (context, snap) {
@@ -45,13 +45,6 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
             return const LeaveListSkeleton();
           }
           final list = snap.data ?? [];
-          if (list.isEmpty) {
-            return const StudentEmptyState(
-              icon: Icons.event_note_outlined,
-              title: 'No Leaves Yet',
-              subtitle: 'Your leave application history will appear here.',
-            );
-          }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -60,25 +53,31 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
                 child: StudentSectionLabel("LEAVES"),
               ),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  itemCount: list.length,
-                  itemBuilder: (context, i) {
-                    final l = list[i];
-                    return StudentExpandableLeaveCard(
-                      seqId: l.seqId,
-                      status: l.status,
-                      fromDate: l.fromDate,
-                      toDate: l.toDate,
-                      reason: l.reason,
-                      address: l.address,
-                      parentName: l.parentName,
-                      parentRelation: l.parentRelation,
-                      parentContact: l.parentContact,
-                      checkInTime: l.checkInTime,
-                    );
-                  },
-                ),
+                child: list.isEmpty
+                    ? const StudentEmptyState(
+                        icon: Icons.event_note_outlined,
+                        title: 'No Leaves Yet',
+                        subtitle: 'Your leave application history will appear here.',
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        itemCount: list.length,
+                        itemBuilder: (context, i) {
+                          final l = list[i];
+                          return StudentExpandableLeaveCard(
+                            seqId: l.seqId,
+                            status: l.status,
+                            fromDate: l.fromDate,
+                            toDate: l.toDate,
+                            reason: l.reason,
+                            address: l.address,
+                            parentName: l.parentName,
+                            parentRelation: l.parentRelation,
+                            parentContact: l.parentContact,
+                            checkInTime: l.checkInTime,
+                          );
+                        },
+                      ),
               ),
             ],
           );

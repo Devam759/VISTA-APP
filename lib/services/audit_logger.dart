@@ -80,8 +80,8 @@ class AuditLogger {
 
 /// Extension to silence the "discarded_futures" lint on intentional
 /// fire-and-forget calls (e.g., audit logging on the hot path).
-void unawaited(Future<void> future) {
-  future.catchError((Object e) {
+void unawaited(Future<dynamic> future) {
+  future.then((_) {}, onError: (Object e) {
     debugPrint('[unawaited] Swallowed error: $e');
   });
 }

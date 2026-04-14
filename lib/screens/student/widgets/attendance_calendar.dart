@@ -26,6 +26,7 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, String> _attendanceMap = {};
+  Set<DateTime> _shortStayDays = {};
   bool _isLoading = true;
   StreamSubscription? _sub;
 
@@ -40,6 +41,21 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
       final attendanceList = await widget.fs.getStudentAttendance(widget.student.uid).first;
       final leaves = await widget.fs.getStudentLeaves(widget.student.uid).first;
       final approvedLeaves = leaves.where((l) => l.status == 'Approved').toList();
+      
+      // Fetch Short Stays for Day Scholars
+      Set<DateTime> ssDays = {};
+      if (widget.student.isDayScholar) {
+        final shortStays = await widget.fs.getStudentShortStays(widget.student.uid).first;
+        final activeShortStays = shortStays.where((s) => s.status == 'Approved' || s.status == 'Completed').toList();
+        for (var s in activeShortStays) {
+          var curr = DateTime(s.checkInDate.year, s.checkInDate.month, s.checkInDate.day);
+          final end = DateTime(s.checkOutDate.year, s.checkOutDate.month, s.checkOutDate.day);
+          while (!curr.isAfter(end)) {
+            ssDays.add(curr);
+            curr = curr.add(const Duration(days: 1));
+          }
+        }
+      }
 
       final Map<DateTime, String> map = {};
       for (var a in attendanceList) {
@@ -61,6 +77,7 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
       if (mounted) {
         setState(() {
           _attendanceMap = map;
+          _shortStayDays = ssDays;
           _isLoading = false;
         });
       }
@@ -77,13 +94,18 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: constraints.maxHeight * 0.9,
+          ),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
         children: [
           _buildHeader(),
           Expanded(
@@ -101,9 +123,12 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
                   ),
           ),
         ],
-      ),
-    );
-  }
+          ),
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildHeader() {
     return Container(
@@ -197,6 +222,26 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
       calendarBuilders: CalendarBuilders(
         defaultBuilder: (context, day, focusedDay) {
           final normalizedDay = DateTime(day.year, day.month, day.day);
+          
+          // Day Scholar Logic: If no short stay, show grey
+          if (widget.student.isDayScholar && !_shortStayDays.contains(normalizedDay)) {
+            // Only apply to past/today days (don't grey out future in a weird way, or actually future is grey by default)
+            if (normalizedDay.isAfter(DateTime.now())) return null;
+            
+            return Container(
+              margin: const EdgeInsets.all(6),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '${day.day}',
+                style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+              ),
+            );
+          }
+
           final status = _attendanceMap[normalizedDay];
           if (status != null) {
             Color color;
@@ -272,7 +317,7 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
           _buildLegendItem(kStudentSuccess, 'Present'),
           _buildLegendItem(kStudentWarning, 'Late'),
           _buildLegendItem(kStudentDanger, 'Absent'),
-          _buildLegendItem(Colors.grey, 'On Leave'),
+          _buildLegendItem(Colors.grey, widget.student.isDayScholar ? 'Not on short stay' : 'On Leave'),
         ],
       ),
     );

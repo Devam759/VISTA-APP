@@ -3,6 +3,8 @@ import '../../../models/vista_user.dart';
 import '../../../models/leave_request_model.dart';
 import '../../../models/short_stay_model.dart';
 import '../../../services/firebase_service.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/warden_provider.dart';
 import '../components/warden_components.dart';
 import '../components/warden_tab_scaffold.dart';
 
@@ -20,81 +22,86 @@ class _StudentsTabState extends State<StudentsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<LeaveRequest>>(
-      stream: widget.fs.getApprovedLeaves(widget.warden.hostel ?? 'All'),
-      builder: (context, leaveSnap) {
-        return StreamBuilder<List<ShortStayRequest>>(
-          stream: widget.fs.getApprovedShortStays(widget.warden.hostel ?? 'All'),
-          builder: (context, ssSnap) {
-            final leaves = leaveSnap.data ?? [];
-            final shortStays = ssSnap.data ?? [];
+    return Consumer<WardenProvider>(
+      builder: (context, wp, _) {
+        return StreamBuilder<List<LeaveRequest>>(
+          stream: widget.fs.getApprovedLeaves(wp.currentHostelFilter),
+          builder: (context, leaveSnap) {
+            return StreamBuilder<List<ShortStayRequest>>(
+              stream: widget.fs.getApprovedShortStays(wp.currentHostelFilter),
+              builder: (context, ssSnap) {
+                final leaves = leaveSnap.data ?? [];
+                final shortStays = ssSnap.data ?? [];
 
-            return WardenTabScaffold<VistaUser>(
-              title: 'Residents',
-              sectionTitle: 'Hostel Students',
-              showCount: true,
-              searchHint: 'Search by student name, room...',
-              tabs: const ['All', 'In Campus', 'On Leave', 'Short Stay'],
-              streamFactory: () => widget.fs.getUnifiedStudentsStream(widget.warden.hostel),
-              emptyIcon: Icons.people_outline_rounded,
-              emptyTitle: 'No Students Found',
-              emptySubtitle: 'No students registered in this hostel yet.',
-              extraHeaderBuilder: (students) {
-                return StreamBuilder<List<VistaUser>>(
-                  stream: widget.fs.getPendingRegistrationsStream(widget.warden.hostel),
-                  builder: (context, pendingSnap) {
-                    final pending = pendingSnap.data ?? [];
-                    if (pending.isEmpty) return const SizedBox.shrink();
-                    return WardenRegistrationBanner(
-                      pending: pending,
-                      isExpanded: _showRequests,
-                      onTap: () => setState(() => _showRequests = !_showRequests),
-                      onDeny: (s) => widget.fs.denyStudent(s.uid),
-                      onApprove: (s) => WardenUIUtils.showRoomAssignmentDialog(
-                        context: context,
-                        student: s,
-                        fs: widget.fs,
-                      ),
+                return WardenTabScaffold<VistaUser>(
+                  title: 'Residents',
+                  sectionTitle: 'Hostel Students',
+                  showCount: true,
+                  searchHint: 'Search by student name, room...',
+                  tabs: const ['All', 'In Campus', 'On Leave', 'Short Stay'],
+                  streamFactory: () => widget.fs.getUnifiedStudentsStream(wp.currentHostelFilter),
+                  emptyIcon: Icons.people_outline_rounded,
+                  emptyTitle: wp.currentHostelFilter == null ? 'No Students (All)' : 'No Students in ${wp.currentHostelFilter}',
+                  emptySubtitle: 'No students registered in this hostel yet.',
+                  extraHeaderBuilder: (students) {
+                    return StreamBuilder<List<VistaUser>>(
+                      stream: widget.fs.getPendingRegistrationsStream(wp.currentHostelFilter),
+                      builder: (context, pendingSnap) {
+                        final pending = pendingSnap.data ?? [];
+                        if (pending.isEmpty) return const SizedBox.shrink();
+                        return WardenRegistrationBanner(
+                          pending: pending,
+                          isExpanded: _showRequests,
+                          onTap: () => setState(() => _showRequests = !_showRequests),
+                          onDeny: (s) => widget.fs.denyStudent(s.uid, actionUid: widget.warden.uid),
+                          onApprove: (s) => WardenUIUtils.showRoomAssignmentDialog(
+                            context: context,
+                            student: s,
+                            fs: widget.fs,
+                            wardenUid: widget.warden.uid,
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-              filterLogic: (student, tab, query) {
-                final matchesSearch = student.name.toLowerCase().contains(query.toLowerCase()) ||
-                    (student.roomNumber ?? '').toLowerCase().contains(query.toLowerCase());
-                if (!matchesSearch) return false;
+                  filterLogic: (student, tab, query) {
+                    final matchesSearch = student.name.toLowerCase().contains(query.toLowerCase()) ||
+                        (student.roomNumber ?? '').toLowerCase().contains(query.toLowerCase());
+                    if (!matchesSearch) return false;
 
-                final now = DateTime.now();
-                final hasActiveShortStay = shortStays.any((ss) =>
-                    ss.studentId == student.uid &&
-                    ss.status == 'Approved' &&
-                    ss.actualCheckOutTime == null &&
-                    !now.isBefore(ss.checkInDate) &&
-                    !now.isAfter(ss.checkOutDate));
-                if ((student.isDayScholar || student.hasUsedShortStay) && !hasActiveShortStay) return false;
+                    final now = DateTime.now();
+                    final hasActiveShortStay = shortStays.any((ss) =>
+                        ss.studentId == student.uid &&
+                        ss.status == 'Approved' &&
+                        ss.actualCheckOutTime == null &&
+                        !now.isBefore(ss.checkInDate) &&
+                        !now.isAfter(ss.checkOutDate));
+                    if ((student.isDayScholar || student.hasUsedShortStay) && !hasActiveShortStay) return false;
 
-                final onLeave = FirebaseService.isStudentOnLeave(student.uid, leaves);
-                final onShortStay = FirebaseService.isStudentOnShortStay(student.uid, shortStays);
+                    final onLeave = FirebaseService.isStudentOnLeave(student.uid, leaves);
+                    final onShortStay = FirebaseService.isStudentOnShortStay(student.uid, shortStays);
 
-                if (tab == 'On Leave') return onLeave;
-                if (tab == 'Short Stay') return onShortStay;
-                if (tab == 'In Campus') return !onLeave && !onShortStay;
-                return true;
-              },
-              itemBuilder: (context, student) {
-                final onLeave = FirebaseService.isStudentOnLeave(student.uid, leaves);
-                final onShortStay = FirebaseService.isStudentOnShortStay(student.uid, shortStays);
-                return WardenStudentListItem(
-                  student: student,
-                  onLeave: onLeave,
-                  onShortStay: onShortStay,
-                  onTap: () => showWardenStudentDetails(context: context, student: student, fs: widget.fs),
+                    if (tab == 'On Leave') return onLeave;
+                    if (tab == 'Short Stay') return onShortStay;
+                    if (tab == 'In Campus') return !onLeave && !onShortStay;
+                    return true;
+                  },
+                  itemBuilder: (context, student) {
+                    final onLeave = FirebaseService.isStudentOnLeave(student.uid, leaves);
+                    final onShortStay = FirebaseService.isStudentOnShortStay(student.uid, shortStays);
+                    return WardenStudentListItem(
+                      student: student,
+                      onLeave: onLeave,
+                      onShortStay: onShortStay,
+                      onTap: () => showWardenStudentDetails(context: context, student: student, fs: widget.fs),
+                    );
+                  },
                 );
               },
             );
           },
         );
-      },
+      }
     );
   }
 }

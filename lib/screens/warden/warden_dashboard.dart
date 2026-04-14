@@ -44,6 +44,9 @@ class _WardenDashboardState extends State<WardenDashboard> {
   void _onTabTapped(int index, WardenProvider wardenProv) {
     if (_selectedIndex == index) return;
     
+    // Hide notification alert if we're on the target tab
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
     setState(() {
       _selectedIndex = index;
     });
@@ -154,6 +157,8 @@ class _WardenDashboardState extends State<WardenDashboard> {
                     child: PageView(
                       controller: _pageController,
                       onPageChanged: (index) {
+                        // Hide notification alert when page changes
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
                         setState(() {
                           _selectedIndex = index;
                         });
@@ -204,11 +209,54 @@ class _WardenDashboardState extends State<WardenDashboard> {
                     const SizedBox(width: 10),
                     const Text('VISTA', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2)),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
-                      child: Text(warden.hostel ?? 'Hostel', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
+                    
+                    // HOSTEL FILTER BUTTON (Visible for Head/Chief Warden)
+                    if (warden.role == UserRole.headWarden || warden.role == UserRole.chiefWarden) ...[
+                      Consumer<WardenProvider>(
+                        builder: (context, wp, _) => GestureDetector(
+                          onTap: () {
+                            WardenUIUtils.showHostelFilter(
+                              context: context,
+                              currentFilter: wp.currentHostelFilter,
+                              onSelected: (newHostel) => wp.updateHostelFilter(newHostel),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white12,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  wp.currentHostelFilter ?? 'All Hostels',
+                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 16),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      // Single Hostel Indicator for regular Warden
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+                        ),
+                        child: Text(
+                          warden.hostel ?? 'Hostel',
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                    
                     const SizedBox(width: 8),
                     HoverEffect(
                       child: IconButton(
