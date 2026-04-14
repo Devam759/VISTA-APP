@@ -67,7 +67,7 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
                   emptyIcon: Icons.people_outline_rounded,
                   emptyTitle: 'No Students Found',
                   emptySubtitle: 'No students registered across all hostels yet.',
-                  extraHeaderBuilder: (_) {
+                  extraHeaderBuilder: (context, students) {
                     return StreamBuilder<List<VistaUser>>(
                       stream: widget.fs.getPendingRegistrationsStream('All'),
                       builder: (context, pendingSnap) {

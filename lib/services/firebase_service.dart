@@ -851,10 +851,12 @@ class FirebaseService {
     Query<Map<String, dynamic>> query = _db
         .collection('users')
         .where('isApproved', isEqualTo: false)
-        .where('role', isEqualTo: 'student')
-        .where('hostel', isNotEqualTo: 'Short Stay');
+        .where('role', isEqualTo: 'student');
+        
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
+    } else {
+      query = query.where('hostel', isNotEqualTo: 'Short Stay');
     }
     return query.snapshots().map(
       (snapshot) =>
@@ -887,6 +889,7 @@ class FirebaseService {
     }
     return _db.collection('users').doc(uid).update({
       'hostel': null,
+      'registrationNo': null,
       'isApproved': false,
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -1086,7 +1089,11 @@ class FirebaseService {
   /// Unified stream for fetching pending registrations.
   Stream<List<VistaUser>> getPendingRegistrationsStream(String? hostel) {
     return getPendingRegistrations(hostel ?? 'All').map((list) {
-      list.sort((a, b) => (a.registrationNo ?? '').compareTo(b.registrationNo ?? ''));
+      try {
+        list.sort((a, b) => (a.registrationNo ?? '').compareTo(b.registrationNo ?? ''));
+      } catch (e) {
+        debugPrint('VISTA Error sorting pending registrations: $e');
+      }
       return list;
     });
   }

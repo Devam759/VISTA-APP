@@ -62,7 +62,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
       emptyIcon: Icons.how_to_reg_rounded,
       emptyTitle: 'No Attendance Records',
       emptySubtitle: 'Student attendance records for this date will appear here.',
-      extraHeaderBuilder: (records) {
+      extraHeaderBuilder: (context, records) {
         final defaulters = records.where((r) => r.status == 'Absent').toList();
         if (isLateWindow && defaulters.isNotEmpty) {
           return PendingAttendanceBanner(

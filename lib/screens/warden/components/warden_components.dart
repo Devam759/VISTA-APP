@@ -998,6 +998,7 @@ class WardenReadOnlyInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = trailing;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -1043,7 +1044,7 @@ class WardenReadOnlyInput extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) trailing,
+          if (t != null) t,
         ],
       ),
     );
@@ -1195,20 +1196,14 @@ class WardenSearchAction extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 56,
+          height: 54,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          constraints: const BoxConstraints(minWidth: 56),
+          constraints: const BoxConstraints(minWidth: 54),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(16),
           ),
+          clipBehavior: Clip.antiAlias,
           child: Center(child: child),
         ),
       ),
@@ -1486,8 +1481,8 @@ class WardenRegistrationBanner extends StatefulWidget {
   final List<VistaUser> pending;
   final bool isExpanded;
   final VoidCallback onTap;
-  final Function(VistaUser) onDeny;
-  final Function(VistaUser) onApprove;
+  final Future<void> Function(VistaUser) onDeny;
+  final Future<void> Function(VistaUser) onApprove;
 
   const WardenRegistrationBanner({
     super.key,
@@ -1504,6 +1499,41 @@ class WardenRegistrationBanner extends StatefulWidget {
 
 class _WardenRegistrationBannerState extends State<WardenRegistrationBanner> {
   bool _isDismissed = false;
+  final Set<String> _processingUids = {};
+
+  Future<void> _handleAction(VistaUser student, Future<void> Function(VistaUser) action, {bool confirm = false}) async {
+    if (confirm) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Confirm Action', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Text('Are you sure you want to deny ${student.name}\'s registration? They will be removed from your list.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              child: const Text('Deny'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+    }
+
+    setState(() => _processingUids.add(student.uid));
+    try {
+      await action(student);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _processingUids.remove(student.uid));
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -1619,35 +1649,42 @@ class _WardenRegistrationBannerState extends State<WardenRegistrationBanner> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                HoverEffect(
-                                  child: GestureDetector(
-                                    onTap: () => widget.onDeny(s),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.red.withValues(alpha: 0.15)),
+                                if (_processingUids.contains(s.uid))
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16),
+                                    child: VISTALoader(size: 20, color: kPrimary),
+                                  )
+                                else ...[
+                                  HoverEffect(
+                                    child: GestureDetector(
+                                      onTap: () => _handleAction(s, widget.onDeny, confirm: true),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(alpha: 0.1),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                                        ),
+                                        child: const Icon(Icons.close_rounded, color: Colors.red, size: 18),
                                       ),
-                                      child: const Text('Deny', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                HoverEffect(
-                                  child: GestureDetector(
-                                    onTap: () => widget.onApprove(s),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.green.withValues(alpha: 0.15)),
+                                  const SizedBox(width: 8),
+                                  HoverEffect(
+                                    child: GestureDetector(
+                                      onTap: () => _handleAction(s, widget.onApprove),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withValues(alpha: 0.1),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+                                        ),
+                                        child: const Icon(Icons.check_rounded, color: Colors.green, size: 18),
                                       ),
-                                      child: const Icon(Icons.check_rounded, color: Colors.green, size: 18),
                                     ),
                                   ),
-                                ),
+                                ],
                               ],
                             ),
                           ],

@@ -43,25 +43,24 @@ class _StudentsTabState extends State<StudentsTab> {
                   emptyIcon: Icons.people_outline_rounded,
                   emptyTitle: wp.currentHostelFilter == null ? 'No Students (All)' : 'No Students in ${wp.currentHostelFilter}',
                   emptySubtitle: 'No students registered in this hostel yet.',
-                  extraHeaderBuilder: (students) {
-                    return StreamBuilder<List<VistaUser>>(
-                      stream: widget.fs.getPendingRegistrationsStream(wp.currentHostelFilter),
-                      builder: (context, pendingSnap) {
-                        final pending = pendingSnap.data ?? [];
-                        if (pending.isEmpty) return const SizedBox.shrink();
-                        return WardenRegistrationBanner(
-                          pending: pending,
-                          isExpanded: _showRequests,
-                          onTap: () => setState(() => _showRequests = !_showRequests),
-                          onDeny: (s) => widget.fs.denyStudent(s.uid, actionUid: widget.warden.uid),
-                          onApprove: (s) => WardenUIUtils.showRoomAssignmentDialog(
-                            context: context,
-                            student: s,
-                            fs: widget.fs,
-                            wardenUid: widget.warden.uid,
-                          ),
-                        );
-                      },
+                  extraHeaderBuilder: (context, students) {
+                    final pending = context.select<WardenProvider, List<VistaUser>>((p) => p.pendingRegistrations);
+                    
+                    if (pending.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    
+                    return WardenRegistrationBanner(
+                      pending: pending,
+                      isExpanded: _showRequests,
+                      onTap: () => setState(() => _showRequests = !_showRequests),
+                      onApprove: (student) => WardenUIUtils.showRoomAssignmentDialog(
+                        context: context,
+                        student: student,
+                        fs: widget.fs,
+                        wardenUid: widget.warden.uid,
+                      ),
+                      onDeny: (student) => widget.fs.denyStudent(student.uid, actionUid: widget.warden.uid),
                     );
                   },
                   filterLogic: (student, tab, query) {

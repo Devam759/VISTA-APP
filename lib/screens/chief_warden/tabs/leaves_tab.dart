@@ -26,8 +26,9 @@ class _LeavesTabState extends State<LeavesTab> {
     final wp = Provider.of<WardenProvider>(context);
     final hostelFilter = wp.currentHostelFilter ?? 'All';
 
-    return WardenTabScaffold<LeaveRequest>(
-      title: 'Leave Requests',
+        return WardenTabScaffold<LeaveRequest>(
+          title: 'Leave Requests',
+          sectionTitle: 'Leave Requests',
       tabs: const ['All', 'Pending', 'Approved', 'Rejected'],
       searchQueryPlaceholder: 'Search student or ID...',
       actionWidget: Row(

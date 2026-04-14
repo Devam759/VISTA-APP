@@ -22,7 +22,7 @@ class WardenTabScaffold<T> extends StatefulWidget {
   final TabController? tabController;
   final TextEditingController? searchCtrl;
   final Widget? extraHeader;
-  final Widget Function(List<T>)? extraHeaderBuilder;
+  final Widget Function(BuildContext, List<T>)? extraHeaderBuilder;
   final Widget? loadingWidget;
 
   // Empty state customization
@@ -92,20 +92,29 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: widget.searchHint ?? widget.searchQueryPlaceholder,
-                        hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.3), fontWeight: FontWeight.w500),
-                        prefixIcon: const Icon(Icons.search_rounded, color: kPrimary),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: TextField(
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          hintText: widget.searchHint ?? widget.searchQueryPlaceholder,
+                          hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.3), fontWeight: FontWeight.w500),
+                          prefixIcon: const Icon(Icons.search_rounded, color: kPrimary),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
                       ),
                     ),
                   ),
@@ -118,8 +127,8 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
             ),
             if (widget.extraHeader != null) widget.extraHeader!,
             Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              height: 44,
+              margin: const EdgeInsets.symmetric(vertical: 2),
+              height: 48,
               child: TabBar(
                 controller: _tabController,
                 isScrollable: true,
@@ -131,11 +140,12 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
                 unselectedLabelColor: Colors.black45,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                 dividerColor: Colors.transparent,
+                dividerHeight: 0,
                 tabs: widget.tabs.map((t) => Tab(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(t)))).toList(),
               ),
             ),
-            if (widget.sectionTitle != null)
-              WardenSectionLabel(widget.sectionTitle!, animate: false), // Keep header static on rebuilds
+            if (widget.sectionTitle != null || widget.title != null)
+              WardenSectionLabel(widget.sectionTitle ?? widget.title ?? '', animate: false), // Keep header static on rebuilds
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -170,7 +180,7 @@ class _GenericFilteredList<T> extends StatefulWidget {
   final Stream<List<T>> Function() streamFactory;
   final Widget Function(BuildContext, T) itemBuilder;
   final bool Function(T, String, String) filterLogic;
-  final Widget Function(List<T>)? extraHeaderBuilder;
+  final Widget Function(BuildContext, List<T>)? extraHeaderBuilder;
   final IconData? emptyIcon;
   final String? emptyTitle;
   final String? emptySubtitle;
@@ -198,6 +208,22 @@ class _GenericFilteredList<T> extends StatefulWidget {
 }
 
 class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with AutomaticKeepAliveClientMixin {
+  late Stream<List<T>> _stream;
+
+  @override
+  void initState() {
+    super.initState();
+    _stream = widget.streamFactory();
+  }
+
+  @override
+  void didUpdateWidget(covariant _GenericFilteredList<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tab != oldWidget.tab || widget.query != oldWidget.query) {
+      _stream = widget.streamFactory();
+    }
+  }
+
   @override
   bool get wantKeepAlive => true;
 
@@ -205,7 +231,7 @@ class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with A
   Widget build(BuildContext context) {
     super.build(context);
     return StreamBuilder<List<T>>(
-      stream: widget.streamFactory(),
+      stream: _stream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return widget.loadingWidget ?? const StudentListSkeleton();
@@ -214,28 +240,33 @@ class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with A
         final allItems = snapshot.data ?? [];
         final filtered = allItems.where((item) => widget.filterLogic(item, widget.tab, widget.query)).toList();
 
+        Widget content;
         if (filtered.isEmpty) {
-          return WardenEmptyState(
+          content = WardenEmptyState(
             icon: widget.emptyIcon ?? (widget.query.isEmpty ? Icons.inbox_rounded : Icons.search_off_rounded),
             title: widget.emptyTitle ?? (widget.query.isEmpty ? 'No results in ${widget.tab}' : 'No matches found'),
             subtitle: widget.emptySubtitle ?? (widget.query.isEmpty ? 'There are no items to show here at the moment.' : 'Try adjusting your search query.'),
           );
+        } else {
+          content = ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            physics: const BouncingScrollPhysics(),
+            itemCount: filtered.length,
+            itemBuilder: (context, index) => widget.itemBuilder(context, filtered[index]),
+          );
         }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.extraHeaderBuilder != null) widget.extraHeaderBuilder!(allItems),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                physics: const BouncingScrollPhysics(),
-                itemCount: filtered.length,
-                itemBuilder: (context, index) => widget.itemBuilder(context, filtered[index]),
-              ),
-            ),
-          ],
-        );
+        if (widget.extraHeaderBuilder != null) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              widget.extraHeaderBuilder!(context, filtered),
+              Expanded(child: content),
+            ],
+          );
+        }
+
+        return content;
       },
     );
   }
