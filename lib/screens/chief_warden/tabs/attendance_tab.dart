@@ -67,7 +67,12 @@ class _AttendanceTabState extends State<AttendanceTab> {
         if (isLateWindow && defaulters.isNotEmpty) {
           return PendingAttendanceBanner(
             count: defaulters.length,
-            onViewList: () => WardenUIUtils.showPendingAttendanceList(context, defaulters, wardenUid: widget.warden.uid, wardenName: widget.warden.name),
+            onViewList: () => WardenUIUtils.showPendingAttendanceList(
+              context,
+              widget.fs.getUnifiedAttendanceStream(wp.currentHostelFilter, _selectedDate),
+              wardenUid: widget.warden.uid,
+              wardenName: widget.warden.name,
+            ),
           );
         }
         return const SizedBox.shrink();

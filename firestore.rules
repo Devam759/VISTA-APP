@@ -80,7 +80,7 @@ service cloud.firestore {
         (uid() == userId
           && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['role', 'isApproved', 'roomNumber', 'hostel',
-                        'uid', 'email', 'hasUsedShortStay'])
+                        'uid', 'email', 'hasUsedShortStay', 'createdAt'])
         ) ||
         // Warden can approve/assign room but cannot touch role or uid or email.
         (isWarden()

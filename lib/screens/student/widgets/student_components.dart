@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/vista_image_viewer.dart';
 import '../../../models/complaint_model.dart';
 import '../../../models/short_stay_model.dart';
 import '../../../services/firebase_service.dart';
@@ -724,23 +726,46 @@ class _StudentExpandableComplaintCardState
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.network(
-                        widget.complaint.imageUrl!,
-                        height: 240,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            height: 240,
-                            color: kStudentBg,
-                            child: const Center(
-                              child: CircularProgressIndicator(),
+                    GestureDetector(
+                      onTap: () {
+                        final heroTag = 'student_complaint_${widget.complaint.id}';
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => VistaImageViewer(
+                              imageUrl: widget.complaint.imageUrl!,
+                              heroTag: heroTag,
+                              title: 'Ticket #${widget.complaint.seqId}',
                             ),
-                          );
-                        },
+                          ),
+                        );
+                      },
+                      child: Hero(
+                        tag: 'student_complaint_${widget.complaint.id}',
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CachedNetworkImage(
+                            imageUrl: widget.complaint.imageUrl!,
+                            height: 240,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              height: 240,
+                              color: kStudentBg,
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              height: 240,
+                              color: kStudentBg,
+                              child: const Center(
+                                child: Icon(Icons.image_not_supported,
+                                    color: Colors.black26),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

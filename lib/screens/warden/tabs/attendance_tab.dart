@@ -61,7 +61,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
                 count: defaulters.length,
                 onViewList: () => WardenUIUtils.showPendingAttendanceList(
                   context,
-                  defaulters,
+                  widget.fs.getUnifiedAttendanceStream(wp.currentHostelFilter, _selectedDate),
                   wardenUid: widget.warden.uid,
                   wardenName: widget.warden.name,
                 ),

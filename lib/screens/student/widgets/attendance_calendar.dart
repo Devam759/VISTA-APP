@@ -6,6 +6,9 @@ import '../../../models/vista_user.dart';
 import '../../../services/firebase_service.dart';
 import '../widgets/student_components.dart';
 
+import '../../../models/attendance_model.dart';
+import '../../../models/leave_request_model.dart';
+import '../../../models/short_stay_model.dart';
 import '../../../widgets/skeleton_loader.dart';
 
 class StudentAttendanceCalendar extends StatefulWidget {
@@ -27,91 +30,120 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
   DateTime? _selectedDay;
   Map<DateTime, String> _attendanceMap = {};
   Set<DateTime> _shortStayDays = {};
-  bool _isLoading = true;
-  StreamSubscription? _sub;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadAttendance();
-  }
+  Map<DateTime, String> _buildAttendanceMap(List<Attendance> attendanceList, List<LeaveRequest> leaves) {
+    final Map<DateTime, String> map = {};
+    
+    // Sort oldest to newest so newest status for a day wins
+    final sortedAttendance = List<Attendance>.from(attendanceList)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-  void _loadAttendance() async {
-    try {
-      final attendanceList = await widget.fs.getStudentAttendance(widget.student.uid).first;
-      final leaves = await widget.fs.getStudentLeaves(widget.student.uid).first;
-      final approvedLeaves = leaves.where((l) => l.status == 'Approved').toList();
-      
-      // Fetch Short Stays for Day Scholars
-      Set<DateTime> ssDays = {};
-      if (widget.student.isDayScholar) {
-        final shortStays = await widget.fs.getStudentShortStays(widget.student.uid).first;
-        final activeShortStays = shortStays.where((s) => s.status == 'Approved' || s.status == 'Completed').toList();
-        for (var s in activeShortStays) {
-          var curr = DateTime(s.checkInDate.year, s.checkInDate.month, s.checkInDate.day);
-          final end = DateTime(s.checkOutDate.year, s.checkOutDate.month, s.checkOutDate.day);
-          while (!curr.isAfter(end)) {
-            ssDays.add(curr);
-            curr = curr.add(const Duration(days: 1));
-          }
+    for (var a in sortedAttendance) {
+      final d = DateTime(a.timestamp.year, a.timestamp.month, a.timestamp.day);
+      if (map.containsKey(d)) {
+        if (a.status == 'Present' || a.status == 'Late') {
+          map[d] = a.status;
         }
-      }
-
-      final Map<DateTime, String> map = {};
-      for (var a in attendanceList) {
-        final d = DateTime(a.timestamp.year, a.timestamp.month, a.timestamp.day);
+      } else {
         map[d] = a.status;
       }
-
-      for (var l in approvedLeaves) {
-        var curr = DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day);
-        final end = DateTime(l.toDate.year, l.toDate.month, l.toDate.day);
-        while (!curr.isAfter(end)) {
-          if (!map.containsKey(curr)) {
-            map[curr] = 'On Leave';
-          }
-          curr = curr.add(const Duration(days: 1));
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _attendanceMap = map;
-          _shortStayDays = ssDays;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
     }
+
+    final approvedLeaves = leaves.where((l) => l.status == 'Approved').toList();
+    for (var l in approvedLeaves) {
+      var curr = DateTime(l.fromDate.year, l.fromDate.month, l.fromDate.day);
+      final end = DateTime(l.toDate.year, l.toDate.month, l.toDate.day);
+      while (!curr.isAfter(end)) {
+        if (!map.containsKey(curr)) {
+          map[curr] = 'On Leave';
+        }
+        curr = curr.add(const Duration(days: 1));
+      }
+    }
+    return map;
   }
 
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
+  Set<DateTime> _buildShortStayDays(List<ShortStayRequest> shortStays) {
+    Set<DateTime> ssDays = {};
+    if (!widget.student.isDayScholar) return ssDays;
+    
+    final activeShortStays = shortStays.where((s) => s.status == 'Approved' || s.status == 'Completed').toList();
+    for (var s in activeShortStays) {
+      var curr = DateTime(s.checkInDate.year, s.checkInDate.month, s.checkInDate.day);
+      final end = DateTime(s.checkOutDate.year, s.checkOutDate.month, s.checkOutDate.day);
+      while (!curr.isAfter(end)) {
+        ssDays.add(curr);
+        curr = curr.add(const Duration(days: 1));
+      }
+    }
+    return ssDays;
   }
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<List<Attendance>>(
+      stream: widget.fs.getStudentAttendance(widget.student.uid),
+      builder: (context, attendanceSnap) {
+        return StreamBuilder<List<LeaveRequest>>(
+          stream: widget.fs.getStudentLeaves(widget.student.uid),
+          builder: (context, leaveSnap) {
+            return StreamBuilder<List<ShortStayRequest>>(
+              stream: widget.student.isDayScholar 
+                  ? widget.fs.getStudentShortStays(widget.student.uid)
+                  : Stream.value([]),
+              builder: (context, ssSnap) {
+                if (attendanceSnap.connectionState == ConnectionState.waiting && _attendanceMap.isEmpty) {
+                  return _buildLoadingScaffold();
+                }
+
+                final attList = attendanceSnap.data ?? [];
+                final leaveList = leaveSnap.data ?? [];
+                final ssList = ssSnap.data ?? [];
+
+                _attendanceMap = _buildAttendanceMap(attList, leaveList);
+                _shortStayDays = _buildShortStayDays(ssList);
+
+                return _buildMainScaffold();
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingScaffold() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        children: [
+          _buildHeader(),
+          const Expanded(child: AttendanceListSkeleton()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainScaffold() {
     return LayoutBuilder(
       builder: (context, constraints) {
         return ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: constraints.maxHeight * 0.9,
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
           ),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: _isLoading
-                ? const AttendanceListSkeleton()
-                : SingleChildScrollView(
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
@@ -121,14 +153,14 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
                       ],
                     ),
                   ),
+                ),
+              ],
+            ),
           ),
-        ],
-          ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Widget _buildHeader() {
     return Container(
@@ -275,7 +307,7 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
 
           // Absent logic (before today and after start of sem)
           if (normalizedDay.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)) && 
-              normalizedDay.isAfter(DateTime(2025, 2, 10))) {
+              normalizedDay.isAfter(widget.student.createdAt?.subtract(const Duration(days: 1)) ?? DateTime.now().subtract(const Duration(days: 30)))) {
             final color = kStudentDanger;
             return Container(
               margin: const EdgeInsets.all(6),

@@ -11,7 +11,11 @@ import '../../../models/short_stay_model.dart';
 import '../../../widgets/smooth_animations.dart';
 import 'warden_attendance_calendar.dart';
 import '../../../widgets/vista_date_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/vista_image_viewer.dart';
 import '../../../models/complaint_model.dart';
+import '../../../models/attendance_model.dart';
+import '../../../models/attendance_record.dart';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -648,11 +652,11 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => WardenImageViewer(
-                              imageUrl: widget.complaint.imageUrl!,
-                              heroTag: heroTag,
-                              title: 'Ticket #${widget.complaint.seqId}',
-                            ),
+                            builder: (_) => VistaImageViewer(
+                                imageUrl: widget.complaint.imageUrl!,
+                                heroTag: heroTag,
+                                title: 'Ticket #${widget.complaint.seqId}',
+                              ),
                           ),
                         );
                       },
@@ -776,11 +780,11 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => WardenImageViewer(
-                              imageUrl: widget.complaint.imageUrl!,
-                              heroTag: heroTag,
-                              title: 'Ticket #${widget.complaint.seqId}',
-                            ),
+                            builder: (_) => VistaImageViewer(
+                                imageUrl: widget.complaint.imageUrl!,
+                                heroTag: heroTag,
+                                title: 'Ticket #${widget.complaint.seqId}',
+                              ),
                           ),
                         );
                       },
@@ -801,20 +805,15 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                               fit: StackFit.expand,
                               alignment: Alignment.center,
                               children: [
-                                Image.network(
-                                  widget.complaint.imageUrl!,
+                                CachedNetworkImage(
+                                  imageUrl: widget.complaint.imageUrl!,
                                   fit: BoxFit.contain,
-                                  loadingBuilder:
-                                      (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Container(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.02),
-                                      child: const Center(
-                                          child: CircularProgressIndicator()),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) =>
+                                  placeholder: (context, url) => Container(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    child: const Center(
+                                        child: CircularProgressIndicator()),
+                                  ),
+                                  errorWidget: (context, url, error) =>
                                       Container(
                                     color: Colors.black.withValues(alpha: 0.02),
                                     child: const Center(
@@ -1044,7 +1043,7 @@ class WardenReadOnlyInput extends StatelessWidget {
               ],
             ),
           ),
-          if (t != null) t,
+          ?t,
         ],
       ),
     );
@@ -2003,7 +2002,7 @@ class WardenUIUtils {
 
   static void showPendingAttendanceList(
     BuildContext context,
-    List<dynamic> defaulters, {
+    Stream<List<AttendanceRecord>> attendanceStream, {
     String? wardenUid,
     String? wardenName,
   }) {
@@ -2012,100 +2011,186 @@ class WardenUIUtils {
       isScrollControlled: true,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => SafeArea(
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
+      builder: (context) => _LivePendingAttendanceList(
+        attendanceStream: attendanceStream,
+        wardenUid: wardenUid,
+        wardenName: wardenName,
+      ),
+    );
+  }
+}
+
+class _LivePendingAttendanceList extends StatefulWidget {
+  final Stream<List<AttendanceRecord>> attendanceStream;
+  final String? wardenUid;
+  final String? wardenName;
+
+  const _LivePendingAttendanceList({
+    required this.attendanceStream,
+    this.wardenUid,
+    this.wardenName,
+  });
+
+  @override
+  State<_LivePendingAttendanceList> createState() =>
+      _LivePendingAttendanceListState();
+}
+
+class _LivePendingAttendanceListState
+    extends State<_LivePendingAttendanceList> {
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: StreamBuilder<List<AttendanceRecord>>(
+          stream: widget.attendanceStream,
+          builder: (context, snapshot) {
+            final records = snapshot.data ?? [];
+            final defaulters = records.where((r) => r.status == 'Absent').toList();
+
+            return Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    const Text(
-                      'Pending Attendance',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Pending Attendance',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5),
                       ),
-                      child: Text(
-                        '${defaulters.length}',
-                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 14),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${defaulters.length}',
+                          style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: defaulters.length,
-                  itemBuilder: (context, i) {
-                    final record = defaulters[i];
-                    final student = record.student;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade100)),
-                        title: Text(
-                          student.name,
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF1E293B)),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              '${getFullHostelName(student.hostel)} - ${student.roomNumber ?? "N/A"}',
-                              style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w700, fontSize: 12),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              student.phoneNumber ?? 'No Number',
-                              style: const TextStyle(fontSize: 12, color: Colors.black45, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        trailing: Material(
-                          color: kPrimary.withValues(alpha: 0.1),
-                          shape: const CircleBorder(),
-                          child: IconButton(
-                            icon: const Icon(Icons.call_rounded, color: kPrimary, size: 20),
-                            onPressed: () async {
-                               final phone = (student.phoneNumber ?? '').replaceAll(RegExp(r'[^\d+]'), '');
-                               final Uri telUri = Uri.parse('tel:$phone');
-                               if (await canLaunchUrl(telUri)) await launchUrl(telUri, mode: LaunchMode.externalApplication);
-                            },
+                const SizedBox(height: 20),
+                const Divider(height: 1),
+                Expanded(
+                  child: defaulters.isEmpty
+                      ? const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle_outline_rounded,
+                                  color: Colors.green, size: 48),
+                              SizedBox(height: 16),
+                              Text(
+                                'No Pending Attendance',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    color: Colors.black54),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'All students have marked attendance.',
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.black38),
+                              ),
+                            ],
                           ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: defaulters.length,
+                          itemBuilder: (context, i) {
+                            final record = defaulters[i];
+                            final student = record.student;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 4),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(
+                                        color: Colors.grey.shade100)),
+                                title: Text(
+                                  student.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                      color: Color(0xFF1E293B)),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${getFullHostelName(student.hostel)} - ${student.roomNumber ?? "N/A"}',
+                                      style: const TextStyle(
+                                          color: kPrimary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      student.phoneNumber ?? 'No Number',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black45,
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                                trailing: Material(
+                                  color: kPrimary.withValues(alpha: 0.1),
+                                  shape: const CircleBorder(),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.call_rounded,
+                                        color: kPrimary, size: 20),
+                                    onPressed: () async {
+                                      final phone = (student.phoneNumber ?? '')
+                                          .replaceAll(RegExp(r'[^\d+]'), '');
+                                      final Uri telUri = Uri.parse('tel:$phone');
+                                      if (await canLaunchUrl(telUri)) {
+                                        await launchUrl(telUri,
+                                            mode: LaunchMode.externalApplication);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    );
-                  },
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -2375,93 +2460,6 @@ class _WardenExpandableShortStayCardState extends State<WardenExpandableShortSta
   }
 }
 
-class WardenImageViewer extends StatelessWidget {
-  final String imageUrl;
-  final String title;
-  final String heroTag;
 
-  const WardenImageViewer({
-    super.key,
-    required this.imageUrl,
-    required this.title,
-    required this.heroTag,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Scaffold(
-        backgroundColor: Colors.black.withValues(alpha: 0.9),
-        body: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: Hero(
-                  tag: heroTag,
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.contain,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.white54, size: 60),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Failed to load image\nCheck your internet connection",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: Material(
-                color: Colors.transparent,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    title,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 

@@ -27,6 +27,7 @@ class VistaUser {
   final String? registrationNo;
   final bool isMicrosoftLinked;
   final bool hasActiveShortStay;
+  final DateTime? createdAt;
 
   VistaUser({
     required this.uid,
@@ -50,6 +51,7 @@ class VistaUser {
     this.registrationNo,
     this.isMicrosoftLinked = false,
     this.hasActiveShortStay = false,
+    this.createdAt,
   });
 
   Map<String, dynamic> toMap({bool forCreate = false}) {
@@ -73,9 +75,9 @@ class VistaUser {
       'isDayScholar': isDayScholar,
       'isAccountActive': isAccountActive,
       'registrationNo': registrationNo,
-       'isMicrosoftLinked': isMicrosoftLinked,
+      'isMicrosoftLinked': isMicrosoftLinked,
       'hasActiveShortStay': hasActiveShortStay,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': createdAt ?? FieldValue.serverTimestamp(),
     };
 
     if (forCreate) {
@@ -142,6 +144,9 @@ class VistaUser {
       isAccountActive: map['isAccountActive'] ?? true, // Default to true if missing (legacy/warden docs)
        isMicrosoftLinked: map['isMicrosoftLinked'] == true,
       hasActiveShortStay: map['hasActiveShortStay'] == true,
+      createdAt: map['createdAt'] is Timestamp 
+          ? (map['createdAt'] as Timestamp).toDate() 
+          : null,
     );
   }
 }
