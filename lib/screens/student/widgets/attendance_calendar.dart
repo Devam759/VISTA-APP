@@ -9,7 +9,6 @@ import '../widgets/student_components.dart';
 import '../../../models/attendance_model.dart';
 import '../../../models/leave_request_model.dart';
 import '../../../models/short_stay_model.dart';
-import '../../../widgets/skeleton_loader.dart';
 
 class StudentAttendanceCalendar extends StatefulWidget {
   final VistaUser student;
@@ -92,10 +91,6 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
                   ? widget.fs.getStudentShortStays(widget.student.uid)
                   : Stream.value([]),
               builder: (context, ssSnap) {
-                if (attendanceSnap.connectionState == ConnectionState.waiting && _attendanceMap.isEmpty) {
-                  return _buildLoadingScaffold();
-                }
-
                 final attList = attendanceSnap.data ?? [];
                 final leaveList = leaveSnap.data ?? [];
                 final ssList = ssSnap.data ?? [];
@@ -109,21 +104,6 @@ class _StudentAttendanceCalendarState extends State<StudentAttendanceCalendar> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildLoadingScaffold() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: Column(
-        children: [
-          _buildHeader(),
-          const Expanded(child: AttendanceListSkeleton()),
-        ],
-      ),
     );
   }
 

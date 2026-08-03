@@ -10,12 +10,24 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "getDebugToken") {
-                // Return a clear message so the user knows where to find the token.
-                // The Firebase App Check Debug token is printed by the SDK itself to Logcat.
-                result.success("Check Logcat (tag: 'DebugAppCheckProvider') for your Firebase App Check token.")
-            } else {
-                result.notImplemented()
+            when (call.method) {
+                "getDebugToken" -> {
+                    result.success("Check Logcat (tag: 'DebugAppCheckProvider') for your Firebase App Check token.")
+                }
+                "enableSecure" -> {
+                    window.setFlags(
+                        android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                        android.view.WindowManager.LayoutParams.FLAG_SECURE
+                    )
+                    result.success(true)
+                }
+                "disableSecure" -> {
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                    result.success(true)
+                }
+                else -> {
+                    result.notImplemented()
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'vista_loader.dart';
 
 class VistaImageViewer extends StatelessWidget {
   final String imageUrl;
@@ -30,7 +31,7 @@ class VistaImageViewer extends StatelessWidget {
                   minScale: PhotoViewComputedScale.contained,
                   maxScale: PhotoViewComputedScale.covered * 4.0,
                   loadingBuilder: (context, event) => const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
+                    child: VistaClassicLoader(size: 24, color: Colors.white),
                   ),
                   errorBuilder: (context, error, stackTrace) => Column(
                     mainAxisAlignment: MainAxisAlignment.center,

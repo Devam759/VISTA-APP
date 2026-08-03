@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/vista_user.dart';
 import '../../../services/firebase_service.dart';
@@ -8,7 +8,7 @@ import '../../../providers/warden_provider.dart';
 import '../components/warden_components.dart';
 import '../components/warden_tab_scaffold.dart';
 import '../components/warden_attendance_calendar.dart';
-import '../../../widgets/skeleton_loader.dart';
+import '../../../widgets/common/skeleton_loader.dart';
 
 class AttendanceTab extends StatefulWidget {
   final VistaUser warden;

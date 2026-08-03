@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../../utils/sanitizer.dart';
-import '../../../widgets/vista_loader.dart';
-import '../../../widgets/hover_effect.dart';
+import '../../../widgets/common/vista_loader.dart';
+import '../../../widgets/common/hover_effect.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../services/firebase_service.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/short_stay_model.dart';
-import '../../../widgets/smooth_animations.dart';
+import '../../../widgets/common/smooth_animations.dart';
 import 'warden_attendance_calendar.dart';
-import '../../../widgets/vista_date_picker.dart';
+import '../../../widgets/common/vista_date_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../widgets/vista_image_viewer.dart';
+import '../../../widgets/common/vista_image_viewer.dart';
 import '../../../models/complaint_model.dart';
-import '../../../models/attendance_model.dart';
 import '../../../models/attendance_record.dart';
 
 
@@ -91,7 +90,8 @@ class WardenSectionLabel extends StatelessWidget {
   final String text;
   final int? count;
   final bool animate;
-  const WardenSectionLabel(this.text, {super.key, this.count, this.animate = true});
+  final Widget? actionWidget;
+  const WardenSectionLabel(this.text, {super.key, this.count, this.animate = true, this.actionWidget});
 
   @override
   Widget build(BuildContext context) {
@@ -142,6 +142,10 @@ class WardenSectionLabel extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
+            if (actionWidget != null) ...[
+              const Spacer(),
+              actionWidget!,
             ],
           ],
         ),
@@ -811,7 +815,7 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                                   placeholder: (context, url) => Container(
                                     color: Colors.black.withValues(alpha: 0.02),
                                     child: const Center(
-                                        child: CircularProgressIndicator()),
+                                        child: VistaClassicLoader(size: 24)),
                                   ),
                                   errorWidget: (context, url, error) =>
                                       Container(
@@ -1079,29 +1083,7 @@ class WardenResponsiveWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isLargeScreen = width > 1100;
-
-    if (!isLargeScreen) return child;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFE2E8F0), 
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 1100),
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 40,
-                offset: const Offset(0, 0),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
-    );
+    return child;
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1305,10 +1287,7 @@ class _WardenListViewState<T> extends State<WardenListView<T>>
         if (snapshot.connectionState == ConnectionState.waiting) {
           return widget.skeleton ??
               const Center(
-                child: CircularProgressIndicator(
-                  color: kPrimary,
-                  strokeWidth: 2,
-                ),
+                child: VistaClassicLoader(size: 28),
               );
         }
 

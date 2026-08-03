@@ -10,10 +10,9 @@ import '../../../models/short_stay_model.dart';
 import '../../../models/vista_user.dart';
 import '../../../services/firebase_service.dart';
 import '../../../services/security_service.dart';
-import '../../../widgets/skeleton_loader.dart';
 import '../widgets/attendance_calendar.dart';
 import '../widgets/student_components.dart';
-import '../../../widgets/vista_loader.dart';
+import '../../../widgets/common/vista_loader.dart';
 import '../face_capture_screen.dart' if (dart.library.html) '../face_capture_screen_stub.dart';
 
 class AttendanceTab extends StatefulWidget {
@@ -138,7 +137,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
           builder: (context, staySnap) {
             if (leaveSnap.connectionState == ConnectionState.waiting ||
                 staySnap.connectionState == ConnectionState.waiting) {
-              return const AttendanceListSkeleton();
+              return const Center(child: VistaClassicLoader(size: 35));
             }
 
             final approvedLeaves = (leaveSnap.data ?? [])
@@ -390,7 +389,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
                       ],
                     )
                   : _isMarking
-                      ? const VISTALoader(size: 40, color: Colors.white)
+                      ? const ThreeBodyLoader(size: 35, color: Colors.white)
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -435,7 +434,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
                     _handleLeaveCheckIn(activeLeave.id);
                   },
             icon: _isCheckingIn
-                ? const VISTALoader(size: 20, color: Colors.white)
+                ? const VistaClassicLoader(size: 20, color: Colors.white)
                 : const Icon(Icons.location_on_rounded),
             label: Text(_isCheckingIn ? 'CHECKING...' : 'CHECK-IN FROM LEAVE',
                 style: const TextStyle(fontWeight: FontWeight.w800)),

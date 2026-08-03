@@ -1,4 +1,4 @@
-import 'package:firebase_core/firebase_core.dart';
+﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
@@ -11,11 +11,13 @@ import 'screens/student/day_scholar_dashboard.dart';
 import 'screens/warden/warden_dashboard.dart';
 import 'screens/head_warden/head_warden_dashboard.dart';
 import 'screens/chief_warden/chief_warden_dashboard.dart';
+import 'screens/admin/admin_dashboard.dart';
+import 'screens/mess/mess_manager_dashboard.dart';
 import 'screens/auth/pending_approval_screen.dart';
 import 'screens/auth/mandatory_link_screen.dart';
 import 'utils/theme.dart';
 import 'models/vista_user.dart';
-import 'widgets/vista_loader.dart';
+import 'widgets/common/vista_loader.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, debugPrint;
 import 'services/security_service.dart';
 
@@ -121,6 +123,7 @@ class VistaApp extends StatelessWidget {
           '/warden': (context) => const WardenDashboard(),
           '/head-warden': (context) => const HeadWardenDashboard(),
           '/chief-warden': (context) => const ChiefWardenDashboard(),
+          '/admin': (context) => const AdminDashboard(),
         },
       ),
     );
@@ -141,29 +144,33 @@ class AuthWrapper extends StatelessWidget {
       return Scaffold(
         backgroundColor: const Color(0xFFF0F4FF),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    'assets/images/jklu_logo.jpg',
-                    height: 60,
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    'VISTA',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E3A8A),
-                        ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              const VISTALoader(size: 150),
-            ],
+          child: Transform.translate(
+            offset: const Offset(0, -30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/images/jklu_logo_bgremove.png',
+                      height: 64,
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      'VISTA',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E3A8A),
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 44),
+                const VISTALoader(size: 52, message: 'Loading'),
+              ],
+            ),
           ),
         ),
       );
@@ -207,6 +214,10 @@ class AuthWrapper extends StatelessWidget {
         return const HeadWardenDashboard();
       case UserRole.chiefWarden:
         return const ChiefWardenDashboard();
+      case UserRole.admin:
+        return const AdminDashboard();
+      case UserRole.messManager:
+        return const MessManagerDashboard();
     }
   }
 }

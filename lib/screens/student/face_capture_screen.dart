@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:camera/camera.dart';
@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 import '../../services/face_recognition_service.dart';
-import '../../widgets/vista_loader.dart';
+import '../../widgets/common/vista_loader.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MODE

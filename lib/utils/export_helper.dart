@@ -453,6 +453,14 @@ class ExportHelper {
     );
   }
 
+  static Future<void> saveRawCsv(String csvString, String fileName) async {
+    final List<List<dynamic>> rows = csvString
+        .split('\n')
+        .map((line) => line.split(','))
+        .toList();
+    await saveAndShare(rows, fileName);
+  }
+
   static Future<void> _saveAndShare(
     List<List<dynamic>> rows,
     String fileName,

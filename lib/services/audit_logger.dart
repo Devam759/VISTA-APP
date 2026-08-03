@@ -18,7 +18,8 @@ enum AuditEvent {
 /// Centralized security audit logger.
 ///
 /// All events land in the `audit_logs` Firestore collection which has
-/// append-only rules (no update/delete) and is readable only by chiefWarden.
+/// append-only rules (no update/delete) and is write-only for clients
+/// (read access is denied to all client roles including chiefWarden).
 ///
 /// Design decisions:
 ///   • Writes are fire-and-forget (never await) in non-critical paths to

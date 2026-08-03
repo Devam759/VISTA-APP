@@ -120,7 +120,9 @@ lib/firebase_options.dart
 **/*.jks
 **/*.keystore
 
-# Node modules
+# Scripts directory
+scripts/
+**/scripts/
 **/scripts/node_modules/
 **/functions/node_modules/
 package-lock.json

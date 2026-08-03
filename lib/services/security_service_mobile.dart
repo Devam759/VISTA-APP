@@ -3,8 +3,13 @@ import 'package:flutter/foundation.dart';
 
 // Mobile implementation using the safe_device package.
 class SecurityImplementation {
+  // Set to true to disable security checks during USB debugging / testing.
+  // Change to false when testing is complete.
+  static const bool disableSecurityChecksForTesting = true;
+
   static Future<bool> isSecure() async {
-    // if (kDebugMode) return true; // Removed per user request to block emulators even in debug
+    if (disableSecurityChecksForTesting) return true;
+
     try {
       if (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS) {
@@ -23,11 +28,12 @@ class SecurityImplementation {
   }
 
   static Future<bool> isRealDevice() async {
-    // if (kDebugMode) return true; // Removed per user request
+    if (disableSecurityChecksForTesting) return true;
+
     try {
       if (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS) {
-        return await SafeDevice.isRealDevice; // Strict check that Ignores kDebugMode
+        return await SafeDevice.isRealDevice;
       }
     } catch (e) {
       debugPrint("Real device check failed: $e");

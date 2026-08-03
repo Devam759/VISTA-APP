@@ -11,7 +11,8 @@ import '../components/warden_tab_scaffold.dart';
 class StudentsTab extends StatefulWidget {
   final VistaUser warden;
   final FirebaseService fs;
-  const StudentsTab({super.key, required this.warden, required this.fs});
+  final VoidCallback? onExport;
+  const StudentsTab({super.key, required this.warden, required this.fs, this.onExport});
 
   @override
   State<StudentsTab> createState() => _StudentsTabState();

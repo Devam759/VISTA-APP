@@ -7,7 +7,7 @@ class Attendance {
   final String hostel;
   final String roomNumber;
   final DateTime timestamp;
-  final String status; // Present, Absent
+  final String status; // Present, Absent, Late
 
   Attendance({
     required this.id,
@@ -32,14 +32,37 @@ class Attendance {
   }
 
   factory Attendance.fromMap(Map<String, dynamic> map, String id) {
+    DateTime parsedTimestamp;
+    final rawTs = map['timestamp'];
+
+    if (rawTs is Timestamp) {
+      parsedTimestamp = rawTs.toDate();
+    } else if (rawTs is String) {
+      parsedTimestamp = DateTime.tryParse(rawTs) ?? DateTime.now();
+    } else if (rawTs is int) {
+      parsedTimestamp = DateTime.fromMillisecondsSinceEpoch(rawTs);
+    } else {
+      parsedTimestamp = DateTime.now();
+    }
+
+    // Capitalize status properly (e.g., 'present' -> 'Present')
+    String parsedStatus = (map['status'] as String?)?.trim() ?? 'Present';
+    if (parsedStatus.toLowerCase() == 'present') {
+      parsedStatus = 'Present';
+    } else if (parsedStatus.toLowerCase() == 'late') {
+      parsedStatus = 'Late';
+    } else if (parsedStatus.toLowerCase() == 'absent') {
+      parsedStatus = 'Absent';
+    }
+
     return Attendance(
       id: id,
-      studentId: map['studentId'] ?? '',
-      studentName: map['studentName'] ?? '',
-      hostel: map['hostel'] ?? '',
-      roomNumber: map['roomNumber'] ?? '',
-      timestamp: (map['timestamp'] as Timestamp).toDate(),
-      status: map['status'] ?? 'Absent',
+      studentId: map['studentId'] as String? ?? '',
+      studentName: map['studentName'] as String? ?? '',
+      hostel: map['hostel'] as String? ?? '',
+      roomNumber: map['roomNumber'] as String? ?? '',
+      timestamp: parsedTimestamp,
+      status: parsedStatus,
     );
   }
 }

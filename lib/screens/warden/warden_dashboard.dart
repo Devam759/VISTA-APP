@@ -5,17 +5,19 @@ import '../../providers/auth_provider.dart';
 import '../../providers/warden_provider.dart';
 import '../../services/firebase_service.dart';
 
-import '../../widgets/skeleton_loader.dart';
-import '../../widgets/export_dialog.dart';
+import '../../widgets/common/skeleton_loader.dart';
+import '../../widgets/dialogs/export_dialog.dart';
 import '../../utils/export_helper.dart';
 import 'tabs/students_tab.dart';
 import 'tabs/attendance_tab.dart';
 import 'tabs/leaves_tab.dart';
 import 'tabs/complaints_tab.dart';
 import 'tabs/short_stays_tab.dart';
-import '../../widgets/hover_effect.dart';
+import '../../widgets/common/hover_effect.dart';
 import 'components/warden_components.dart';
-import '../../widgets/smooth_animations.dart';
+import '../mess/mess_screen.dart';
+import '../../widgets/common/smooth_animations.dart';
+import '../../widgets/common/web_dashboard_scaffold.dart';
 
 class WardenDashboard extends StatefulWidget {
   const WardenDashboard({super.key});
@@ -51,11 +53,13 @@ class _WardenDashboardState extends State<WardenDashboard> {
       _selectedIndex = index;
     });
     
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
     
     // Clear the marker in the provider when the tab is visited
     wardenProv.clearMarker(index);
@@ -142,12 +146,73 @@ class _WardenDashboardState extends State<WardenDashboard> {
       );
     }
 
-    return WardenResponsiveWrapper(
-      child: ChangeNotifierProvider(
-        create: (_) => WardenProvider(warden.hostel ?? ''),
-        child: Consumer<WardenProvider>(
-          builder: (context, wardenProv, _) {
-            return Scaffold(
+    final pages = [
+      StudentsTab(warden: warden, fs: FirebaseService(), onExport: _showExportDialog),
+      AttendanceTab(warden: warden, fs: FirebaseService()),
+      LeavesTab(warden: warden, fs: FirebaseService()),
+      ComplaintsTab(warden: warden),
+      ShortStaysTab(warden: warden),
+      const MessScreen(),
+    ];
+
+    return ChangeNotifierProvider(
+      create: (_) => WardenProvider(warden.hostel ?? ''),
+      child: Consumer<WardenProvider>(
+        builder: (context, wardenProv, _) {
+          final items = [
+            WebNavigationItem(
+              icon: Icons.groups_outlined,
+              selectedIcon: Icons.groups,
+              label: 'Students',
+              showBadge: wardenProv.hasNewRegistrations,
+            ),
+            const WebNavigationItem(
+              icon: Icons.assignment_ind_outlined,
+              selectedIcon: Icons.assignment_ind,
+              label: 'Attendance',
+            ),
+            WebNavigationItem(
+              icon: Icons.event_note_outlined,
+              selectedIcon: Icons.event_note,
+              label: 'Leaves',
+              showBadge: wardenProv.hasNewLeaves,
+            ),
+            WebNavigationItem(
+              icon: Icons.assignment_late_outlined,
+              selectedIcon: Icons.assignment_late,
+              label: 'Complaints',
+              showBadge: wardenProv.hasNewComplaints,
+            ),
+            WebNavigationItem(
+              icon: Icons.hotel_outlined,
+              selectedIcon: Icons.hotel,
+              label: 'Short Stay',
+              showBadge: wardenProv.hasNewShortStays,
+            ),
+            const WebNavigationItem(
+              icon: Icons.restaurant_outlined,
+              selectedIcon: Icons.restaurant,
+              label: 'Mess',
+            ),
+            WebNavigationItem(
+              icon: Icons.file_download_outlined,
+              selectedIcon: Icons.file_download,
+              label: 'Export Data',
+              onTap: _showExportDialog,
+            ),
+          ];
+
+          return WebDashboardScaffold(
+            title: 'VISTA',
+            roleBadge: warden.role.displayName,
+            userName: warden.name,
+            subtitle: getFullHostelName(warden.hostel),
+            items: items,
+            selectedIndex: _selectedIndex,
+            onItemSelected: (i) => _onTabTapped(i, wardenProv),
+            onSignOut: () => authProvider.signOut(),
+            pages: pages,
+            mobileChild: Scaffold(
               backgroundColor: kBg,
               bottomNavigationBar: _buildBottomNav(wardenProv),
               body: Column(
@@ -157,27 +222,20 @@ class _WardenDashboardState extends State<WardenDashboard> {
                     child: PageView(
                       controller: _pageController,
                       onPageChanged: (index) {
-                        // Hide notification alert when page changes
                         ScaffoldMessenger.of(context).hideCurrentSnackBar();
                         setState(() {
                           _selectedIndex = index;
                         });
                         wardenProv.clearMarker(index);
                       },
-                      children: [
-                         StudentsTab(warden: warden, fs: FirebaseService()),
-                         AttendanceTab(warden: warden, fs: FirebaseService()),
-                         LeavesTab(warden: warden, fs: FirebaseService()),
-                         ComplaintsTab(warden: warden),
-                         ShortStaysTab(warden: warden),
-                      ],
+                      children: pages,
                     ),
                   ),
                 ],
               ),
-            );
-          }
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -260,13 +318,6 @@ class _WardenDashboardState extends State<WardenDashboard> {
                     const SizedBox(width: 8),
                     HoverEffect(
                       child: IconButton(
-                        onPressed: _showExportDialog,
-                        icon: const Icon(Icons.file_download_outlined, color: Colors.white, size: 22),
-                        tooltip: 'Export Data',
-                      ),
-                    ),
-                    HoverEffect(
-                      child: IconButton(
                         onPressed: () => authProvider.signOut(),
                         icon: const Icon(Icons.logout_rounded, color: Colors.white60, size: 20),
                       ),
@@ -287,28 +338,32 @@ class _WardenDashboardState extends State<WardenDashboard> {
   }
 
   Widget _buildBottomNav(WardenProvider wardenProv) {
-    const labels = ['Students', 'Attendance', 'Leaves', 'Complaints', 'Short Stay'];
+    const labels = ['Students', 'Attendance', 'Leaves', 'Complaints', 'Short Stay', 'Mess'];
     const icons = [
       (off: Icons.groups_outlined, on: Icons.groups),
       (off: Icons.assignment_ind_outlined, on: Icons.assignment_ind),
       (off: Icons.event_note_outlined, on: Icons.event_note),
       (off: Icons.assignment_late_outlined, on: Icons.assignment_late),
       (off: Icons.hotel_outlined, on: Icons.hotel),
+      (off: Icons.restaurant_outlined, on: Icons.restaurant),
     ];
 
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -4))],
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -4)),
+        ],
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
+        child: Container(
+          height: 72,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(5, (i) {
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(6, (i) {
               final selected = _selectedIndex == i;
               final showMarker = (i == 0 && wardenProv.hasNewRegistrations) || 
                                  (i == 2 && wardenProv.hasNewLeaves) || 

@@ -42,3 +42,13 @@
 # ── Gson ──────────────────────────────────────────────────────────
 -keep class com.google.gson.** { *; }
 -dontwarn com.google.gson.**
+
+# ── Flutter Plugins (General Fixes for R8) ───────────────────────
+# Shared Preferences
+-keep class io.flutter.plugins.sharedpreferences.** { *; }
+-dontwarn io.flutter.plugins.sharedpreferences.**
+
+# Other common plugins
+-keep class io.flutter.plugins.** { *; }
+-dontwarn io.flutter.plugins.**
+

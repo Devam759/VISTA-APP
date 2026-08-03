@@ -14,6 +14,10 @@ class FaceRecognitionService {
   }
 
   Future<void> _loadModel() async {
+    if (kIsWeb) {
+      debugPrint('MobileFaceNet TFLite is skipped on Web platform.');
+      return;
+    }
     try {
       _interpreter = await Interpreter.fromAsset(
         'assets/models/facenet.tflite',
@@ -27,6 +31,7 @@ class FaceRecognitionService {
 
   /// Generates a 192-dimensional embedding from a cropped face image.
   Future<List<double>> getEmbedding(img.Image faceImage) async {
+    if (kIsWeb) return [];
     if (!_isModelLoaded) await _loadModel();
     if (_interpreter == null) throw Exception('Model not loaded');
 

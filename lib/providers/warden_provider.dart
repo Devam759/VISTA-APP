@@ -66,6 +66,8 @@ class WardenProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void setHostelFilter(String? newFilter) => updateHostelFilter(newFilter);
+
   void _clearSubscriptions() {
     for (var sub in _subscriptions) {
       sub.cancel();

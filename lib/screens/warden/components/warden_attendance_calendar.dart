@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../../models/vista_user.dart';
 import '../../../services/firebase_service.dart';
+import '../../../widgets/common/vista_loader.dart';
 import 'warden_components.dart';
 
 class WardenStudentCalendar extends StatefulWidget {
@@ -79,7 +80,7 @@ class _WardenStudentCalendarState extends State<WardenStudentCalendar> {
           _buildHeader(),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: kPrimary))
+                ? const Center(child: VistaClassicLoader(size: 28))
                 : SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
                     child: Column(

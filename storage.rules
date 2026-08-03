@@ -17,7 +17,7 @@ service firebase.storage {
     }
 
     function isStaff() {
-      return getUserRole() in ['warden', 'headWarden', 'chiefWarden'];
+      return getUserRole() in ['warden', 'headWarden', 'chiefWarden', 'admin'];
     }
 
     // ── Face / biometric images ─────────────────────────────────────────

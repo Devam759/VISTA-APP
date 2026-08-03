@@ -11,7 +11,8 @@ import '../../warden/components/warden_tab_scaffold.dart';
 class StudentsTab extends StatefulWidget {
   final VistaUser warden;
   final FirebaseService fs;
-  const StudentsTab({super.key, required this.warden, required this.fs});
+  final VoidCallback? onExport;
+  const StudentsTab({super.key, required this.warden, required this.fs, this.onExport});
 
   @override
   State<StudentsTab> createState() => _StudentsTabState();
@@ -62,7 +63,6 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
                   searchCtrl: _searchCtrl,
                   tabController: _tabController,
                   tabs: const ['All', 'In Campus', 'On Leave', 'Short Stay'],
-                  actionWidget: const SizedBox.shrink(),
                   streamFactory: () => widget.fs.getUnifiedStudentsStream(hostelFilter),
                   emptyIcon: Icons.people_outline_rounded,
                   emptyTitle: 'No Students Found',

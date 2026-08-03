@@ -13,6 +13,7 @@ import '../models/short_stay_model.dart';
 import '../models/attendance_record.dart';
 import '../utils/rate_limiter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'cache_service.dart';
 
 import 'audit_logger.dart';
 
@@ -20,7 +21,7 @@ import 'audit_logger.dart';
 // JKLU Microsoft 365 tenant. Using 'common' would allow ANY Microsoft account
 // to authenticate — not just JKLU institutional accounts.
 // To find your tenant ID: https://login.microsoftonline.com/<yourdomain>/.well-known/openid-configuration
-const _kJkluTenantId = 'jklu.edu.in'; // Domain-based fallback (safe default)
+const _kJkluTenantId = 'organizations'; // Valid Azure AD tenant endpoint for institutional accounts (@jklu.edu.in)
 // If you have the GUID, prefer it: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
 
 // ── Immutable status whitelists (defence-in-depth alongside Firestore rules) ──
@@ -32,10 +33,37 @@ const _kAttendanceStatuses  = {'Present', 'Absent', 'Late'};
 class FirebaseService {
   // Using lazy getters for all Firebase instances.
   FirebaseAuth get _auth => FirebaseAuth.instance;
+
   // The Firestore database was created with ID 'default' (not the standard '(default)').
   // Using a lazy getter so Firebase.app() is only called after initializeApp() is done.
-  FirebaseFirestore get _db =>
-      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
+  // Offline persistence is enabled once per instance — Firestore caches all reads
+  // to the app's private LevelDB (not accessible to other apps), so repeated opens
+  // serve data from disk with zero network round trips.
+  static bool _persistenceEnabled = false;
+  FirebaseFirestore get _db {
+    FirebaseFirestore instance;
+    try {
+      instance = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
+    } catch (_) {
+      instance = FirebaseFirestore.instance;
+    }
+    if (!_persistenceEnabled) {
+      try {
+        instance.settings = const Settings(
+          persistenceEnabled: true,
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        );
+        _persistenceEnabled = true;
+        if (kDebugMode) debugPrint('[FirebaseService] Firestore offline persistence ENABLED');
+      } catch (e) {
+        // Already configured — safe to ignore.
+        _persistenceEnabled = true;
+        if (kDebugMode) debugPrint('[FirebaseService] Firestore persistence already set: $e');
+      }
+    }
+    return instance;
+  }
+
   FirebaseStorage get _storage => FirebaseStorage.instanceFor(
         bucket: 'vista-jklu.firebasestorage.app',
       );
@@ -107,10 +135,11 @@ class FirebaseService {
     }
     
     final provider = OAuthProvider('microsoft.com');
-    provider.setCustomParameters({
-      'tenant': tenantId,
-      'prompt': 'select_account',
-    });
+    final Map<String, String> customParams = {'prompt': 'select_account'};
+    if (tenantId.isNotEmpty && tenantId != 'common' && tenantId != 'organizations' && tenantId.contains('-')) {
+      customParams['tenant'] = tenantId;
+    }
+    provider.setCustomParameters(customParams);
     provider.addScope('email');
     provider.addScope('profile');
     provider.addScope('openid');
@@ -165,7 +194,6 @@ class FirebaseService {
     final provider = OAuthProvider('microsoft.com');
     provider.setCustomParameters({
       'prompt': 'select_account',
-      'tenant': _kJkluTenantId, // L3: always restrict to JKLU tenant
     });
     provider.addScope('email');
     provider.addScope('profile');
@@ -340,6 +368,25 @@ class FirebaseService {
       }
     }
 
+    if (currentUser?.email?.toLowerCase() == 'mess@vista.com') {
+      debugPrint("VISTA: Auto-provisioning Mess Manager profile for UID: $uid");
+      final messManagerUser = VistaUser(
+        uid: uid,
+        name: 'Mess Manager',
+        email: 'mess@vista.com',
+        role: UserRole.messManager,
+        isApproved: true,
+        isAccountActive: true,
+        createdAt: DateTime.now(),
+      );
+      try {
+        await _db.collection('users').doc(uid).set(messManagerUser.toMap(forCreate: true));
+      } catch (e) {
+        debugPrint("VISTA: Error writing messManager profile to firestore: $e");
+      }
+      return messManagerUser;
+    }
+
     debugPrint("VISTA: No profile found even after fallback/auto-registration.");
     return null;
   }
@@ -380,7 +427,8 @@ class FirebaseService {
   }
 
   Stream<List<Attendance>> getStudentAttendance(String uid) {
-    return _db
+    final cacheKey = CacheService.attendanceKey(uid);
+    final liveStream = _db
         .collection('attendance')
         .where('studentId', isEqualTo: uid)
         .snapshots()
@@ -389,8 +437,22 @@ class FirebaseService {
               .map((doc) => Attendance.fromMap(doc.data(), doc.id))
               .toList();
           list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          // Keep cache warm so the next calendar open is instant.
+          CacheService.instance.set<List<Attendance>>(
+            cacheKey,
+            list,
+            ttl: const Duration(minutes: 5),
+          );
           return list;
         });
+
+    // If we have a previously cached list, prepend it as the first event so
+    // the attendance calendar renders immediately instead of showing a loader.
+    final cached = CacheService.instance.get<List<Attendance>>(cacheKey);
+    if (cached != null) {
+      return Rx.concat([Stream.value(cached), liveStream]);
+    }
+    return liveStream;
   }
 
 

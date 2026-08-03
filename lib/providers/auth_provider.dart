@@ -6,6 +6,7 @@ import '../models/vista_user.dart';
 import '../services/firebase_service.dart';
 import '../services/notification_service.dart';
 import '../services/audit_logger.dart';
+import '../services/cache_service.dart';
 
 import '../utils/rate_limiter.dart';
 
@@ -389,6 +390,10 @@ class AuthProvider with ChangeNotifier {
         debugPrint('[AuthProvider] signOut cleanup error: $e');
       }
     }
+    // Clear all in-memory cached data before signing out.
+    // Prevents any previous user's data from leaking into the next session
+    // on a shared device.
+    CacheService.instance.clearAll();
     await _firebaseService.signOut();
   }
 
@@ -407,14 +412,21 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
       }
     } on FirebaseAuthException catch (e) {
+      _isLoading = false;
+      notifyListeners();
 
+      if (e.code == 'web-context-cancelled' ||
+          e.code == 'user-cancelled' ||
+          e.code == 'canceled' ||
+          e.code == 'ERROR_WEB_CONTEXT_CANCELED') {
+        debugPrint("VISTA: Microsoft sign-in cancelled by user.");
+        return;
+      }
 
       if (e.code == 'account-exists-with-different-credential') {
         _pendingMicrosoftCredential = e.credential;
         _pendingEmail = e.email;
-        debugPrint('VISTA: Account exists with different credential. Linking required. Email: \${_pendingEmail}, Credential: \${_pendingMicrosoftCredential != null ? "FOUND" : "NULL"}');
-        _isLoading = false;
-        notifyListeners();
+        debugPrint('VISTA: Account exists with different credential. Linking required. Email: $_pendingEmail');
         return;
       }
       rethrow;

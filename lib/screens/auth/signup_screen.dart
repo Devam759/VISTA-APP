@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart' as vista;
 import '../../utils/sanitizer.dart';
-import '../../widgets/vista_loader.dart';
-import '../../widgets/hover_effect.dart';
+import '../../widgets/common/vista_loader.dart';
+import '../../widgets/common/hover_effect.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -438,18 +438,18 @@ class _SignupScreenState extends State<SignupScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.fromLTRB(24.0, 16.0, 24.0, 16.0),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 40),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/images/jklu_logo.jpg', height: 60),
+                      Image.asset('assets/images/jklu_logo_bgremove.png', height: 60),
                       const SizedBox(width: 16),
                       Text(
                         'VISTA',
@@ -711,7 +711,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           ? const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                VISTALoader(size: 24, color: Colors.white),
+                                VISTALoader(size: 16, color: Colors.white),
                                 SizedBox(width: 12),
                                 Text('Submitting...'),
                               ],

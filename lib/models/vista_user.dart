@@ -1,9 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum UserRole { student, warden, headWarden, chiefWarden }
+enum UserRole { student, warden, headWarden, chiefWarden, admin, messManager }
+
+extension UserRoleExtension on UserRole {
+  String get displayName {
+    switch (this) {
+      case UserRole.student:
+        return 'Student';
+      case UserRole.warden:
+        return 'Warden';
+      case UserRole.headWarden:
+        return 'Head Warden';
+      case UserRole.chiefWarden:
+        return 'Chief Warden';
+      case UserRole.admin:
+        return 'Admin';
+      case UserRole.messManager:
+        return 'Mess Manager';
+    }
+  }
+}
 
 /// Known-good role strings. Any value not in this set is rejected.
-const _kValidRoles = {'student', 'warden', 'headWarden', 'chiefWarden'};
+const _kValidRoles = {'student', 'warden', 'headWarden', 'chiefWarden', 'admin', 'messManager'};
 
 class VistaUser {
   final String uid;

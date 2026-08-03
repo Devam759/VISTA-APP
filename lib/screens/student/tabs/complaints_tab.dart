@@ -5,9 +5,8 @@ import '../../../models/complaint_model.dart';
 import '../../../models/vista_user.dart';
 import '../../../services/firebase_service.dart';
 import '../../../utils/sanitizer.dart';
-import '../../../widgets/skeleton_loader.dart';
 import '../widgets/student_components.dart';
-import '../../../widgets/vista_loader.dart';
+import '../../../widgets/common/vista_loader.dart';
 
 class ComplaintsTab extends StatefulWidget {
   final VistaUser user;
@@ -36,9 +35,6 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
       body: StreamBuilder<List<Complaint>>(
         stream: widget.fs.getStudentComplaints(widget.user.uid),
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const ComplaintListSkeleton();
-          }
           final list = snap.data ?? [];
           
           // Sort by creation date

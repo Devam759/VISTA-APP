@@ -9,8 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
 import '../../models/vista_user.dart';
 import '../../services/notification_service.dart';
-import '../../widgets/vista_loader.dart';
-import '../../widgets/skeleton_loader.dart';
+import '../../widgets/common/vista_loader.dart';
 
 // Modular components and tabs
 import 'widgets/student_components.dart';
@@ -18,8 +17,9 @@ import 'tabs/attendance_tab.dart';
 import 'tabs/leave_tab.dart';
 import 'tabs/complaints_tab.dart';
 import 'tabs/short_stay_tab.dart';
-import '../../widgets/smooth_animations.dart';
-import '../../widgets/dev_info_sheet.dart';
+import '../mess/mess_screen.dart';
+import '../../widgets/common/smooth_animations.dart';
+import '../../widgets/dialogs/dev_info_sheet.dart';
 
 class HostellerDashboard extends StatefulWidget {
   const HostellerDashboard({super.key});
@@ -185,7 +185,7 @@ class _HostellerDashboardState extends State<HostellerDashboard> {
     if (user == null) {
       return Scaffold(
         backgroundColor: kStudentBg,
-        body: const DashboardSummarySkeleton(),
+        body: const Center(child: VISTALoader(size: 35, color: kStudentPrimary)),
       );
     }
 
@@ -222,6 +222,7 @@ class _HostellerDashboardState extends State<HostellerDashboard> {
                               fs: _firebaseService,
                               isActive: _selectedIndex == 0,
                             ),
+                            const MessScreen(),
                             LeaveTab(user: user, fs: _firebaseService),
                             ComplaintsTab(user: user, fs: _firebaseService),
                             if (user.hostel == 'Short Stay' || user.hasUsedShortStay)
@@ -269,6 +270,11 @@ class _HostellerDashboardState extends State<HostellerDashboard> {
                   icon: Icon(Icons.assignment_ind_outlined),
                   activeIcon: Icon(Icons.assignment_ind_rounded),
                   label: 'Attendance',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.restaurant_outlined),
+                  activeIcon: Icon(Icons.restaurant_rounded),
+                  label: 'Mess',
                 ),
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.event_note_outlined),

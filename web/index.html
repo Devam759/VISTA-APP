@@ -69,17 +69,10 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico"/>
 
   <link rel="manifest" href="manifest.json">
 
-  <!-- Firebase Configuration for Web -->
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-check-compat.js"></script>
 </head>
 <body>
   <!-- Static Content for Search Engines (e.g. Bingbot) -->
@@ -103,6 +96,11 @@
     </div>
   </noscript>
 
+  <script>
+    // Ensure smooth rendering across all web networks and environments.
+    window._flutter = window._flutter || {};
+    window._flutter.buildConfig = window._flutter.buildConfig || {};
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

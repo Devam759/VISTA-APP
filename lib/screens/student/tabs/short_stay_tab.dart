@@ -5,10 +5,9 @@ import '../../../models/short_stay_model.dart';
 import '../../../models/vista_user.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/firebase_service.dart';
-import '../../../widgets/skeleton_loader.dart';
 import '../widgets/student_components.dart';
-import '../../../widgets/vista_loader.dart';
-import '../../../widgets/vista_date_picker.dart';
+import '../../../widgets/common/vista_loader.dart';
+import '../../../widgets/common/vista_date_picker.dart';
 
 
 class ShortStayTab extends StatelessWidget {
@@ -33,9 +32,6 @@ class ShortStayTab extends StatelessWidget {
       body: StreamBuilder<List<ShortStayRequest>>(
         stream: fs.getStudentShortStays(user.uid),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const ShortStaySkeleton();
-          }
           final list = snapshot.data ?? [];
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -7,23 +7,18 @@ import '../../models/attendance_model.dart';
 import '../../models/leave_request_model.dart';
 import '../../services/firebase_service.dart';
 import '../../utils/export_helper.dart';
-import '../../widgets/export_dialog.dart';
+import '../../widgets/dialogs/export_dialog.dart';
 import 'tabs/students_tab.dart';
 import 'tabs/attendance_tab.dart';
 import 'tabs/leaves_tab.dart';
 import 'tabs/complaints_tab.dart';
 import 'tabs/short_stay_tab.dart';
 
-import '../../widgets/skeleton_loader.dart';
-import '../warden/components/warden_components.dart';
+import '../../widgets/common/skeleton_loader.dart';
 import '../../providers/warden_provider.dart';
+import '../../widgets/common/web_dashboard_scaffold.dart';
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// THEME CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
 const _kPrimary = Color(0xFF1E3A8A);
-const _kAccent = Color(0xFF2563EB);
 const _kBg = Color(0xFFF0F4FF);
 
 class HeadWardenDashboard extends StatefulWidget {
@@ -276,11 +271,13 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
   void _onTabTapped(int index) {
     if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
     _clearMarkers(index);
   }
 
@@ -297,8 +294,6 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
     });
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -312,186 +307,66 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
     }
 
     final pages = [
-      StudentsTab(key: _tabKeys[0], warden: warden, fs: _fs),
+      StudentsTab(key: _tabKeys[0], warden: warden, fs: _fs, onExport: _showExportDialog),
       AttendanceTab(key: _tabKeys[1], warden: warden, fs: _fs),
       LeavesTab(key: _tabKeys[2], warden: warden, fs: _fs),
       ComplaintsTab(key: _tabKeys[3], warden: warden, fs: _fs),
       ShortStayTab(key: _tabKeys[4], warden: warden, fs: _fs),
     ];
 
-    const labels = [
-      'Students',
-      'Attendance',
-      'Leaves',
-      'Complaints',
-      'Short Stay',
-    ];
-    const icons = [
-      (off: Icons.groups_outlined, on: Icons.groups),
-      (off: Icons.assignment_ind_outlined, on: Icons.assignment_ind),
-      (off: Icons.event_note_outlined, on: Icons.event_note),
-      (off: Icons.assignment_late_outlined, on: Icons.assignment_late),
-      (off: Icons.hotel_outlined, on: Icons.hotel),
-    ];
-
     return ChangeNotifierProvider<WardenProvider>(
       create: (_) => WardenProvider('', role: 'Head Warden'),
       child: Consumer<WardenProvider>(
         builder: (context, wp, _) {
-          return WardenResponsiveWrapper(
-            child: Scaffold(
-              backgroundColor: _kBg,
-              bottomNavigationBar: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -4)),
-                  ],
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: List.generate(5, (i) {
-                        final selected = _selectedIndex == i;
-                        final showMarker = (i == 0 && _hasNewRegistrations) || (i == 2 && _hasNewLeaves) || (i == 3 && _hasNewComplaints) || (i == 4 && _hasNewShortStays);
-
-                        return GestureDetector(
-                          onTap: () => _onTabTapped(i),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: selected ? _kPrimary.withValues(alpha: 0.1) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    Icon(selected ? icons[i].on : icons[i].off, size: 22, color: selected ? _kPrimary : Colors.black38),
-                                    if (showMarker)
-                                      Positioned(
-                                        top: -2, right: -2,
-                                        child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
-                                      ),
-                                  ],
-                                ),
-                                if (selected) ...[
-                                  const SizedBox(width: 8),
-                                  Text(labels[i], style: const TextStyle(color: _kPrimary, fontSize: 13, fontWeight: FontWeight.w800)),
-                                ],
-                              ],
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                ),
-              ),
-              body: Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF0F2460), _kPrimary, _kAccent],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Image.asset('assets/images/jklu_logo_darkbg_bgremove.png', height: 40),
-                                const SizedBox(width: 10),
-                                const Text(
-                                  'VISTA',
-                                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 2),
-                                ),
-                                const Spacer(),
-                                PopupMenuButton<String>(
-                                  onSelected: (val) => wp.updateHostelFilter(val),
-                                  offset: const Offset(0, 48),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(value: 'All', child: Text('All Hostels')),
-                                    const PopupMenuItem(value: 'BH1', child: Text('BH1')),
-                                    const PopupMenuItem(value: 'BH2', child: Text('BH2')),
-                                    const PopupMenuItem(value: 'GH1', child: Text('GH1')),
-                                    const PopupMenuItem(value: 'GH2', child: Text('GH2')),
-                                  ],
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          wp.currentHostelFilter == 'All' || wp.currentHostelFilter == null ? 'All Hostels' : wp.currentHostelFilter!,
-                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 14),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  onPressed: _showExportDialog,
-                                  icon: const Icon(Icons.file_download_outlined, color: Colors.white, size: 22),
-                                  tooltip: 'Export Data',
-                                ),
-                                IconButton(
-                                  onPressed: () => authProvider.signOut(),
-                                  icon: const Icon(Icons.logout_rounded, color: Colors.white60, size: 20),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text('Welcome ${warden.name} Sir', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final hPad = constraints.maxWidth > 900 ? (constraints.maxWidth - 900) / 2 : 0.0;
-                        return Padding(
-                          padding: EdgeInsets.symmetric(horizontal: hPad),
-                          child: PageView(
-                            controller: _pageController,
-                            onPageChanged: (index) {
-                              setState(() => _selectedIndex = index);
-                              _clearMarkers(index);
-                            },
-                            children: pages,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+          final items = [
+            WebNavigationItem(
+              icon: Icons.groups_outlined,
+              selectedIcon: Icons.groups,
+              label: 'Students',
+              showBadge: _hasNewRegistrations,
             ),
+            const WebNavigationItem(
+              icon: Icons.assignment_ind_outlined,
+              selectedIcon: Icons.assignment_ind,
+              label: 'Attendance',
+            ),
+            WebNavigationItem(
+              icon: Icons.event_note_outlined,
+              selectedIcon: Icons.event_note,
+              label: 'Leaves',
+              showBadge: _hasNewLeaves,
+            ),
+            WebNavigationItem(
+              icon: Icons.assignment_late_outlined,
+              selectedIcon: Icons.assignment_late,
+              label: 'Complaints',
+              showBadge: _hasNewComplaints,
+            ),
+            WebNavigationItem(
+              icon: Icons.hotel_outlined,
+              selectedIcon: Icons.hotel,
+              label: 'Short Stay',
+              showBadge: _hasNewShortStays,
+            ),
+            WebNavigationItem(
+              icon: Icons.file_download_outlined,
+              selectedIcon: Icons.file_download,
+              label: 'Export Data',
+              onTap: _showExportDialog,
+            ),
+          ];
+
+          return WebDashboardScaffold(
+            title: 'VISTA',
+            roleBadge: warden.role.displayName,
+            userName: warden.name,
+            hostelFilter: wp.currentHostelFilter ?? 'All',
+            onHostelFilterChanged: (h) => wp.setHostelFilter(h),
+            items: items,
+            selectedIndex: _selectedIndex,
+            onItemSelected: (i) => _onTabTapped(i),
+            onSignOut: () => authProvider.signOut(),
+            pages: pages,
           );
         },
       ),

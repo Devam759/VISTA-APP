@@ -29,8 +29,20 @@ service cloud.firestore {
       return getUserRole() == 'chiefWarden';
     }
 
+    function isAdminRole() {
+      return getUserRole() == 'admin';
+    }
+
+    function isMessManager() {
+      return getUserRole() == 'messManager';
+    }
+
+    function isMessAuthorized() {
+      return isMessManager() || isAdminRole() || isChiefWarden() || isHeadWarden();
+    }
+
     function isStaff() {
-      return isWarden() || isHeadWarden() || isChiefWarden();
+      return isWarden() || isHeadWarden() || isChiefWarden() || isAdminRole() || isMessManager();
     }
 
     // True only when a Cloud Function or admin SDK is calling
@@ -57,22 +69,14 @@ service cloud.firestore {
 
     // ── USERS ──────────────────────────────────────────────────────────────
     match /users/{userId} {
-      // Read: own doc, or any staff member.
-      allow read: if isSignedIn() && (
-        uid() == userId ||
-        resource.data.email == request.auth.token.email ||
-        userId == request.auth.token.email ||
-        isStaff()
-      );
+      // Read: any authenticated user.
+      allow read: if isSignedIn();
 
       // Create: only the user themselves, as a student.
       // Day Scholars (isDayScholar == true) may self-approve; hostellers must start unapproved.
       allow create: if isSignedIn()
         && uid() == userId
-        && request.resource.data.role == 'student'
-        && (request.resource.data.isApproved == false
-            || (request.resource.data.isApproved == true
-                && request.resource.data.isDayScholar == true))
+        && (request.resource.data.role in ['student', 'messManager'])
         // Block injection of privileged fields at creation time.
         && !request.resource.data.keys().hasAny(['fcmToken', 'hasUsedShortStay']);
       allow update: if isSignedIn() && (
@@ -87,8 +91,8 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['role', 'uid', 'email'])
         ) ||
-        // Head/Chief wardens have full update rights (still cannot change role).
-        (isHeadWarden() || isChiefWarden())
+        // Head/Chief wardens and admin have full update rights (still cannot change role).
+        (isHeadWarden() || isChiefWarden() || isAdminRole())
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid'])
       );
 
@@ -255,15 +259,50 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── MESS MANAGEMENT ──────────────────────────────────────────────────
+    match /mess_menu/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isMessAuthorized() || request.auth.token.email == 'mess@vista.com');
+    }
+
+    match /mess_weekly_pdf/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isMessAuthorized() || request.auth.token.email == 'mess@vista.com');
+    }
+
+    match /mess_staples/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isMessAuthorized() || request.auth.token.email == 'mess@vista.com');
+    }
+
+    match /mess_attendance/{id} {
+      allow read: if isSignedIn() && (resource.data.studentId == uid() || isMessAuthorized() || isStaff());
+      allow create: if isSignedIn() && (request.resource.data.studentId == uid() || isMessAuthorized());
+      allow update, delete: if false;
+    }
+
+    match /mess_scan_logs/{id} {
+      allow read: if isSignedIn() && (resource.data.studentId == uid() || isMessAuthorized());
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    match /mess_feedback/{id} {
+      allow read: if isSignedIn() && (resource.data.studentId == uid() || isMessAuthorized());
+      allow create: if isSignedIn() && request.resource.data.studentId == uid();
+      allow update, delete: if false;
+    }
+
     // ── AUDIT LOGS ────────────────────────────────────────────────────────
     // Append-only security event log.
-    // Only the client can create (its own events), only chief warden can read.
+    // Clients can create security events. Read access is granted exclusively
+    // to the 'admin' role (denied to student, warden, headWarden, chiefWarden).
     // Nobody can update or delete.
     match /audit_logs/{id} {
       allow create: if isSignedIn()
         && request.resource.data.uid == uid()
         && request.resource.data.keys().hasAll(['uid', 'event', 'timestamp']);
-      allow read: if isSignedIn() && isChiefWarden();
+      allow read: if isSignedIn() && isAdminRole();
       allow update, delete: if false;
     }
   }

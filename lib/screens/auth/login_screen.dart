@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,10 +6,10 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../providers/auth_provider.dart';
 import '../../utils/sanitizer.dart';
 import '../../utils/rate_limiter.dart';
-import '../../widgets/hover_effect.dart';
-import '../../widgets/vista_loader.dart';
-import '../../widgets/smooth_animations.dart';
-import '../../widgets/dev_info_sheet.dart';
+import '../../widgets/common/hover_effect.dart';
+import '../../widgets/common/vista_loader.dart';
+import '../../widgets/common/smooth_animations.dart';
+import '../../widgets/dialogs/dev_info_sheet.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.fromLTRB(24.0, 16.0, 24.0, 16.0),
               child: Center(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
@@ -138,12 +138,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 4),
                       SmoothEntrance(
                         delay: const Duration(milliseconds: 200),
                         child: Center(
@@ -151,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Image.asset(
-                                'assets/images/jklu_logo.jpg',
+                                'assets/images/jklu_logo_bgremove.png',
                                 height: 60,
                               ),
                               const SizedBox(width: 16),
@@ -310,9 +307,21 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: ElevatedButton(
                                 onPressed:
                                     (authProvider.isLoading || isLocked) ? null : _login,
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 54),
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                  backgroundColor: const Color(0xFF1E3A8A),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                                 child: authProvider.isLoading
-                                    ? const VISTALoader(size: 24, color: Colors.white)
-                                    : const Text('Login'),
+                                    ? const VISTALoader(size: 18, color: Colors.white)
+                                    : const Text(
+                                        'Login',
+                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                                      ),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -356,12 +365,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 50),
+                              minimumSize: const Size(double.infinity, 54),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                               backgroundColor: Colors.black,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             child: Row(
@@ -369,23 +379,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 SizedBox(
-                                  width: 24,
-                                  height: 24,
+                                  width: 20,
+                                  height: 20,
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Row(
                                         children: [
                                           Container(
-                                            width: 10,
-                                            height: 10,
+                                            width: 8,
+                                            height: 8,
                                             color: const Color(0xFFF25022),
                                           ),
                                           const SizedBox(width: 2),
                                           Container(
-                                            width: 10,
-                                            height: 10,
-                                            color: const Color(0xFF7FBA00), // Swapped from Blue to Green
+                                            width: 8,
+                                            height: 8,
+                                            color: const Color(0xFF7FBA00),
                                           ),
                                         ],
                                       ),
@@ -393,14 +403,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                       Row(
                                         children: [
                                           Container(
-                                            width: 10,
-                                            height: 10,
-                                            color: const Color(0xFF00A4EF), // Swapped from Green to Blue
+                                            width: 8,
+                                            height: 8,
+                                            color: const Color(0xFF00A4EF),
                                           ),
                                           const SizedBox(width: 2),
                                           Container(
-                                            width: 10,
-                                            height: 10,
+                                            width: 8,
+                                            height: 8,
                                             color: const Color(0xFFFFB900),
                                           ),
                                         ],
@@ -408,12 +418,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                const Flexible(
-                                  child: Text(
-                                    'Sign in with Microsoft',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  'Sign in with Microsoft',
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -432,8 +440,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: const Text('Sign Up'),
                             ),
                           ),
-                        ],
-                      ),
                         ],
                       ),
                       const SizedBox(height: 24),
@@ -527,7 +533,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     }
                   },
                   child: authProvider.isLoading
-                      ? const VISTALoader(size: 24, color: Colors.white)
+                      ? const VISTALoader(size: 16, color: Colors.white)
                       : const Text('Link & Log In'),
                 ),
               ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/warden_provider.dart';
 import '../../../models/vista_user.dart';
@@ -6,8 +6,8 @@ import '../../../models/leave_request_model.dart';
 import '../../../services/firebase_service.dart';
 import '../../warden/components/warden_components.dart';
 import '../../warden/components/warden_tab_scaffold.dart';
-import '../../../widgets/skeleton_loader.dart';
-import '../../../widgets/hover_effect.dart';
+import '../../../widgets/common/skeleton_loader.dart';
+import '../../../widgets/common/hover_effect.dart';
 
 class LeavesTab extends StatefulWidget {
   final VistaUser warden;

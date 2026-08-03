@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/short_stay_model.dart';
 import '../../../services/firebase_service.dart';
@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/warden_provider.dart';
 import '../components/warden_components.dart';
 import '../components/warden_tab_scaffold.dart';
-import '../../../widgets/skeleton_loader.dart';
+import '../../../widgets/common/skeleton_loader.dart';
 
 class ShortStaysTab extends StatefulWidget {
   final VistaUser warden;

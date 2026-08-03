@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/warden_provider.dart';
 import 'package:intl/intl.dart';
@@ -6,7 +6,7 @@ import '../../../models/vista_user.dart';
 import '../../../models/complaint_model.dart';
 import '../../../services/firebase_service.dart';
 import '../../../utils/sanitizer.dart';
-import '../../../widgets/skeleton_loader.dart';
+import '../../../widgets/common/skeleton_loader.dart';
 import '../../warden/components/warden_components.dart';
 
 class ComplaintsTab extends StatefulWidget {

@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../widgets/vista_image_viewer.dart';
+import '../../../widgets/common/vista_image_viewer.dart';
 import '../../../models/complaint_model.dart';
 import '../../../models/short_stay_model.dart';
 import '../../../services/firebase_service.dart';
-import '../../../widgets/vista_date_picker.dart';
+import '../../../widgets/common/vista_date_picker.dart';
+import '../../../widgets/common/vista_loader.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STUDENT THEME CONSTANTS
@@ -753,7 +754,7 @@ class _StudentExpandableComplaintCardState
                               height: 240,
                               color: kStudentBg,
                               child: const Center(
-                                child: CircularProgressIndicator(),
+                                child: VistaClassicLoader(size: 24),
                               ),
                             ),
                             errorWidget: (context, url, error) => Container(

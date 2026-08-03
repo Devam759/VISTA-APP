@@ -5,10 +5,9 @@ import '../../../models/leave_request_model.dart';
 import '../../../models/vista_user.dart';
 import '../../../services/firebase_service.dart';
 import '../../../utils/sanitizer.dart';
-import '../../../widgets/skeleton_loader.dart';
 import '../widgets/student_components.dart';
-import '../../../widgets/vista_loader.dart';
-import '../../../widgets/vista_date_picker.dart';
+import '../../../widgets/common/vista_loader.dart';
+import '../../../widgets/common/vista_date_picker.dart';
 
 class LeaveTab extends StatefulWidget {
   final VistaUser user;
@@ -41,9 +40,6 @@ class _LeaveTabState extends State<LeaveTab> with AutomaticKeepAliveClientMixin 
       body: StreamBuilder<List<LeaveRequest>>(
         stream: widget.fs.getStudentLeaves(widget.user.uid),
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const LeaveListSkeleton();
-          }
           final list = snap.data ?? [];
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,

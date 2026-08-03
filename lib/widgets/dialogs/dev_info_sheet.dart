@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'hover_effect.dart';
+import '../common/hover_effect.dart';
 
 // ─── LinkedIn profile URLs ─────────────────────────────────────────────────
 const _devamLinkedIn = 'https://www.linkedin.com/in/devam-gupta/';

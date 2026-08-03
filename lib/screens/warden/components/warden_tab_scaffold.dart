@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../widgets/skeleton_loader.dart';
+import '../../../widgets/common/skeleton_loader.dart';
 import 'warden_components.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,10 +118,6 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
                       ),
                     ),
                   ),
-                  if (widget.actionWidget != null) ...[
-                    const SizedBox(width: 12),
-                    widget.actionWidget!,
-                  ],
                 ],
               ),
             ),
@@ -140,12 +136,19 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
                 unselectedLabelColor: Colors.black45,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                 dividerColor: Colors.transparent,
-                dividerHeight: 0,
+                onTap: (index) {
+                  _tabController.animateTo(index);
+                  setState(() {});
+                },
                 tabs: widget.tabs.map((t) => Tab(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(t)))).toList(),
               ),
             ),
             if (widget.sectionTitle != null || widget.title != null)
-              WardenSectionLabel(widget.sectionTitle ?? widget.title ?? '', animate: false), // Keep header static on rebuilds
+              WardenSectionLabel(
+                widget.sectionTitle ?? widget.title ?? '',
+                animate: false,
+                actionWidget: widget.actionWidget,
+              ), // Keep header static on rebuilds
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -219,9 +222,7 @@ class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with A
   @override
   void didUpdateWidget(covariant _GenericFilteredList<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.tab != oldWidget.tab || widget.query != oldWidget.query) {
-      _stream = widget.streamFactory();
-    }
+    _stream = widget.streamFactory();
   }
 
   @override

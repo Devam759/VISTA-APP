@@ -9,15 +9,15 @@ import '../../providers/auth_provider.dart';
 import '../../services/firebase_service.dart';
 import '../../models/vista_user.dart';
 import '../../services/notification_service.dart';
-import '../../widgets/vista_loader.dart';
-import '../../widgets/skeleton_loader.dart';
+import '../../widgets/common/vista_loader.dart';
 
 // Modular components and tabs
 import 'widgets/student_components.dart';
 import 'tabs/attendance_tab.dart';
 import 'tabs/short_stay_tab.dart';
-import '../../widgets/smooth_animations.dart';
-import '../../widgets/dev_info_sheet.dart';
+import '../mess/mess_screen.dart';
+import '../../widgets/common/smooth_animations.dart';
+import '../../widgets/dialogs/dev_info_sheet.dart';
 
 class DayScholarDashboard extends StatefulWidget {
   const DayScholarDashboard({super.key});
@@ -140,7 +140,7 @@ class _DayScholarDashboardState extends State<DayScholarDashboard> {
     if (user == null) {
       return Scaffold(
         backgroundColor: kStudentBg,
-        body: const DashboardSummarySkeleton(),
+        body: const Center(child: VISTALoader(size: 35, color: kStudentPrimary)),
       );
     }
 
@@ -177,6 +177,7 @@ class _DayScholarDashboardState extends State<DayScholarDashboard> {
                               fs: _firebaseService,
                               isActive: _selectedIndex == 0,
                             ),
+                            const MessScreen(),
                             ShortStayTab(user: user, fs: _firebaseService),
                           ],
                         ),
@@ -221,6 +222,11 @@ class _DayScholarDashboardState extends State<DayScholarDashboard> {
                   icon: Icon(Icons.assignment_ind_outlined),
                   activeIcon: Icon(Icons.assignment_ind_rounded),
                   label: 'Attendance',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.restaurant_outlined),
+                  activeIcon: Icon(Icons.restaurant_rounded),
+                  label: 'Mess',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.hotel_outlined),
