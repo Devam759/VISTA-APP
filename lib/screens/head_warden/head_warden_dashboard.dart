@@ -34,6 +34,7 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
   late PageController _pageController;
   final List<StreamSubscription> _subscriptions = [];
   final List<GlobalKey> _tabKeys = List.generate(5, (index) => GlobalKey());
+  static bool _autoEscalateRanThisSession = false;
 
   // Activity Markers
   bool _hasNewRegistrations = false;
@@ -46,6 +47,10 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
     _setupHeadWardenListeners();
+    if (!_autoEscalateRanThisSession) {
+      _autoEscalateRanThisSession = true;
+      _fs.autoEscalateOverdueComplaints('Head Warden');
+    }
   }
 
   @override
@@ -112,9 +117,8 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
 
         case ExportType.students:
           final students = await _fs.getHostelStudents('All').first;
-          await ExportHelper.exportStudents(
+          await ExportHelper.exportStudentsMultiHostel(
             students,
-            'All',
             startDate: result.startDate,
             endDate: result.endDate,
           );
@@ -125,10 +129,9 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
           final leaves = await _fs
               .getHostelLeavesRange('All', result.startDate, result.endDate)
               .first;
-          await ExportHelper.exportLeaves(
+          await ExportHelper.exportLeavesMultiHostel(
             leaves,
             students,
-            'All',
             startDate: result.startDate,
             endDate: result.endDate,
           );
@@ -138,9 +141,8 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
           final complaints = await _fs
               .getHostelComplaintsRange('All', result.startDate, result.endDate)
               .first;
-          await ExportHelper.exportComplaints(
+          await ExportHelper.exportComplaintsMultiHostel(
             complaints,
-            'All',
             startDate: result.startDate,
             endDate: result.endDate,
           );
@@ -150,9 +152,8 @@ class _HeadWardenDashboardState extends State<HeadWardenDashboard> {
           final shortStays = await _fs
               .getHostelShortStaysRange('All', result.startDate, result.endDate)
               .first;
-          await ExportHelper.exportShortStays(
+          await ExportHelper.exportShortStaysMultiHostel(
             shortStays,
-            'All',
             startDate: result.startDate,
             endDate: result.endDate,
           );

@@ -97,23 +97,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
         case ExportType.students:
           final students = await _fs.getHostelStudents('All').first;
-          await ExportHelper.exportStudents(students, 'All', startDate: result.startDate, endDate: result.endDate);
+          await ExportHelper.exportStudentsMultiHostel(students, startDate: result.startDate, endDate: result.endDate);
           break;
 
         case ExportType.leaveRequests:
           final students = await _fs.getHostelStudents('All').first;
           final leaves = await _fs.getHostelLeavesRange('All', result.startDate, result.endDate).first;
-          await ExportHelper.exportLeaves(leaves, students, 'All', startDate: result.startDate, endDate: result.endDate);
+          await ExportHelper.exportLeavesMultiHostel(leaves, students, startDate: result.startDate, endDate: result.endDate);
           break;
 
         case ExportType.complaints:
           final complaints = await _fs.getHostelComplaintsRange('All', result.startDate, result.endDate).first;
-          await ExportHelper.exportComplaints(complaints, 'All', startDate: result.startDate, endDate: result.endDate);
+          await ExportHelper.exportComplaintsMultiHostel(complaints, startDate: result.startDate, endDate: result.endDate);
           break;
 
         case ExportType.shortStays:
           final shortStays = await _fs.getHostelShortStaysRange('All', result.startDate, result.endDate).first;
-          await ExportHelper.exportShortStays(shortStays, 'All', startDate: result.startDate, endDate: result.endDate);
+          await ExportHelper.exportShortStaysMultiHostel(shortStays, startDate: result.startDate, endDate: result.endDate);
           break;
       }
 

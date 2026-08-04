@@ -18,8 +18,35 @@ Future<void> saveAndShare(List<List<dynamic>> rows, String fileName) async {
       for (int j = 0; j < row.length; j++) {
         final value = row[j];
         if (value != null) {
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i))
-            .value = TextCellValue(value.toString());
+          final cellStr = value.toString();
+          final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i));
+          cell.value = TextCellValue(cellStr);
+
+          // Apply styling
+          final isHeader = (i == 0);
+          final isPresent = cellStr.trim().toLowerCase() == 'present';
+          final isAbsent = cellStr.trim().toLowerCase() == 'absent';
+
+          CellStyle cellStyle = CellStyle(
+            bold: isHeader,
+            textWrapping: TextWrapping.WrapText,
+            horizontalAlign: HorizontalAlign.Center,
+            verticalAlign: VerticalAlign.Center,
+          );
+
+          if (isPresent) {
+            cellStyle = cellStyle.copyWith(
+              backgroundColorHexVal: ExcelColor.fromHexString('#C8E6C9'),
+              fontColorHexVal: ExcelColor.fromHexString('#1B5E20'),
+            );
+          } else if (isAbsent) {
+            cellStyle = cellStyle.copyWith(
+              backgroundColorHexVal: ExcelColor.fromHexString('#FFCDD2'),
+              fontColorHexVal: ExcelColor.fromHexString('#B71C1C'),
+            );
+          }
+
+          cell.cellStyle = cellStyle;
         }
       }
     }
@@ -78,8 +105,35 @@ Future<void> saveAndShareMultiSheet(
       for (int j = 0; j < row.length; j++) {
         final value = row[j];
         if (value != null) {
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i))
-            .value = TextCellValue(value.toString());
+          final cellStr = value.toString();
+          final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i));
+          cell.value = TextCellValue(cellStr);
+
+          // Apply styling
+          final isHeader = (i == 0);
+          final isPresent = cellStr.trim().toLowerCase() == 'present';
+          final isAbsent = cellStr.trim().toLowerCase() == 'absent';
+
+          CellStyle cellStyle = CellStyle(
+            bold: isHeader,
+            textWrapping: TextWrapping.WrapText,
+            horizontalAlign: HorizontalAlign.Center,
+            verticalAlign: VerticalAlign.Center,
+          );
+
+          if (isPresent) {
+            cellStyle = cellStyle.copyWith(
+              backgroundColorHexVal: ExcelColor.fromHexString('#C8E6C9'),
+              fontColorHexVal: ExcelColor.fromHexString('#1B5E20'),
+            );
+          } else if (isAbsent) {
+            cellStyle = cellStyle.copyWith(
+              backgroundColorHexVal: ExcelColor.fromHexString('#FFCDD2'),
+              fontColorHexVal: ExcelColor.fromHexString('#B71C1C'),
+            );
+          }
+
+          cell.cellStyle = cellStyle;
         }
       }
     }

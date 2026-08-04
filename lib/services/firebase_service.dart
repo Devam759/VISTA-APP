@@ -27,7 +27,7 @@ const _kJkluTenantId = 'organizations'; // Valid Azure AD tenant endpoint for in
 // ── Immutable status whitelists (defence-in-depth alongside Firestore rules) ──
 const _kLeaveStatuses       = {'Pending', 'Approved', 'Rejected', 'Cancelled'};
 const _kShortStayStatuses   = {'Pending', 'Approved', 'Rejected', 'Cancelled', 'Completed'};
-const _kComplaintStatuses   = {'Pending', 'Resolved', 'Confirmed', 'Escalated'};
+const _kComplaintStatuses   = {'Pending', 'Resolved', 'Confirmed', 'ClosedByStudent', 'AutoClosed'};
 const _kAttendanceStatuses  = {'Present', 'Absent', 'Late'};
 
 class FirebaseService {
@@ -781,24 +781,29 @@ class FirebaseService {
   // Complaint Methods
   Future<void> submitComplaint(Complaint complaint) async {
     return RateLimiter.run('submitComplaint_${complaint.studentId}', () async {
-      final updatedComplaint = Complaint(
-        id: complaint.id,
-        studentId: complaint.studentId,
-        studentName: complaint.studentName,
-        title: complaint.title,
-        description: complaint.description,
-        hostel: complaint.hostel,
-        targetRole: complaint.targetRole,
-        targetRoles: complaint.targetRoles,
-        status: complaint.status,
-        isAnonymous: complaint.isAnonymous,
-        studentConfirmed: complaint.studentConfirmed,
-        isEscalated: complaint.isEscalated,
-        createdAt: complaint.createdAt,
-        seqId: '',
-        imageUrl: complaint.imageUrl,
-      );
-      await _db.collection('complaints').add(updatedComplaint.toMap(forCreate: true));
+      final now = DateTime.now();
+      final data = {
+        'studentId': complaint.studentId,
+        'studentName': complaint.studentName,
+        'title': complaint.title,
+        'description': complaint.description,
+        'hostel': complaint.hostel,
+        'targetRole': 'Warden',
+        'targetRoles': ['Warden'],
+        'currentHandler': 'Warden',
+        'status': 'Pending',
+        'isAnonymous': complaint.isAnonymous,
+        'isEscalated': false,
+        'studentConfirmed': null,
+        'isNotified': false,
+        'lastStatusNotified': 'Pending',
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastActionAt': FieldValue.serverTimestamp(),
+        // Warden SLA: 6 days before auto-escalation to Head Warden
+        'escalateAt': Timestamp.fromDate(now.add(const Duration(days: 6))),
+        if (complaint.imageUrl != null) 'imageUrl': complaint.imageUrl,
+      };
+      await _db.collection('complaints').add(data);
     });
   }
 
@@ -844,6 +849,7 @@ class FirebaseService {
         });
   }
 
+  /// Warden/Head Warden marks complaint resolved — student must confirm within 2 days.
   Future<void> updateComplaintStatus(String id, String status, {String? actionUid}) async {
     if (!_kComplaintStatuses.contains(status)) {
       throw ArgumentError(
@@ -851,19 +857,20 @@ class FirebaseService {
         'Valid values: ${_kComplaintStatuses.join(', ')}',
       );
     }
+    final Map<String, dynamic> data = {'status': status};
     if (status == 'Confirmed') {
-      await _db.collection('complaints').doc(id).update({
-        'status': status,
-        'studentConfirmed': true,
-      });
+      data['studentConfirmed'] = true;
+      data['closedReason'] = 'Student Confirmed';
+      data['escalateAt'] = null; // No more escalation needed
     } else if (status == 'Resolved') {
-      await _db.collection('complaints').doc(id).update({
-        'status': status,
-        'resolvedAt': FieldValue.serverTimestamp(),
-      });
-    } else {
-      await _db.collection('complaints').doc(id).update({'status': status});
+      // Store resolvedAt — student has 2 days to confirm before auto-close
+      data['resolvedAt'] = FieldValue.serverTimestamp();
+      data['escalateAt'] = null; // Cancel SLA escalation once resolved
+    } else if (status == 'AutoClosed') {
+      data['studentConfirmed'] = true;
+      data['closedReason'] = 'Auto Closed';
     }
+    await _db.collection('complaints').doc(id).update(data);
     if (actionUid != null) {
       AuditLogger.logSync(
         uid: actionUid,
@@ -873,28 +880,68 @@ class FirebaseService {
     }
   }
 
+  /// Chief Warden marks resolved — closes immediately without student confirmation.
+  Future<void> markResolvedByChiefWarden(String id, {String? actionUid}) async {
+    await _db.collection('complaints').doc(id).update({
+      'status': 'Confirmed',
+      'studentConfirmed': true,
+      'closedReason': 'Chief Warden Closed',
+      'resolvedAt': FieldValue.serverTimestamp(),
+      'escalateAt': null,
+    });
+    if (actionUid != null) {
+      AuditLogger.logSync(
+        uid: actionUid,
+        event: AuditEvent.statusChange,
+        detail: 'complaints/$id → Confirmed (Chief Warden Direct Close)',
+      );
+    }
+  }
+
+  /// Student closes the complaint without the problem being solved.
+  Future<void> closeComplaintByStudent(String id, {String? actionUid}) async {
+    await _db.collection('complaints').doc(id).update({
+      'status': 'ClosedByStudent',
+      'closedReason': 'Closed by Student',
+      'escalateAt': null,
+    });
+    if (actionUid != null) {
+      AuditLogger.logSync(
+        uid: actionUid,
+        event: AuditEvent.statusChange,
+        detail: 'complaints/$id → ClosedByStudent',
+      );
+    }
+  }
+
+  /// Escalates complaint to next level and sets a new SLA deadline.
   Future<void> escalateComplaint(Complaint complaint) {
-    if (complaint.targetRoles.contains('Chief Warden')) {
-      return Future.value();
+    if (complaint.currentHandler == 'Chief Warden') {
+      return Future.value(); // Already at top — cannot escalate further
     }
 
     List<String> nextRoles = List.from(complaint.targetRoles);
-    String nextRole;
+    final String nextHandler;
+    final int slaDays;
 
-    if (complaint.targetRoles.contains('Head Warden')) {
+    if (complaint.currentHandler == 'Head Warden') {
       if (!nextRoles.contains('Chief Warden')) nextRoles.add('Chief Warden');
-      nextRole = 'Chief Warden';
+      nextHandler = 'Chief Warden';
+      slaDays = 999; // Chief Warden level has no auto-escalation
     } else {
+      // Warden → Head Warden
       if (!nextRoles.contains('Head Warden')) nextRoles.add('Head Warden');
-      nextRole = 'Head Warden';
+      nextHandler = 'Head Warden';
+      slaDays = 3; // Head Warden SLA: 3 days
     }
 
-    // Add Audit Log for escalation
+    final now = DateTime.now();
+
     if (complaint.studentId != null) {
       AuditLogger.logSync(
         uid: complaint.studentId!,
         event: AuditEvent.statusChange,
-        detail: 'Escalated complaint ${complaint.seqId} to $nextRole',
+        detail: 'Escalated complaint ${complaint.seqId} to $nextHandler',
       );
     }
 
@@ -902,10 +949,71 @@ class FirebaseService {
       'status': 'Pending',
       'isEscalated': true,
       'studentConfirmed': null,
-      'targetRole': nextRole,
+      'targetRole': nextHandler,
       'targetRoles': nextRoles,
-      'resolvedAt': null, // Reset resolved timer if it was previously resolved
+      'currentHandler': nextHandler,
+      'resolvedAt': null,
+      'lastActionAt': FieldValue.serverTimestamp(),
+      'escalateAt': nextHandler == 'Chief Warden'
+          ? null
+          : Timestamp.fromDate(now.add(Duration(days: slaDays))),
     });
+  }
+
+  /// Runs on every warden-level dashboard load to:
+  /// 1. Auto-escalate overdue complaints (based on escalateAt field).
+  /// 2. Auto-close Resolved complaints that student has not confirmed in 2 days.
+  Future<void> autoEscalateOverdueComplaints([String? role]) async {
+    final nowDate = DateTime.now();
+
+    // ── 1. Auto-escalate: find Pending complaints whose escalateAt has passed ──
+    try {
+      Query<Map<String, dynamic>> query = _db
+          .collection('complaints')
+          .where('status', isEqualTo: 'Pending');
+      if (role != null) {
+        query = query.where('targetRoles', arrayContains: role);
+      }
+      final pendingSnap = await query.get();
+
+      for (final doc in pendingSnap.docs) {
+        final complaint = Complaint.fromMap(doc.data(), doc.id);
+        // Client-side deadline check avoids needing a Firestore composite index
+        if (complaint.currentHandler != 'Chief Warden' &&
+            complaint.escalateAt != null &&
+            complaint.escalateAt!.isBefore(nowDate)) {
+          await escalateComplaint(complaint);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[AutoEscalate] Error: $e');
+    }
+
+    // ── 2. Auto-close: find Resolved complaints older than 2 days ──
+    try {
+      final autoCloseDeadline = nowDate.subtract(const Duration(days: 2));
+      Query<Map<String, dynamic>> query = _db
+          .collection('complaints')
+          .where('status', isEqualTo: 'Resolved');
+      if (role != null) {
+        query = query.where('targetRoles', arrayContains: role);
+      }
+      final resolvedSnap = await query.get();
+
+      for (final doc in resolvedSnap.docs) {
+        final data = doc.data();
+        final resolvedAt = (data['resolvedAt'] as Timestamp?)?.toDate();
+        if (resolvedAt != null && resolvedAt.isBefore(autoCloseDeadline)) {
+          await _db.collection('complaints').doc(doc.id).update({
+            'status': 'AutoClosed',
+            'studentConfirmed': true,
+            'closedReason': 'Auto Closed',
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[AutoClose] Error: $e');
+    }
   }
 
   // Warden Approval Methods

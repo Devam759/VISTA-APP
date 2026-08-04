@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/warden_provider.dart';
@@ -30,7 +30,7 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
         return WardenTabScaffold<Complaint>(
           title: 'Complaints',
           sectionTitle: 'Complaint Records',
-          tabs: const ['Pending', 'Resolved', 'Escalated', 'All'],
+          tabs: const ['Pending', 'Resolved', 'Escalated', 'Closed'],
           searchHint: 'Search ID, title...',
           searchQueryPlaceholder: 'Search ID, title...',
           actionWidget: WardenSearchAction(
@@ -54,8 +54,9 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
           filterLogic: (complaint, tab, query) {
             // 1. Status Filter
             if (tab == 'Pending' && complaint.status != 'Pending') return false;
-            if (tab == 'Resolved' && !(complaint.status == 'Resolved' || complaint.status == 'Confirmed')) return false;
-            if (tab == 'Escalated' && !complaint.isEscalated) return false;
+            if (tab == 'Resolved' && complaint.status != 'Resolved') return false;
+            if (tab == 'Escalated' && (!complaint.isEscalated || complaint.isClosed || complaint.status == 'ClosedByStudent' || complaint.status == 'AutoClosed')) return false;
+            if (tab == 'Closed' && !(complaint.status == 'Confirmed' || complaint.status == 'ClosedByStudent' || complaint.status == 'AutoClosed')) return false;
 
             // 2. Date Filter
             if (_selectedDate != null) {

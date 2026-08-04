@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/mess_model.dart';
@@ -52,6 +53,12 @@ class _MessScreenState extends State<MessScreen> {
     final user = authProvider.userProfile;
     if (user == null) return const Center(child: CircularProgressIndicator());
 
+    final isDesktop = kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        MediaQuery.of(context).size.width >= 768;
+
     final now = DateTime.now();
     final activeMeal = MessTimings.getCurrentMeal(now);
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -77,8 +84,8 @@ class _MessScreenState extends State<MessScreen> {
               ),
             ),
 
-            // Dynamic QR Code Card (For Students)
-            if (user.role == UserRole.student) ...[
+            // Dynamic QR Code Card (For Students on Mobile Only)
+            if (user.role == UserRole.student && !isDesktop) ...[
               MessQrWidget(student: user),
               const SizedBox(height: 20),
             ],

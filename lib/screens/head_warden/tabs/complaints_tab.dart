@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/warden_provider.dart';
 import 'package:intl/intl.dart';
@@ -27,7 +27,7 @@ class ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProviderS
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {});
@@ -125,7 +125,7 @@ class ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProviderS
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Row(
-            children: ['Pending', 'Resolved', 'Escalated'].asMap().entries.map((entry) {
+            children: ['Pending', 'Resolved', 'Escalated', 'Closed'].asMap().entries.map((entry) {
               return WardenFilterChip(
                 label: entry.value,
                 isSelected: _tabController.index == entry.key,
@@ -146,6 +146,7 @@ class ComplaintsTabState extends State<ComplaintsTab> with SingleTickerProviderS
               _FilteredComplaintList(status: 'Pending', searchQuery: _searchQuery, selectedDate: _selectedDate, fs: widget.fs, warden: widget.warden),
               _FilteredComplaintList(status: 'Resolved', searchQuery: _searchQuery, selectedDate: _selectedDate, fs: widget.fs, warden: widget.warden),
               _FilteredComplaintList(status: 'Escalated', searchQuery: _searchQuery, selectedDate: _selectedDate, fs: widget.fs, warden: widget.warden),
+              _FilteredComplaintList(status: 'Closed', searchQuery: _searchQuery, selectedDate: _selectedDate, fs: widget.fs, warden: widget.warden),
             ],
           ),
         ),
@@ -199,9 +200,12 @@ class _FilteredComplaintListState extends State<_FilteredComplaintList> with Aut
         if (widget.status == 'Pending') {
           list = list.where((c) => c.status == 'Pending').toList();
         } else if (widget.status == 'Resolved') {
-          list = list.where((c) => c.status == 'Resolved' || c.status == 'Confirmed').toList();
+          // Resolved = awaiting student confirmation
+          list = list.where((c) => c.status == 'Resolved').toList();
         } else if (widget.status == 'Escalated') {
-          list = list.where((c) => c.isEscalated).toList();
+          list = list.where((c) => c.isEscalated && !c.isClosed && c.status != 'ClosedByStudent' && c.status != 'AutoClosed').toList();
+        } else if (widget.status == 'Closed') {
+          list = list.where((c) => c.status == 'Confirmed' || c.status == 'ClosedByStudent' || c.status == 'AutoClosed').toList();
         }
 
         if (hostelFilter != 'All') {

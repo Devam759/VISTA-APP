@@ -542,30 +542,53 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
   bool _canUserResolve() {
     final complaint = widget.complaint;
     final userRole = widget.warden.role;
-
-    // RULE: If escalated to Chief Warden, only Chief Warden can resolve.
-    if (complaint.targetRoles.contains('Chief Warden')) {
-      return userRole == UserRole.chiefWarden;
+    // Match against the currentHandler field
+    switch (complaint.currentHandler) {
+      case 'Chief Warden':
+        return userRole == UserRole.chiefWarden;
+      case 'Head Warden':
+        return userRole == UserRole.headWarden || userRole == UserRole.chiefWarden;
+      default: // 'Warden'
+        return true;
     }
-
-    // RULE: If escalated to Head Warden, only Head Warden or Chief Warden can resolve.
-    if (complaint.targetRoles.contains('Head Warden')) {
-      return userRole == UserRole.headWarden || userRole == UserRole.chiefWarden;
-    }
-
-    // Default: Warden can resolve if it's not escalated beyond them.
-    return true;
   }
+
+  bool get _isChiefWardenHandling =>
+      widget.complaint.currentHandler == 'Chief Warden' &&
+      widget.warden.role == UserRole.chiefWarden;
 
   @override
   Widget build(BuildContext context) {
-    final isResolved =
-        widget.complaint.status == 'Resolved' ||
-        widget.complaint.status == 'Confirmed';
-    final statusColor = isResolved
-        ? Colors.green
-        : (widget.complaint.isEscalated ? Colors.redAccent : Colors.orange);
+    final status = widget.complaint.status;
+    final isClosed = widget.complaint.isClosed || status == 'ClosedByStudent' || status == 'AutoClosed';
+    final isResolved = status == 'Resolved';
+    final isEscalated = widget.complaint.isEscalated;
+
+    Color statusColor;
+    String statusLabel;
+    if (status == 'Confirmed') {
+      statusColor = Colors.green;
+      statusLabel = 'CONFIRMED';
+    } else if (status == 'AutoClosed') {
+      statusColor = Colors.teal;
+      statusLabel = 'AUTO CLOSED';
+    } else if (status == 'ClosedByStudent') {
+      statusColor = Colors.blueGrey;
+      statusLabel = 'CLOSED';
+    } else if (isResolved) {
+      statusColor = Colors.blue;
+      statusLabel = 'RESOLVED';
+    } else if (isEscalated) {
+      statusColor = Colors.redAccent;
+      statusLabel = 'ESCALATED';
+    } else {
+      statusColor = Colors.orange;
+      statusLabel = 'PENDING';
+    }
+
     final canResolve = _canUserResolve();
+    final daysLeft = widget.complaint.daysUntilAutoEscalate;
+    final daysToClose = widget.complaint.daysUntilAutoClose;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -691,17 +714,15 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                     ),
                     const SizedBox(width: 8),
                   ],
+                  // STATUS BADGE
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      widget.complaint.status.toUpperCase(),
+                      statusLabel,
                       style: TextStyle(
                         color: statusColor,
                         fontSize: 10,
@@ -710,6 +731,44 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                       ),
                     ),
                   ),
+                  // SLA COUNTDOWN (only for pending non-closed complaints)
+                  if (!isClosed && !isResolved && daysLeft != null) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (daysLeft <= 1 ? Colors.red : Colors.orange).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        daysLeft == 0 ? 'DUE' : '${daysLeft}d',
+                        style: TextStyle(
+                          color: daysLeft <= 1 ? Colors.red : Colors.orange,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                  // Student confirmation countdown (for resolved complaints)
+                  if (isResolved && daysToClose != null) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        daysToClose == 0 ? 'AUTO' : '${daysToClose}d',
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   AnimatedRotation(
                     duration: const Duration(milliseconds: 300),
@@ -848,8 +907,37 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                   ],
 
                   // ACTIONS SECTION
-                  if (!isResolved) ...[
-                    if (canResolve)
+                  if (!isClosed) ...[
+                    if (isResolved) ...[
+                      // Resolved but awaiting student confirmation — show info
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.withValues(alpha: 0.15)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.hourglass_top_rounded, color: Colors.blue, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                daysToClose != null
+                                    ? 'Awaiting student confirmation. Auto-closes in $daysToClose day${daysToClose == 1 ? '' : 's'}.'
+                                    : 'Awaiting student confirmation.',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (canResolve) ...[
+                      // RESOLVE BUTTON — Chief Warden closes directly
                       Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
@@ -864,16 +952,35 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                         child: ElevatedButton(
                           onPressed: () async {
                             try {
-                              await widget.fs.updateComplaintStatus(
-                                  widget.complaint.id, 'Resolved');
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Issue marked as resolved.'),
-                                    backgroundColor: Colors.green,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
+                              if (_isChiefWardenHandling) {
+                                // Chief Warden → closes directly, no student confirmation
+                                await widget.fs.markResolvedByChiefWarden(
+                                  widget.complaint.id,
+                                  actionUid: widget.warden.uid,
                                 );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Issue closed by Chief Warden.'),
+                                      backgroundColor: Colors.green,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } else {
+                                // Warden / Head Warden → mark resolved, student confirms
+                                await widget.fs.updateComplaintStatus(
+                                    widget.complaint.id, 'Resolved',
+                                    actionUid: widget.warden.uid);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Marked as resolved. Awaiting student confirmation.'),
+                                      backgroundColor: Colors.green,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
                               }
                             } catch (e) {
                               if (context.mounted) {
@@ -892,33 +999,33 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'MARK AS RESOLVED',
-                            style: TextStyle(
+                          child: Text(
+                            _isChiefWardenHandling ? 'CLOSE COMPLAINT' : 'MARK AS RESOLVED',
+                            style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1.2,
                               fontSize: 13,
                             ),
                           ),
                         ),
-                      )
-                    else
+                      ),
+                    ] else ...[
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Colors.black.withValues(alpha: 0.05)),
+                          border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              widget.complaint.targetRoles
-                                      .contains('Chief Warden')
-                                  ? 'AWAITING CHIEF WARDEN CHECK'
-                                  : 'AWAITING HEAD WARDEN CHECK',
+                              widget.complaint.currentHandler == 'Chief Warden'
+                                  ? 'AWAITING CHIEF WARDEN'
+                                  : widget.complaint.currentHandler == 'Head Warden'
+                                      ? 'AWAITING HEAD WARDEN'
+                                      : 'AWAITING WARDEN ACTION',
                               style: const TextStyle(
                                 color: Colors.black26,
                                 fontWeight: FontWeight.w900,
@@ -929,6 +1036,42 @@ class _WardenExpandableComplaintCardState extends State<WardenExpandableComplain
                           ],
                         ),
                       ),
+                    ],
+                  ] else ...[
+                    // CLOSED STATE
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            widget.complaint.status == 'ClosedByStudent'
+                                ? Icons.cancel_outlined
+                                : Icons.check_circle_outline,
+                            size: 16,
+                            color: widget.complaint.status == 'ClosedByStudent'
+                                ? Colors.blueGrey
+                                : Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.complaint.closedReason ?? 'CLOSED',
+                            style: TextStyle(
+                              color: widget.complaint.status == 'ClosedByStudent'
+                                  ? Colors.blueGrey
+                                  : Colors.green,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 11,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ],
               ),

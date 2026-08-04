@@ -29,12 +29,16 @@ class WardenDashboard extends StatefulWidget {
 class _WardenDashboardState extends State<WardenDashboard> {
   late PageController _pageController;
   int _selectedIndex = 0;
-
+  static bool _autoEscalateRanThisSession = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
+    if (!_autoEscalateRanThisSession) {
+      _autoEscalateRanThisSession = true;
+      FirebaseService().autoEscalateOverdueComplaints('Warden');
+    }
   }
 
   @override

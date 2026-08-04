@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/complaint_model.dart';
@@ -98,7 +98,7 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
                     title: 'Complaints',
                     searchCtrl: _searchCtrl,
                     searchHint: 'Search ID, title...',
-                    tabs: const ['Pending', 'Resolved', 'Escalated'],
+                    tabs: const ['Pending', 'Resolved', 'Escalated', 'Closed'],
                     actionWidget: WardenSearchAction(
                       onTap: () => _selectDate(context),
                       child: HoverEffect(
@@ -124,9 +124,14 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
                       if (tab == 'Pending') {
                         matchesStatus = complaint.status == 'Pending';
                       } else if (tab == 'Resolved') {
-                        matchesStatus = (complaint.status == 'Resolved' || complaint.status == 'Confirmed');
+                        // Resolved = awaiting student confirmation
+                        matchesStatus = complaint.status == 'Resolved';
                       } else if (tab == 'Escalated') {
-                        matchesStatus = complaint.isEscalated;
+                        matchesStatus = complaint.isEscalated && !complaint.isClosed && complaint.status != 'ClosedByStudent' && complaint.status != 'AutoClosed';
+                      } else if (tab == 'Closed') {
+                        matchesStatus = complaint.status == 'Confirmed' ||
+                            complaint.status == 'ClosedByStudent' ||
+                            complaint.status == 'AutoClosed';
                       }
 
                       if (!matchesStatus) return false;

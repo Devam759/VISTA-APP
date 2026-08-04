@@ -505,32 +505,69 @@ class MessService {
   /// Generates Excel binary bytes for scan logs
   List<int>? exportScanLogsToExcel(List<MessScanLog> logs) {
     final excel = Excel.createExcel();
+    final defaultSheet = excel.getDefaultSheet();
+    if (defaultSheet != null) {
+      excel.delete(defaultSheet);
+    }
     final Sheet sheet = excel['Mess Scan Logs'];
 
-    sheet.appendRow([
-      TextCellValue('Date'),
-      TextCellValue('Time'),
-      TextCellValue('Student Name'),
-      TextCellValue('Roll No'),
-      TextCellValue('Hostel'),
-      TextCellValue('Meal'),
-      TextCellValue('Scanner ID'),
-      TextCellValue('Status'),
-      TextCellValue('Failure Reason'),
-    ]);
+    final rows = [
+      [
+        'Date',
+        'Time',
+        'Student Name',
+        'Roll No',
+        'Hostel',
+        'Meal',
+        'Scanner ID',
+        'Status',
+        'Failure Reason',
+      ],
+      ...logs.map((log) => [
+        log.date,
+        DateFormat('HH:mm:ss').format(log.timestamp),
+        log.studentName,
+        log.rollNo,
+        log.hostel,
+        log.mealType.displayName,
+        log.scannerId,
+        log.status,
+        log.failureReason ?? '',
+      ]),
+    ];
 
-    for (final log in logs) {
-      sheet.appendRow([
-        TextCellValue(log.date),
-        TextCellValue(DateFormat('HH:mm:ss').format(log.timestamp)),
-        TextCellValue(log.studentName),
-        TextCellValue(log.rollNo),
-        TextCellValue(log.hostel),
-        TextCellValue(log.mealType.displayName),
-        TextCellValue(log.scannerId),
-        TextCellValue(log.status),
-        TextCellValue(log.failureReason ?? ''),
-      ]);
+    for (int i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      for (int j = 0; j < row.length; j++) {
+        final cellStr = row[j].toString();
+        final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i));
+        cell.value = TextCellValue(cellStr);
+
+        final isHeader = (i == 0);
+        final isPresent = cellStr.trim().toLowerCase() == 'present';
+        final isAbsent = cellStr.trim().toLowerCase() == 'absent';
+
+        CellStyle cellStyle = CellStyle(
+          bold: isHeader,
+          textWrapping: TextWrapping.WrapText,
+          horizontalAlign: HorizontalAlign.Center,
+          verticalAlign: VerticalAlign.Center,
+        );
+
+        if (isPresent) {
+          cellStyle = cellStyle.copyWith(
+            backgroundColorHexVal: ExcelColor.fromHexString('#C8E6C9'),
+            fontColorHexVal: ExcelColor.fromHexString('#1B5E20'),
+          );
+        } else if (isAbsent) {
+          cellStyle = cellStyle.copyWith(
+            backgroundColorHexVal: ExcelColor.fromHexString('#FFCDD2'),
+            fontColorHexVal: ExcelColor.fromHexString('#B71C1C'),
+          );
+        }
+
+        cell.cellStyle = cellStyle;
+      }
     }
 
     return excel.encode();

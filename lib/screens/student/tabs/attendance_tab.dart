@@ -496,7 +496,7 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
 
   Widget _buildDownloadButton(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
@@ -509,11 +509,21 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white, size: 24),
-          const SizedBox(width: 12),
-          Text(label,
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
               style: GoogleFonts.inter(
-                  color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.2)),
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ),
         ],
       ),
     );

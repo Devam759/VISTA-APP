@@ -453,6 +453,238 @@ class ExportHelper {
     );
   }
 
+  /// Multi-hostel Export Methods for Chief Warden & Head Warden (4 Sheets: BH1, BH2, GH1, GH2)
+
+  static Future<void> exportStudentsMultiHostel(
+    List<VistaUser> allStudents, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final hostelNames = ['BH1', 'BH2', 'GH1', 'GH2'];
+    final dateRangeStr = (startDate != null && endDate != null)
+        ? '${DateFormat('yyyyMMdd').format(startDate)}-${DateFormat('yyyyMMdd').format(endDate)}'
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
+    await _saveAndShareMultiSheet(
+      hostelNames,
+      (hostel) {
+        final hostelStudents = allStudents.where((s) => s.hostel == hostel).toList();
+        List<List<dynamic>> rows = [
+          ['Student Name', 'Room No', 'Contact', 'Email', 'Hostel', 'Status'],
+        ];
+        for (var s in hostelStudents) {
+          rows.add([
+            s.name,
+            s.roomNumber ?? '',
+            InputSanitizer.formatPhoneWithCountryCode(s.phoneNumber ?? ''),
+            s.email,
+            s.hostel ?? '',
+            s.isApproved ? 'Approved' : 'Pending',
+          ]);
+        }
+        return rows;
+      },
+      'Students_List_MultiHostel_$dateRangeStr.xlsx',
+    );
+  }
+
+  static Future<void> exportLeavesMultiHostel(
+    List<LeaveRequest> allLeaves,
+    List<VistaUser> allStudents, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final hostelNames = ['BH1', 'BH2', 'GH1', 'GH2'];
+    final dateRangeStr = (startDate != null && endDate != null)
+        ? '${DateFormat('yyyyMMdd').format(startDate)}-${DateFormat('yyyyMMdd').format(endDate)}'
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
+    var filteredLeaves = allLeaves;
+    if (startDate != null && endDate != null) {
+      final start = DateTime(startDate.year, startDate.month, startDate.day);
+      final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+      filteredLeaves = allLeaves.where((l) {
+        return !l.createdAt.isBefore(start) && !l.createdAt.isAfter(end);
+      }).toList();
+    }
+
+    await _saveAndShareMultiSheet(
+      hostelNames,
+      (hostel) {
+        final hostelStudentIds = allStudents.where((s) => s.hostel == hostel).map((s) => s.uid).toSet();
+        final hostelLeavesList = filteredLeaves.where((l) => hostelStudentIds.contains(l.studentId)).toList();
+
+        List<List<dynamic>> rows = [
+          [
+            'Applied Date',
+            'Student Name',
+            'Room No',
+            'Contact',
+            'Email',
+            'From',
+            'To',
+            'Reason',
+            'Status',
+            'Address',
+            'Parent Contact',
+          ],
+        ];
+
+        for (var l in hostelLeavesList) {
+          final student = allStudents.firstWhere(
+            (s) => s.uid == l.studentId,
+            orElse: () => VistaUser(
+              uid: l.studentId,
+              name: l.studentName,
+              email: '',
+              role: UserRole.student,
+            ),
+          );
+
+          rows.add([
+            DateFormat('dd-MM-yyyy').format(l.createdAt),
+            l.studentName,
+            student.roomNumber ?? '',
+            InputSanitizer.formatPhoneWithCountryCode(student.phoneNumber ?? l.studentContact),
+            student.email,
+            DateFormat('dd-MM-yyyy').format(l.fromDate),
+            DateFormat('dd-MM-yyyy').format(l.toDate),
+            l.reason,
+            l.status,
+            l.address,
+            InputSanitizer.formatPhoneWithCountryCode(l.parentContact),
+          ]);
+        }
+        return rows;
+      },
+      'Leaves_Report_MultiHostel_$dateRangeStr.xlsx',
+    );
+  }
+
+  static Future<void> exportComplaintsMultiHostel(
+    List<Complaint> allComplaints, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final hostelNames = ['BH1', 'BH2', 'GH1', 'GH2'];
+    final dateRangeStr = (startDate != null && endDate != null)
+        ? '${DateFormat('yyyyMMdd').format(startDate)}-${DateFormat('yyyyMMdd').format(endDate)}'
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
+    var filteredData = allComplaints;
+    if (startDate != null && endDate != null) {
+      final start = DateTime(startDate.year, startDate.month, startDate.day);
+      final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+      filteredData = allComplaints.where((c) {
+        return !c.createdAt.isBefore(start) && !c.createdAt.isAfter(end);
+      }).toList();
+    }
+
+    await _saveAndShareMultiSheet(
+      hostelNames,
+      (hostel) {
+        final hostelComplaints = filteredData.where((c) => c.hostel == hostel).toList();
+        List<List<dynamic>> rows = [
+          [
+            'Ticket ID',
+            'Date',
+            'Title',
+            'Description',
+            'Status',
+            'Escalated',
+            'Hostel',
+          ],
+        ];
+
+        for (var c in hostelComplaints) {
+          rows.add([
+            c.seqId,
+            DateFormat('dd-MM-yyyy').format(c.createdAt),
+            c.title,
+            c.description,
+            c.status,
+            c.isEscalated ? 'YES' : 'NO',
+            c.hostel,
+          ]);
+        }
+        return rows;
+      },
+      'Complaints_Report_MultiHostel_$dateRangeStr.xlsx',
+    );
+  }
+
+  static Future<void> exportShortStaysMultiHostel(
+    List<ShortStayRequest> allShortStays, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final hostelNames = ['BH1', 'BH2', 'GH1', 'GH2'];
+    final dateRangeStr = (startDate != null && endDate != null)
+        ? '${DateFormat('yyyyMMdd').format(startDate)}-${DateFormat('yyyyMMdd').format(endDate)}'
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
+    var filteredData = allShortStays;
+    if (startDate != null && endDate != null) {
+      final start = DateTime(startDate.year, startDate.month, startDate.day);
+      final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+      filteredData = allShortStays.where((s) {
+        return !s.createdAt.isBefore(start) && !s.createdAt.isAfter(end);
+      }).toList();
+    }
+
+    await _saveAndShareMultiSheet(
+      hostelNames,
+      (hostel) {
+        final hostelShortStays = filteredData.where((s) => s.appliedHostel == hostel).toList();
+        List<List<dynamic>> rows = [
+          [
+            'SEQ ID',
+            'Student Name',
+            'Roll No',
+            'Programme',
+            'Gender',
+            'Email',
+            'Contact No',
+            'Address',
+            'Reason',
+            'Parent Name',
+            'Parent Contact',
+            'Check-in',
+            'Check-out',
+            'Status',
+            'Hostel',
+            'Room',
+            'Applied At',
+          ],
+        ];
+
+        for (var r in hostelShortStays) {
+          rows.add([
+            r.seqId,
+            r.studentName,
+            r.rollNo,
+            r.programme,
+            r.gender,
+            r.email,
+            InputSanitizer.formatPhoneWithCountryCode(r.contactNo),
+            r.address,
+            r.reason,
+            r.parentName,
+            InputSanitizer.formatPhoneWithCountryCode(r.parentContact),
+            DateFormat('dd-MM-yyyy HH:mm').format(r.checkInDate),
+            DateFormat('dd-MM-yyyy HH:mm').format(r.checkOutDate),
+            r.status,
+            r.appliedHostel,
+            r.roomNumber ?? '',
+            DateFormat('dd-MM-yyyy HH:mm').format(r.createdAt),
+          ]);
+        }
+        return rows;
+      },
+      'ShortStay_Report_MultiHostel_$dateRangeStr.xlsx',
+    );
+  }
+
   static Future<void> saveRawCsv(String csvString, String fileName) async {
     final List<List<dynamic>> rows = csvString
         .split('\n')
