@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -383,8 +383,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   height: 20,
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Container(
                                             width: 8,
@@ -401,6 +403,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Container(
                                             width: 8,
@@ -419,9 +422,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 10),
-                                const Text(
-                                  'Sign in with Microsoft',
-                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                const Flexible(
+                                  child: Text(
+                                    'Sign in with Microsoft',
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
                                 ),
                               ],
                             ),

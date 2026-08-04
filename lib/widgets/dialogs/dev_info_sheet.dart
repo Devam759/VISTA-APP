@@ -1,5 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../common/hover_effect.dart';
 
@@ -9,13 +12,64 @@ const _yashLinkedIn  = 'https://www.linkedin.com/in/yash-mishra-022b66330/';
 // ──────────────────────────────────────────────────────────────────────────
 
 /// Shows the "Minds Behind VISTA" developer info bottom sheet.
-/// Call from any screen by passing the current [BuildContext].
+/// Integrates [PackageInfo] and [DeviceInfoPlugin] to display dynamic app & device metadata.
 void showDeveloperInfoSheet(BuildContext context) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (context) => Container(
+    builder: (context) => const _DeveloperInfoContent(),
+  );
+}
+
+class _DeveloperInfoContent extends StatefulWidget {
+  const _DeveloperInfoContent();
+
+  @override
+  State<_DeveloperInfoContent> createState() => _DeveloperInfoContentState();
+}
+
+class _DeveloperInfoContentState extends State<_DeveloperInfoContent> {
+  String _appVersion = 'v1.3.0 (Build 16)';
+  String _deviceInfo = 'VISTA Client';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMetadata();
+  }
+
+  Future<void> _loadMetadata() async {
+    try {
+      final pkgInfo = await PackageInfo.fromPlatform();
+      final versionStr = 'v${pkgInfo.version} (Build ${pkgInfo.buildNumber})';
+
+      String deviceStr = 'Web Platform';
+      if (!kIsWeb) {
+        final deviceInfo = DeviceInfoPlugin();
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          final android = await deviceInfo.androidInfo;
+          deviceStr = '${android.manufacturer} ${android.model} (Android ${android.version.release})';
+        } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+          final ios = await deviceInfo.iosInfo;
+          deviceStr = '${ios.name} (${ios.systemName} ${ios.systemVersion})';
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _appVersion = versionStr;
+          _deviceInfo = deviceStr;
+        });
+      }
+    } catch (_) {
+      // Fallback defaults
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
       decoration: const BoxDecoration(
         color: Color(0xFFF8FAFF),
         borderRadius: BorderRadius.only(
@@ -55,9 +109,36 @@ void showDeveloperInfoSheet(BuildContext context) {
             style: TextStyle(color: Colors.grey[500], fontSize: 13),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
-          // ── Two cards side by side ─────────────────────────────────────
+          // ── Dynamic App Version & Device Info Badge ─────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E3A8A).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF1E3A8A).withValues(alpha: 0.15)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFF1E3A8A)),
+                const SizedBox(width: 6),
+                Text(
+                  '$_appVersion • $_deviceInfo',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E3A8A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Two developer cards ─────────────────────────────────────
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -66,7 +147,7 @@ void showDeveloperInfoSheet(BuildContext context) {
                   child: _developerCard(
                     context: context,
                     name: 'Devam Gupta',
-                    imageAsset: 'assets/images/devam.png',
+                    initials: 'DG',
                     github: 'https://github.com/Devam759',
                     linkedin: _devamLinkedIn,
                   ),
@@ -76,7 +157,7 @@ void showDeveloperInfoSheet(BuildContext context) {
                   child: _developerCard(
                     context: context,
                     name: 'Yash Mishra',
-                    imageAsset: 'assets/images/yash.jpeg',
+                    initials: 'YM',
                     github: 'https://github.com/yashmish18',
                     linkedin: _yashLinkedIn,
                   ),
@@ -92,10 +173,7 @@ void showDeveloperInfoSheet(BuildContext context) {
           // ── Contact email ──────────────────────────────────────────────
           GestureDetector(
             onTap: () async {
-              final uri = Uri(
-                scheme: 'mailto',
-                path: 'vista@jklu.edu.in',
-              );
+              final uri = Uri(scheme: 'mailto', path: 'vista@jklu.edu.in');
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri);
               }
@@ -103,8 +181,7 @@ void showDeveloperInfoSheet(BuildContext context) {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.mail_outline_rounded,
-                    size: 16, color: Colors.grey[500]),
+                Icon(Icons.mail_outline_rounded, size: 16, color: Colors.grey[500]),
                 const SizedBox(width: 8),
                 Text(
                   'vista@jklu.edu.in',
@@ -125,14 +202,14 @@ void showDeveloperInfoSheet(BuildContext context) {
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 Widget _developerCard({
   required BuildContext context,
   required String name,
-  required String imageAsset,
+  required String initials,
   required String github,
   required String linkedin,
 }) {
@@ -153,21 +230,28 @@ Widget _developerCard({
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Avatar
+        // Avatar with initials
         Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
+          width: 64,
+          height: 64,
+          decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
-          child: CircleAvatar(
-            radius: 36,
-            backgroundColor: Colors.grey[200],
-            backgroundImage: AssetImage(imageAsset),
+          child: Center(
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                letterSpacing: 1.0,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -200,11 +284,16 @@ Widget _developerCard({
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
                   padding: const EdgeInsets.all(6),
-                  child: _GithubIcon(),
+                  child: SvgPicture.string(
+                    '''<svg height="20" width="20" viewBox="0 0 16 16" fill="#1E293B"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>''',
+                    width: 18,
+                    height: 18,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
+
             // LinkedIn
             HoverEffect(
               child: InkWell(
@@ -217,7 +306,11 @@ Widget _developerCard({
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
                   padding: const EdgeInsets.all(6),
-                  child: _LinkedInIcon(),
+                  child: SvgPicture.string(
+                    '''<svg height="20" width="20" viewBox="0 0 24 24" fill="#0A66C2"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.25V10.9H6.46M7.86 6.7a1.63 1.63 0 1 0 0 3.26 1.63 1.63 0 0 0 0-3.26z"/></svg>''',
+                    width: 18,
+                    height: 18,
+                  ),
                 ),
               ),
             ),
@@ -226,68 +319,4 @@ Widget _developerCard({
       ],
     ),
   );
-}
-
-// ── Real brand SVG icons ─────────────────────────────────────────────────
-
-// Official GitHub mark SVG path
-const _githubSvg = '''
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <path fill="#ffffff" d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387
-    .599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416
-    -.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729
-    1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997
-    .107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931
-    0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0
-    1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138
-    3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118
-    3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921
-    .43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576
-    C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
-</svg>
-''';
-
-// Official LinkedIn mark SVG path
-const _linkedinSvg = '''
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <path fill="#ffffff" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037
-    -1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046
-    c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286z
-    M5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065z
-    m1.782 13.019H3.555V9h3.564v11.452z
-    M22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451
-    C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-</svg>
-''';
-
-class _GithubIcon extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(9),
-      ),
-      padding: const EdgeInsets.all(6),
-      child: SvgPicture.string(_githubSvg),
-    );
-  }
-}
-
-class _LinkedInIcon extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A66C2),
-        borderRadius: BorderRadius.circular(9),
-      ),
-      padding: const EdgeInsets.all(6),
-      child: SvgPicture.string(_linkedinSvg),
-    );
-  }
 }

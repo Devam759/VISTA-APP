@@ -15,21 +15,32 @@ class FaceRecognitionService {
 
   Future<void> _loadModel() async {
     if (kIsWeb) {
-      debugPrint('MobileFaceNet TFLite is skipped on Web platform.');
+      debugPrint('Face Recognition TFLite is skipped on Web platform.');
       return;
     }
     try {
-      _interpreter = await Interpreter.fromAsset(
-        'assets/models/facenet.tflite',
-      );
+      try {
+        _interpreter = await Interpreter.fromAsset('assets/models/arcface.tflite');
+        debugPrint('Loaded 512-dimensional ArcFace model (arcface.tflite)');
+      } catch (_) {
+        try {
+          _interpreter = await Interpreter.fromAsset('assets/models/facenet_512.tflite');
+          debugPrint('Loaded 512-dimensional FaceNet model (facenet_512.tflite)');
+        } catch (_) {
+          _interpreter = await Interpreter.fromAsset('assets/models/facenet.tflite');
+          debugPrint('Loaded default FaceNet model (facenet.tflite)');
+        }
+      }
       _isModelLoaded = true;
-      debugPrint('MobileFaceNet model loaded successfully.');
+      final inShape = _interpreter!.getInputTensor(0).shape;
+      final outShape = _interpreter!.getOutputTensor(0).shape;
+      debugPrint('Face Recognition TFLite loaded successfully. Input shape: $inShape, Output shape: $outShape');
     } catch (e) {
-      debugPrint('Failed to load MobileFaceNet model: $e');
+      debugPrint('Failed to load FaceNet model: $e');
     }
   }
 
-  /// Generates a 192-dimensional embedding from a cropped face image.
+  /// Generates a feature embedding vector from a cropped face image.
   Future<List<double>> getEmbedding(img.Image faceImage) async {
     if (kIsWeb) return [];
     if (!_isModelLoaded) await _loadModel();
@@ -38,11 +49,16 @@ class FaceRecognitionService {
     // 1. Fix orientation (Android photos often rotated)
     final oriented = img.bakeOrientation(faceImage);
 
-    // 2. Resize to 112x112 (Standard for MobileFaceNet)
-    final resized = img.copyResize(oriented, width: 112, height: 112);
+    // 2. Read dynamic model input shape (e.g. [1, 160, 160, 3] or [1, 112, 112, 3])
+    final inputShape = _interpreter!.getInputTensor(0).shape;
+    final modelHeight = inputShape.length > 2 ? inputShape[1] : 112;
+    final modelWidth = inputShape.length > 2 ? inputShape[2] : 112;
+
+    // Resize to expected model dimensions
+    final resized = img.copyResize(oriented, width: modelWidth, height: modelHeight);
 
     // 3. Pre-process: Normalise pixels to [-1, 1]
-    final input = Float32List(1 * 112 * 112 * 3);
+    final input = Float32List(1 * modelWidth * modelHeight * 3);
     var pixelIndex = 0;
     for (final pixel in resized) {
       input[pixelIndex++] = (pixel.r - 127.5) / 127.5;
@@ -55,7 +71,7 @@ class FaceRecognitionService {
     final outputSize = outputShape.reduce((a, b) => a * b);
     var output = List.filled(outputSize, 0.0).reshape(outputShape);
 
-    _interpreter!.run(input.reshape([1, 112, 112, 3]), output);
+    _interpreter!.run(input.reshape([1, modelHeight, modelWidth, 3]), output);
 
     // Flatten to a List<double>
     if (outputShape.length == 2) {

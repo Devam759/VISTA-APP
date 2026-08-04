@@ -84,7 +84,63 @@ class _WebDashboardScaffoldState extends State<WebDashboardScaffold> {
         final isWebWide = kIsWeb && constraints.maxWidth >= 900;
 
         if (!isWebWide) {
-          return widget.mobileChild ?? widget.pages[widget.selectedIndex];
+          if (widget.mobileChild != null) {
+            return widget.mobileChild!;
+          }
+
+          return Scaffold(
+            backgroundColor: const Color(0xFFF0F4FF),
+            appBar: AppBar(
+              backgroundColor: const Color(0xFF0F2460),
+              foregroundColor: Colors.white,
+              elevation: 2,
+              title: Row(
+                children: [
+                  Text(
+                    widget.title,
+                    style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      widget.roleBadge,
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white70),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                if (widget.onSignOut != null)
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, size: 20),
+                    tooltip: 'Sign Out',
+                    onPressed: widget.onSignOut,
+                  ),
+              ],
+            ),
+            body: widget.pages[widget.selectedIndex],
+            bottomNavigationBar: widget.items.length > 1
+                ? NavigationBar(
+                    selectedIndex: widget.selectedIndex,
+                    onDestinationSelected: widget.onItemSelected,
+                    backgroundColor: Colors.white,
+                    indicatorColor: const Color(0xFF0F2460).withValues(alpha: 0.15),
+                    elevation: 8,
+                    destinations: widget.items.map((item) {
+                      return NavigationDestination(
+                        icon: Icon(item.icon),
+                        selectedIcon: Icon(item.selectedIcon, color: const Color(0xFF0F2460)),
+                        label: item.label,
+                      );
+                    }).toList(),
+                  )
+                : null,
+          );
         }
 
         return Scaffold(

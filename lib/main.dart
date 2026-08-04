@@ -1,4 +1,4 @@
-﻿import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
@@ -23,11 +23,15 @@ import 'services/security_service.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/services.dart';
+import 'services/network_service.dart';
 
 const platform = MethodChannel('com.ashish.vista.jklu/debug_token');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize NetworkService for real-time online/offline monitoring
+  NetworkService.instance.initialize();
   
   // 1. Start background tasks (env, options)
   final envFuture = _loadEnv();

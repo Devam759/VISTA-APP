@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/mess_model.dart';
@@ -231,13 +231,28 @@ class _MessWeeklyEditorTabState extends State<MessWeeklyEditorTab> {
     final updaterName = authProvider.userProfile?.name ?? 'Mess Manager';
 
     try {
-      final picker = ImagePicker();
-      final XFile? file = await picker.pickMedia();
-      if (file == null) return;
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.first;
+
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not read file contents. Please try selecting the PDF again.'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
 
       setState(() => _isUploadingPdf = true);
-
-      final bytes = await file.readAsBytes();
 
       await _messService.uploadWeeklyPdfBytes(
         bytes: bytes,
