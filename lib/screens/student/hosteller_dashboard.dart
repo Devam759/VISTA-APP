@@ -83,12 +83,6 @@ class _HostellerDashboardState extends State<HostellerDashboard> {
         }),
       );
     }
-
-    _subscriptions.add(
-      _firebaseService.getStudentLeaves(user.uid).listen((list) {
-        // Logic for leaf updates
-      }),
-    );
   }
 
   void _showInAppAlert(String title, String body) {

@@ -246,8 +246,8 @@ class _RaiseComplaintSheetState extends State<_RaiseComplaintSheet> {
 
       final complaint = Complaint(
         id: '',
-        studentId: widget.user.uid,
-        studentName: widget.user.name,
+        studentId: null,
+        studentName: 'Anonymous',
         title: InputSanitizer.sanitize(_titleCtrl.text.trim()),
         description: InputSanitizer.sanitize(_descCtrl.text.trim()),
         hostel: widget.user.hostel ?? 'Unassigned',

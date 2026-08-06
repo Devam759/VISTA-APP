@@ -206,7 +206,7 @@ class _AuditLogsTabState extends State<AuditLogsTab> {
           // Real-time Audit Stream List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _db.collection('audit_logs').orderBy('timestamp', descending: true).snapshots(),
+              stream: _db.collection('audit_logs').orderBy('timestamp', descending: true).limit(50).snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(

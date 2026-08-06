@@ -20,16 +20,28 @@ class StudentsTab extends StatefulWidget {
 
 class _StudentsTabState extends State<StudentsTab> {
   bool _showRequests = false;
+  String? _lastFilter;
+  Stream<List<LeaveRequest>>? _leaveStream;
+  Stream<List<ShortStayRequest>>? _shortStayStream;
+
+  void _updateStreams(String? filter) {
+    if (_lastFilter != filter || _leaveStream == null) {
+      _lastFilter = filter;
+      _leaveStream = widget.fs.getApprovedLeaves(filter);
+      _shortStayStream = widget.fs.getApprovedShortStays(filter);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<WardenProvider>(
       builder: (context, wp, _) {
+        _updateStreams(wp.currentHostelFilter);
         return StreamBuilder<List<LeaveRequest>>(
-          stream: widget.fs.getApprovedLeaves(wp.currentHostelFilter),
+          stream: _leaveStream,
           builder: (context, leaveSnap) {
             return StreamBuilder<List<ShortStayRequest>>(
-              stream: widget.fs.getApprovedShortStays(wp.currentHostelFilter),
+              stream: _shortStayStream,
               builder: (context, ssSnap) {
                 final leaves = leaveSnap.data ?? [];
                 final shortStays = ssSnap.data ?? [];
@@ -86,14 +98,13 @@ class _StudentsTabState extends State<StudentsTab> {
                     if (tab == 'In Campus') return !onLeave && !onShortStay;
                     return true;
                   },
-                  itemBuilder: (context, student) {
-                    final onLeave = FirebaseService.isStudentOnLeave(student.uid, leaves);
-                    final onShortStay = FirebaseService.isStudentOnShortStay(student.uid, shortStays);
-                    return WardenStudentListItem(
-                      student: student,
-                      onLeave: onLeave,
-                      onShortStay: onShortStay,
-                      onTap: () => showWardenStudentDetails(context: context, student: student, fs: widget.fs),
+                  listBuilder: (context, filteredStudents, [startIndex = 0]) {
+                    return WardenStudentTableView(
+                      students: filteredStudents,
+                      leaves: leaves,
+                      shortStays: shortStays,
+                      fs: widget.fs,
+                      startIndex: startIndex,
                     );
                   },
                 );

@@ -70,7 +70,7 @@ Future<void> _initializeFirebase() async {
     if (!kIsWeb) {
       await FirebaseAppCheck.instance.activate(
         providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
-        providerApple: const AppleDebugProvider(),
+        providerApple: kDebugMode ? const AppleDebugProvider() : const AppleDeviceCheckProvider(),
       );
 
       if (kDebugMode) {
@@ -199,15 +199,17 @@ class AuthWrapper extends StatelessWidget {
     final user = authProvider.userProfile!;
     debugPrint("VISTA: AuthWrapper -> Role-based Routing (Role: ${user.role})");
 
+    // Universal account active check for all roles
+    if (!user.isAccountActive) {
+      return const PendingApprovalScreen();
+    }
 
     // Role-based routing
     switch (user.role) {
       case UserRole.student:
-        // A student is blocked if:
-        // 1. Account is explicitly deactivated (isAccountActive == false)
-        // 3. It's a hosteller (!isDayScholar) and not yet approved (!isApproved)
+        // A student hosteller is blocked if not yet approved (!isApproved)
         final bool hostellerNeedsApproval = !user.isDayScholar && !user.isApproved;
-        if (!user.isAccountActive || hostellerNeedsApproval) {
+        if (hostellerNeedsApproval) {
           return const PendingApprovalScreen();
         }
         if (user.isDayScholar) return const DayScholarDashboard();

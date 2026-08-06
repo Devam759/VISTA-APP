@@ -30,39 +30,21 @@ const _kShortStayStatuses   = {'Pending', 'Approved', 'Rejected', 'Cancelled', '
 const _kComplaintStatuses   = {'Pending', 'Resolved', 'Confirmed', 'ClosedByStudent', 'AutoClosed'};
 const _kAttendanceStatuses  = {'Present', 'Absent', 'Late'};
 
+final _kRoomNumRegex = RegExp(r'[^0-9]');
+int _roomNum(String? room) => int.tryParse(room?.replaceAll(_kRoomNumRegex, '') ?? '') ?? 999999;
+
 class FirebaseService {
   // Using lazy getters for all Firebase instances.
   FirebaseAuth get _auth => FirebaseAuth.instance;
 
-  // The Firestore database was created with ID 'default' (not the standard '(default)').
-  // Using a lazy getter so Firebase.app() is only called after initializeApp() is done.
-  // Offline persistence is enabled once per instance — Firestore caches all reads
-  // to the app's private LevelDB (not accessible to other apps), so repeated opens
-  // serve data from disk with zero network round trips.
   static bool _persistenceEnabled = false;
-  FirebaseFirestore get _db {
-    FirebaseFirestore instance;
+  final FirebaseFirestore _db = () {
     try {
-      instance = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
+      return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
     } catch (_) {
-      instance = FirebaseFirestore.instance;
+      return FirebaseFirestore.instance;
     }
-    if (!_persistenceEnabled) {
-      try {
-        instance.settings = const Settings(
-          persistenceEnabled: true,
-          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-        );
-        _persistenceEnabled = true;
-        if (kDebugMode) debugPrint('[FirebaseService] Firestore offline persistence ENABLED');
-      } catch (e) {
-        // Already configured — safe to ignore.
-        _persistenceEnabled = true;
-        if (kDebugMode) debugPrint('[FirebaseService] Firestore persistence already set: $e');
-      }
-    }
-    return instance;
-  }
+  }();
 
   FirebaseStorage get _storage => FirebaseStorage.instanceFor(
         bucket: 'vista-jklu.firebasestorage.app',
@@ -71,7 +53,19 @@ class FirebaseService {
   FirebaseFirestore get db => _db;
 
   FirebaseService() {
-    // We will now handle redirect explicitly from AuthProvider for better sync
+    if (!_persistenceEnabled) {
+      try {
+        _db.settings = const Settings(
+          persistenceEnabled: true,
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        );
+        _persistenceEnabled = true;
+        if (kDebugMode) debugPrint('[FirebaseService] Firestore offline persistence ENABLED');
+      } catch (e) {
+        _persistenceEnabled = true;
+        if (kDebugMode) debugPrint('[FirebaseService] Firestore persistence already set: $e');
+      }
+    }
   }
 
   Future<void> handleRedirectResult() async {
@@ -400,15 +394,12 @@ class FirebaseService {
       );
     }
     return RateLimiter.run('markAttendance_${attendance.studentId}', () {
-      // Build the map ourselves to override the client timestamp with the
-      // server timestamp — ensures students cannot backdate attendance by
-      // manipulating their device clock.
       final data = attendance.toMap()
         ..['timestamp'] = FieldValue.serverTimestamp();
       
-      // Keep 'date' field (standardized to DD-MM-YYYY in model) for queries.
-      // Removed previous logic that deleted it in anticipation of a trigger.
-      return _db.collection('attendance').add(data);
+      // Deterministic document ID to atomically prevent TOCTOU double-marking
+      final docId = '${attendance.studentId}_${attendance.dateKey}';
+      return _db.collection('attendance').doc(docId).set(data);
     });
   }
 
@@ -419,6 +410,7 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
+    query = query.limit(50);
     return query.snapshots().map(
       (snapshot) => snapshot.docs
           .map((doc) => Attendance.fromMap(doc.data(), doc.id))
@@ -431,6 +423,7 @@ class FirebaseService {
     final liveStream = _db
         .collection('attendance')
         .where('studentId', isEqualTo: uid)
+        .limit(50)
         .snapshots()
         .map((snapshot) {
           final list = snapshot.docs
@@ -489,6 +482,7 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
+    query = query.limit(50);
     return query.snapshots().map((snapshot) {
       final list = snapshot.docs
           .map((doc) => LeaveRequest.fromMap(doc.data(), doc.id))
@@ -503,6 +497,7 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
+    query = query.limit(50);
     return query.snapshots().map((snapshot) {
       final list = snapshot.docs
           .map((doc) => LeaveRequest.fromMap(doc.data(), doc.id))
@@ -536,6 +531,7 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
+    query = query.limit(50);
     return query.snapshots().map((snapshot) {
       final list = snapshot.docs
           .map((doc) => LeaveRequest.fromMap(doc.data(), doc.id))
@@ -549,6 +545,7 @@ class FirebaseService {
     return _db
         .collection('leave_requests')
         .where('studentId', isEqualTo: uid)
+        .limit(50)
         .withConverter<Map<String, dynamic>>(
           fromFirestore: (snapshot, _) => snapshot.data()!,
           toFirestore: (map, _) => map,
@@ -604,6 +601,7 @@ class FirebaseService {
         query = query.where('appliedHostel', isEqualTo: hostel);
       }
     }
+    query = query.limit(50);
     return query.snapshots().map((snapshot) {
       final list = snapshot.docs
           .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
@@ -626,6 +624,7 @@ class FirebaseService {
         query = query.where('appliedHostel', isEqualTo: hostel);
       }
     }
+    query = query.limit(50);
     return query.snapshots().map((snapshot) {
       return snapshot.docs
           .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
@@ -637,6 +636,7 @@ class FirebaseService {
     return _db
         .collection('short_stay_requests')
         .where('studentId', isEqualTo: uid)
+        .limit(50)
         .snapshots()
         .map((snapshot) {
           final list = snapshot.docs
@@ -668,32 +668,29 @@ class FirebaseService {
       data['appliedHostel'] = allotmentHostel;
     }
     
+    final docRef = _db.collection('short_stay_requests').doc(id);
+    final snap = await docRef.get();
+    if (!snap.exists) return;
+    final snapData = snap.data();
+
     if (actionByName != null) {
       if (status == 'Approved') {
         data['approvedBy'] = actionByName;
         // Handle Extension Approval
-        final snap = await _db.collection('short_stay_requests').doc(id).get();
-        if (snap.exists && snap.data()?['pendingToDate'] != null) {
-          data['checkOutDate'] = snap.data()!['pendingToDate'];
+        if (snapData?['pendingToDate'] != null) {
+          data['checkOutDate'] = snapData!['pendingToDate'];
           data['pendingToDate'] = FieldValue.delete();
         }
       } else if (status == 'Rejected') {
         data['rejectedBy'] = actionByName;
         // Handle Extension Rejection
-        final snap = await _db.collection('short_stay_requests').doc(id).get();
-        if (snap.exists && snap.data()?['pendingToDate'] != null) {
-          // If an extension was requested and we are 'Rejecting' it,
-          // we should ideally keep the stay 'Approved' but clear the extension.
-          // However, if the user moved it to 'Pending', the 'Rejected' status here
-          // will reject the WHOLE stay. 
-          // If the user wants to ONLY reject extension, they need a separate action.
-          // For now, we follow the standard flow: Rejecting a Pending request rejects it.
+        if (snapData?['pendingToDate'] != null) {
           data['pendingToDate'] = FieldValue.delete();
         }
       }
     }
 
-    await _db.collection('short_stay_requests').doc(id).update(data);
+    await docRef.update(data);
     if (actionUid != null) {
       AuditLogger.logSync(
         uid: actionUid,
@@ -702,38 +699,35 @@ class FirebaseService {
       );
     }
 
-    final snap = await _db.collection('short_stay_requests').doc(id).get();
-    if (snap.exists) {
-      final studentId = snap.data()?['studentId'];
-      if (studentId != null) {
-        if (status == 'Approved') {
-          final userSnap = await _db.collection('users').doc(studentId).get();
-          if (userSnap.exists) {
-            final userData = userSnap.data()!;
-            final userUpdates = <String, dynamic>{
-              'hasUsedShortStay': true,
-              'hasActiveShortStay': true,
-            };
-            if (userData['hostel'] == 'Short Stay' && allotmentHostel != null) {
-              userUpdates['hostel'] = allotmentHostel;
-              if (roomNumber != null) userUpdates['roomNumber'] = roomNumber;
-            }
-            await _db.collection('users').doc(studentId).update(userUpdates);
+    final studentId = snapData?['studentId'];
+    if (studentId != null) {
+      if (status == 'Approved') {
+        final userSnap = await _db.collection('users').doc(studentId).get();
+        if (userSnap.exists) {
+          final userData = userSnap.data()!;
+          final userUpdates = <String, dynamic>{
+            'hasUsedShortStay': true,
+            'hasActiveShortStay': true,
+          };
+          if (userData['hostel'] == 'Short Stay' && allotmentHostel != null) {
+            userUpdates['hostel'] = allotmentHostel;
+            if (roomNumber != null) userUpdates['roomNumber'] = roomNumber;
           }
-        } else if (status == 'Completed' || status == 'Rejected' || status == 'Cancelled') {
-          final userSnap = await _db.collection('users').doc(studentId).get();
-          if (userSnap.exists) {
-            final userData = userSnap.data()!;
-            final userUpdates = <String, dynamic>{
-              'hasActiveShortStay': false,
-            };
-            // Automatically revert Day Scholars' hostel to 'Short Stay' and clear room
-            if (userData['userType'] == 'Day Scholar' || userData['hostel'] != 'Short Stay') {
-               userUpdates['hostel'] = 'Short Stay';
-               userUpdates['roomNumber'] = null;
-            }
-            await _db.collection('users').doc(studentId).update(userUpdates);
+          await _db.collection('users').doc(studentId).update(userUpdates);
+        }
+      } else if (status == 'Completed' || status == 'Rejected' || status == 'Cancelled') {
+        final userSnap = await _db.collection('users').doc(studentId).get();
+        if (userSnap.exists) {
+          final userData = userSnap.data()!;
+          final userUpdates = <String, dynamic>{
+            'hasActiveShortStay': false,
+          };
+          // Automatically revert Day Scholars' hostel to 'Short Stay' and clear room
+          if (userData['userType'] == 'Day Scholar' || userData['hostel'] != 'Short Stay') {
+             userUpdates['hostel'] = 'Short Stay';
+             userUpdates['roomNumber'] = null;
           }
+          await _db.collection('users').doc(studentId).update(userUpdates);
         }
       }
     }
@@ -827,6 +821,7 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
+    query = query.limit(50);
 
     return query.snapshots().map(
       (snapshot) => snapshot.docs
@@ -839,6 +834,7 @@ class FirebaseService {
     return _db
         .collection('complaints')
         .where('studentId', isEqualTo: uid)
+        .limit(50)
         .snapshots()
         .map((snapshot) {
           final list = snapshot.docs
@@ -974,17 +970,19 @@ class FirebaseService {
       if (role != null) {
         query = query.where('targetRoles', arrayContains: role);
       }
+      query = query.limit(50);
       final pendingSnap = await query.get();
 
+      final escalations = <Future<void>>[];
       for (final doc in pendingSnap.docs) {
         final complaint = Complaint.fromMap(doc.data(), doc.id);
-        // Client-side deadline check avoids needing a Firestore composite index
         if (complaint.currentHandler != 'Chief Warden' &&
             complaint.escalateAt != null &&
             complaint.escalateAt!.isBefore(nowDate)) {
-          await escalateComplaint(complaint);
+          escalations.add(escalateComplaint(complaint));
         }
       }
+      if (escalations.isNotEmpty) await Future.wait(escalations);
     } catch (e) {
       if (kDebugMode) debugPrint('[AutoEscalate] Error: $e');
     }
@@ -998,19 +996,22 @@ class FirebaseService {
       if (role != null) {
         query = query.where('targetRoles', arrayContains: role);
       }
+      query = query.limit(50);
       final resolvedSnap = await query.get();
 
+      final autoCloses = <Future<void>>[];
       for (final doc in resolvedSnap.docs) {
         final data = doc.data();
         final resolvedAt = (data['resolvedAt'] as Timestamp?)?.toDate();
         if (resolvedAt != null && resolvedAt.isBefore(autoCloseDeadline)) {
-          await _db.collection('complaints').doc(doc.id).update({
+          autoCloses.add(_db.collection('complaints').doc(doc.id).update({
             'status': 'AutoClosed',
             'studentConfirmed': true,
             'closedReason': 'Auto Closed',
-          });
+          }));
         }
       }
+      if (autoCloses.isNotEmpty) await Future.wait(autoCloses);
     } catch (e) {
       if (kDebugMode) debugPrint('[AutoClose] Error: $e');
     }
@@ -1028,6 +1029,7 @@ class FirebaseService {
     } else {
       query = query.where('hostel', isNotEqualTo: 'Short Stay');
     }
+    query = query.limit(50);
     return query.snapshots().map(
       (snapshot) =>
           snapshot.docs.map((doc) => VistaUser.fromMap(doc.data())).toList(),
@@ -1066,11 +1068,16 @@ class FirebaseService {
   }
 
   Future<void> updateUser(String uid, Map<String, dynamic> data) {
-    return _db.collection('users').doc(uid).update(data);
+    // SECURITY: Whitelist protection against privilege escalation
+    final sanitizedData = Map<String, dynamic>.from(data);
+    sanitizedData.remove('role');
+    sanitizedData.remove('isApproved');
+    sanitizedData.remove('isAccountActive');
+    return _db.collection('users').doc(uid).update(sanitizedData);
   }
 
-  // Returns approved students for a hostel
-  Stream<List<VistaUser>> getHostelStudents(String? hostel) {
+  // Returns approved students for a hostel (sorted by room number)
+  Stream<List<VistaUser>> getHostelStudents(String? hostel, {int limit = 500}) {
     Query<Map<String, dynamic>> query = _db
         .collection('users')
         .where('isApproved', isEqualTo: true)
@@ -1078,10 +1085,17 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
-    return query.snapshots().map(
-      (snapshot) =>
-          snapshot.docs.map((doc) => VistaUser.fromMap(doc.data())).toList(),
-    );
+    query = query.limit(limit);
+    return query.snapshots().map((snapshot) {
+      final list = snapshot.docs.map((doc) => VistaUser.fromMap(doc.data())).toList();
+      list.sort((a, b) {
+        final numA = _roomNum(a.roomNumber);
+        final numB = _roomNum(b.roomNumber);
+        if (numA != numB) return numA.compareTo(numB);
+        return (a.roomNumber ?? '').compareTo(b.roomNumber ?? '');
+      });
+      return list;
+    });
   }
 
   Stream<List<Attendance>> getHostelAttendanceRange(
@@ -1100,6 +1114,7 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
+    query = query.limit(50);
     return query.snapshots().map(
       (snapshot) => snapshot.docs
           .map((doc) => Attendance.fromMap(doc.data(), doc.id))
@@ -1117,6 +1132,7 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
+    query = query.limit(50);
 
     return query.snapshots().map(
       (snapshot) => snapshot.docs
@@ -1144,6 +1160,7 @@ class FirebaseService {
         query = query.where('appliedHostel', isEqualTo: hostel);
       }
     }
+    query = query.limit(50);
 
     return query.snapshots().map(
       (snapshot) => snapshot.docs
@@ -1167,6 +1184,7 @@ class FirebaseService {
         query = query.where('appliedHostel', isEqualTo: hostel);
       }
     }
+    query = query.limit(50);
     return query.snapshots().map((snapshot) {
       final list = snapshot.docs
           .map((doc) => ShortStayRequest.fromMap(doc.data(), doc.id))
@@ -1192,6 +1210,7 @@ class FirebaseService {
     if (hostel != null && hostel != 'All') {
       query = query.where('hostel', isEqualTo: hostel);
     }
+    query = query.limit(50);
     return query.snapshots().map(
       (snapshot) => snapshot.docs
           .map((doc) => Complaint.fromMap(doc.data(), doc.id))
@@ -1218,7 +1237,7 @@ class FirebaseService {
       getHostelAttendance(hostel, dateStr),
       getApprovedLeaves(hostel),
       (List<VistaUser> students, List<Attendance> attendanceList, List<LeaveRequest> leaveRequests) {
-        return students.map((student) {
+        final records = students.map((student) {
           final att = attendanceList.where((a) => a.studentId == student.uid).firstOrNull;
           final onLeave = leaveRequests.any((l) =>
               l.studentId == student.uid &&
@@ -1228,6 +1247,15 @@ class FirebaseService {
 
           return AttendanceRecord(student, att, onLeave: onLeave);
         }).toList();
+
+        records.sort((a, b) {
+          final numA = _roomNum(a.student.roomNumber);
+          final numB = _roomNum(b.student.roomNumber);
+          if (numA != numB) return numA.compareTo(numB);
+          return (a.student.roomNumber ?? '').compareTo(b.student.roomNumber ?? '');
+        });
+
+        return records;
       },
     );
   }
@@ -1248,12 +1276,9 @@ class FirebaseService {
     });
   }
 
-  /// Unified stream for fetching and searching students.
+  /// Unified stream for fetching and searching students (sorted by room number).
   Stream<List<VistaUser>> getUnifiedStudentsStream(String? hostel) {
-    return getHostelStudents(hostel ?? 'All').map((list) {
-      list.sort((a, b) => a.name.compareTo(b.name));
-      return list;
-    });
+    return getHostelStudents(hostel ?? 'All');
   }
 
   /// Unified stream for fetching pending registrations.
@@ -1317,6 +1342,7 @@ class FirebaseService {
         .collection('notifications')
         .where('studentId', isEqualTo: studentId)
         .orderBy('createdAt', descending: true)
+        .limit(50)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}).toList());
   }

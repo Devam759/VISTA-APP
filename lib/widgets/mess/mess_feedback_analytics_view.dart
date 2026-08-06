@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/mess_model.dart';
 import '../../services/mess_service.dart';
@@ -15,11 +15,21 @@ class _MessFeedbackAnalyticsViewState extends State<MessFeedbackAnalyticsView> {
   final MessService _messService = MessService();
   DateTime _selectedDate = DateTime.now();
   MessMealType _selectedMeal = MessMealType.breakfast;
+  late Stream<List<MessFeedback>> _feedbackStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateFeedbackStream();
+  }
+
+  void _updateFeedbackStream() {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    _feedbackStream = _messService.getMealFeedbackStream(dateStr, _selectedMeal);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -73,6 +83,7 @@ class _MessFeedbackAnalyticsViewState extends State<MessFeedbackAnalyticsView> {
                         if (picked != null) {
                           setState(() {
                             _selectedDate = picked;
+                            _updateFeedbackStream();
                           });
                         }
                       },
@@ -86,7 +97,14 @@ class _MessFeedbackAnalyticsViewState extends State<MessFeedbackAnalyticsView> {
                     final selected = _selectedMeal == m;
                     return Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedMeal = m),
+                        onTap: () {
+                          if (_selectedMeal != m) {
+                            setState(() {
+                              _selectedMeal = m;
+                              _updateFeedbackStream();
+                            });
+                          }
+                        },
                         child: Container(
                           margin: const EdgeInsets.symmetric(horizontal: 3),
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -119,7 +137,7 @@ class _MessFeedbackAnalyticsViewState extends State<MessFeedbackAnalyticsView> {
 
           // Feedback Stream & Rating Averages
           StreamBuilder<List<MessFeedback>>(
-            stream: _messService.getMealFeedbackStream(dateStr, _selectedMeal),
+            stream: _feedbackStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Padding(

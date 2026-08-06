@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/sanitizer.dart';
 
 enum UserRole { student, warden, headWarden, chiefWarden, admin, messManager }
 
@@ -43,6 +44,7 @@ class VistaUser {
   final bool isAccountActive;
   final String? parentName;
   final String? parentContact;
+  final String? parentEmail;
   final String? registrationNo;
   final bool isMicrosoftLinked;
   final bool hasActiveShortStay;
@@ -67,6 +69,7 @@ class VistaUser {
     this.isAccountActive = true,
     this.parentName,
     this.parentContact,
+    this.parentEmail,
     this.registrationNo,
     this.isMicrosoftLinked = false,
     this.hasActiveShortStay = false,
@@ -82,14 +85,15 @@ class VistaUser {
       'hostel': hostel,
       'roomNumber': roomNumber,
       'isApproved': isApproved,
-      'phoneNumber': phoneNumber,
+      'phoneNumber': phoneNumber != null ? InputSanitizer.formatPhoneWithCountryCode(phoneNumber!) : null,
       'fcmToken': fcmToken,
       'rollNo': rollNo,
       'programme': programme,
       'gender': gender,
       'address': address,
       'parentName': parentName,
-      'parentContact': parentContact,
+      'parentContact': parentContact != null ? InputSanitizer.formatPhoneWithCountryCode(parentContact!) : null,
+      'parentEmail': parentEmail,
       'hasUsedShortStay': hasUsedShortStay,
       'isDayScholar': isDayScholar,
       'isAccountActive': isAccountActive,
@@ -148,14 +152,19 @@ class VistaUser {
       roomNumber: map['roomNumber']?.toString(),
       // Explicit bool comparison — no implicit JS-style truthy casting.
       isApproved: map['isApproved'] == true,
-      phoneNumber: map['phoneNumber']?.toString(),
+      phoneNumber: (map['phoneNumber'] != null && map['phoneNumber'].toString().isNotEmpty)
+          ? InputSanitizer.formatPhoneWithCountryCode(map['phoneNumber'].toString())
+          : null,
       fcmToken: map['fcmToken']?.toString(),
       rollNo: map['rollNo']?.toString(),
       programme: map['programme']?.toString(),
       gender: map['gender']?.toString(),
       address: map['address']?.toString(),
       parentName: map['parentName']?.toString(),
-      parentContact: map['parentContact']?.toString(),
+      parentContact: (map['parentContact'] != null && map['parentContact'].toString().isNotEmpty)
+          ? InputSanitizer.formatPhoneWithCountryCode(map['parentContact'].toString())
+          : null,
+      parentEmail: map['parentEmail']?.toString(),
       hasUsedShortStay: map['hasUsedShortStay'] == true,
       isDayScholar: map['isDayScholar'] == true,
       // ── FIXED: Missing field mappings identified post-merge

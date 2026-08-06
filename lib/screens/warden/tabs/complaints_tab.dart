@@ -19,6 +19,7 @@ class ComplaintsTab extends StatefulWidget {
 }
 
 class _ComplaintsTabState extends State<ComplaintsTab> {
+  final FirebaseService _fs = FirebaseService();
   final TextEditingController _searchCtrl = TextEditingController();
   DateTime? _selectedDate;
 
@@ -109,13 +110,13 @@ class _ComplaintsTabState extends State<ComplaintsTab> {
                         ),
                       ),
                     ),
-                    streamFactory: () => FirebaseService().getComplaintsForRole(roleStr, wp.currentHostelFilter),
+                    streamFactory: () => _fs.getComplaintsForRole(roleStr, wp.currentHostelFilter),
                     loadingWidget: const ComplaintListSkeleton(),
                     itemBuilder: (context, complaint) {
                       return WardenExpandableComplaintCard(
                         complaint: complaint,
                         warden: widget.warden,
-                        fs: FirebaseService(),
+                        fs: _fs,
                       );
                     },
                     filterLogic: (complaint, tab, query) {

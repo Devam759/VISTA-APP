@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../services/firebase_service.dart';
 import '../../../models/vista_user.dart';
 import '../../../models/short_stay_model.dart';
+import '../../../models/leave_request_model.dart';
 import '../../../widgets/common/smooth_animations.dart';
 import 'warden_attendance_calendar.dart';
 import '../../../widgets/common/vista_date_picker.dart';
@@ -1833,6 +1834,7 @@ class WardenStudentListItem extends StatelessWidget {
   final VoidCallback onTap;
   final bool showRoom;
   final bool showHostel;
+  final int? sNo;
 
   const WardenStudentListItem({
     super.key,
@@ -1842,67 +1844,224 @@ class WardenStudentListItem extends StatelessWidget {
     required this.onTap,
     this.showRoom = true,
     this.showHostel = true,
+    this.sNo,
   });
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = onLeave
+        ? Colors.orange
+        : (onShortStay ? Colors.blue : Colors.green);
+    final statusLabel = onLeave
+        ? 'On Leave'
+        : (onShortStay ? 'Short Stay' : 'In Campus');
+
+    final parentPhoneStr = InputSanitizer.formatPhoneWithCountryCode(student.parentContact ?? '');
+    final studentPhoneStr = InputSanitizer.formatPhoneWithCountryCode(student.phoneNumber ?? '');
+
     return WardenCard(
       onTap: onTap,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: kPrimary.withValues(alpha: 0.1),
-                child: Text(
-                  student.name.isNotEmpty ? student.name[0].toUpperCase() : 'S',
-                  style: const TextStyle(color: kPrimary, fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 14,
-                  height: 14,
+              // 1. S. No. Tag
+              if (sNo != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: onLeave ? Colors.orange : (onShortStay ? Colors.blue : Colors.green),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    color: kPrimary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: kPrimary.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    '$sNo',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: kPrimary,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 10),
+              ],
+
+              // Avatar with status indicator
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: kPrimary.withValues(alpha: 0.1),
+                    child: Text(
+                      student.name.isNotEmpty ? student.name[0].toUpperCase() : 'S',
+                      style: const TextStyle(
+                        color: kPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 10),
+
+              // 2. Student Name & Status Badge
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            student.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: Color(0xFF1E293B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            statusLabel,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      student.rollNo != null && student.rollNo!.isNotEmpty
+                          ? 'Roll: ${student.rollNo}'
+                          : 'Reg: ${student.registrationNo ?? "N/A"}',
+                      style: const TextStyle(color: Colors.black45, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 5. Room Number & Hostel Badge
+              if (showHostel || showRoom)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Room ${student.roomNumber ?? "N/A"}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: kPrimary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (showHostel && student.hostel != null)
+                        Text(
+                          getFullHostelName(student.hostel),
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 8),
+
+          // Student Mobile + Parent Mobile + Student Email
+          Wrap(
+            spacing: 16,
+            runSpacing: 6,
+            children: [
+              // Student Mobile
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.phone_android_rounded, size: 14, color: Colors.blueGrey),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Student Mobile: ',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    studentPhoneStr,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+
+              // Parent Mobile
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.contact_phone_outlined, size: 14, color: Colors.blueGrey),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Parent Mobile: ',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    parentPhoneStr,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+
+              // Student Email
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.email_outlined, size: 14, color: Colors.blueGrey),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Student Email: ',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    student.email,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  student.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF1E293B)),
-                ),
-                Text(
-                  student.rollNo != null && student.rollNo!.isNotEmpty
-                      ? 'Roll: ${student.rollNo}'
-                      : 'Reg: ${student.registrationNo ?? "N/A"}',
-                  style: const TextStyle(color: Colors.black45, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          if (showHostel || showRoom)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${getFullHostelName(student.hostel)} - ${student.roomNumber ?? "N/A"}',
-                  style: const TextStyle(fontWeight: FontWeight.w900, color: kPrimary, fontSize: 13),
-                ),
-              ],
-            ),
         ],
       ),
     );
@@ -2578,6 +2737,165 @@ class _WardenExpandableShortStayCardState extends State<WardenExpandableShortSta
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXCEL / DATA TABLE VIEW FOR WARDEN STUDENT LISTS (FULL-WIDTH NO HORIZONTAL SCROLL)
+// ─────────────────────────────────────────────────────────────────────────────
+class WardenStudentTableView extends StatelessWidget {
+  final List<VistaUser> students;
+  final List<LeaveRequest> leaves;
+  final List<ShortStayRequest> shortStays;
+  final FirebaseService fs;
+  final int startIndex;
+
+  const WardenStudentTableView({
+    super.key,
+    required this.students,
+    required this.leaves,
+    required this.shortStays,
+    required this.fs,
+    this.startIndex = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // 1. Table Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E3A8A),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+          ),
+          child: const Row(
+            children: [
+              SizedBox(width: 36, child: Text('S.NO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11))),
+              SizedBox(width: 8),
+              Expanded(flex: 3, child: Text('STUDENT NAME', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11))),
+              SizedBox(width: 8),
+              Expanded(flex: 2, child: Text('ROOM NO.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11))),
+              SizedBox(width: 8),
+              Expanded(flex: 3, child: Text('STUDENT MOBILE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11))),
+              SizedBox(width: 8),
+              Expanded(flex: 3, child: Text('PARENT MOBILE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11))),
+              SizedBox(width: 8),
+              Expanded(flex: 4, child: Text('STUDENT EMAIL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11))),
+              SizedBox(width: 8),
+              Expanded(flex: 2, child: Text('STATUS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11), textAlign: TextAlign.right)),
+            ],
+          ),
+        ),
+
+        // 2. Table Rows
+        ...List.generate(students.length, (index) {
+          final student = students[index];
+          final sNo = startIndex + index + 1;
+          final onLeave = FirebaseService.isStudentOnLeave(student.uid, leaves);
+          final onShortStay = FirebaseService.isStudentOnShortStay(student.uid, shortStays);
+
+          final statusColor = onLeave
+              ? Colors.orange
+              : (onShortStay ? Colors.blue : Colors.green);
+          final statusLabel = onLeave
+              ? 'On Leave'
+              : (onShortStay ? 'Short Stay' : 'In Campus');
+
+          final parentPhoneStr = InputSanitizer.formatPhoneWithCountryCode(student.parentContact ?? '');
+          final studentPhoneStr = InputSanitizer.formatPhoneWithCountryCode(student.phoneNumber ?? '');
+
+          final isEven = index % 2 == 0;
+          final isLast = index == students.length - 1;
+
+          return InkWell(
+            onTap: () => showWardenStudentDetails(context: context, student: student, fs: fs),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: isEven ? Colors.white : const Color(0xFFF8FAFC),
+                border: Border(
+                  left: const BorderSide(color: Color(0xFFE2E8F0)),
+                  right: const BorderSide(color: Color(0xFFE2E8F0)),
+                  bottom: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                borderRadius: isLast
+                    ? const BorderRadius.vertical(bottom: Radius.circular(12))
+                    : null,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 36,
+                    child: Text('$sNo', style: const TextStyle(fontWeight: FontWeight.w800, color: kPrimary, fontSize: 11)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      student.name,
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1E293B), fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      student.roomNumber ?? "N/A",
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: kPrimary, fontSize: 11),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      studentPhoneStr,
+                      style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87, fontSize: 11),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      parentPhoneStr,
+                      style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87, fontSize: 11),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      student.email,
+                      style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87, fontSize: 11),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 }

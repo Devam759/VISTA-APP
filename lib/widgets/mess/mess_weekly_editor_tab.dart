@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -77,6 +78,20 @@ class _MessWeeklyEditorTabState extends State<MessWeeklyEditorTab> {
   }
 
   void _listenToFirestoreData() {
+    _staplesSub?.cancel();
+    for (final sub in _menuSubs) {
+      sub.cancel();
+    }
+    _menuSubs.clear();
+
+    // Reset daily specials so target week starts completely blank if no Firestore data exists
+    for (int day = 0; day < 7; day++) {
+      _dailySpecials[day] = {};
+      for (final meal in MessMealType.values) {
+        _dailySpecials[day]![meal] = [];
+      }
+    }
+
     // 1. Listen to Permanent Staples Stream from Firestore (/mess_staples)
     _staplesSub = _messService.getPermanentStaplesStream().listen((staplesMap) {
       if (!mounted) return;
@@ -92,18 +107,34 @@ class _MessWeeklyEditorTabState extends State<MessWeeklyEditorTab> {
       final date = _weekMondayDate.add(Duration(days: day));
       final sub = _messService.getMenuForDateStream(date).listen((menuList) {
         if (!mounted) return;
-        setState(() {
-          for (final item in menuList) {
-            final staples = _permanentStaples[item.mealType] ?? [];
-            final specialsOnly = item.items
-                .where((dish) => !staples.contains(dish))
-                .toList();
+        final Map<MessMealType, List<String>> newSpecials = {};
+        for (final meal in MessMealType.values) {
+          newSpecials[meal] = [];
+        }
+        for (final item in menuList) {
+          final staples = _permanentStaples[item.mealType] ?? [];
+          final specialsOnly = item.items
+              .where((dish) => !staples.contains(dish))
+              .toList();
 
-            _dailySpecials[day]![item.mealType] = specialsOnly.isNotEmpty
-                ? specialsOnly
-                : List<String>.from(item.items);
+          newSpecials[item.mealType] = specialsOnly.isNotEmpty
+              ? specialsOnly
+              : List<String>.from(item.items);
+        }
+
+        bool hasChanged = false;
+        for (final meal in MessMealType.values) {
+          if (!listEquals(_dailySpecials[day]![meal], newSpecials[meal])) {
+            hasChanged = true;
+            break;
           }
-        });
+        }
+
+        if (hasChanged) {
+          setState(() {
+            _dailySpecials[day] = newSpecials;
+          });
+        }
       });
       _menuSubs.add(sub);
     }
@@ -294,6 +325,129 @@ class _MessWeeklyEditorTabState extends State<MessWeeklyEditorTab> {
     }
   }
 
+  Widget _buildWeekNavigator() {
+    final now = DateTime.now();
+    final currentWeekMonday = now.subtract(Duration(days: now.weekday - 1));
+    final weekEnd = _weekMondayDate.add(const Duration(days: 6));
+
+    final isCurrentWeek = _weekMondayDate.year == currentWeekMonday.year &&
+        _weekMondayDate.month == currentWeekMonday.month &&
+        _weekMondayDate.day == currentWeekMonday.day;
+
+    final weekLabel = isCurrentWeek ? 'THIS WEEK' : 'NEXT WEEK';
+    final badgeColor = isCurrentWeek ? const Color(0xFF16A34A) : const Color(0xFF2563EB);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          weekLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: badgeColor,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${DateFormat('MMM dd').format(_weekMondayDate)} – ${DateFormat('MMM dd, yyyy').format(weekEnd)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isCurrentWeek ? 'Editing current week\'s menu' : 'Editing next week\'s menu',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+
+              // 2 Week Navigation Buttons: Prev Week & Next Week
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _weekMondayDate = _weekMondayDate.subtract(const Duration(days: 7));
+                        _hasChanges = false;
+                      });
+                      _listenToFirestoreData();
+                    },
+                    icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                    label: const Text('Prev Week'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      foregroundColor: const Color(0xFF334155),
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _weekMondayDate = _weekMondayDate.add(const Duration(days: 7));
+                        _hasChanges = false;
+                      });
+                      _listenToFirestoreData();
+                    },
+                    icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                    label: const Text('Next Week'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E3A8A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final DateFormat dateFmt = DateFormat('dd MMM');
@@ -303,24 +457,7 @@ class _MessWeeklyEditorTabState extends State<MessWeeklyEditorTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Card (title only — no button)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: const Text(
-              'Weekly Mess Menu Editor',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E3A8A)),
-            ),
-          ),
-
-          const SizedBox(height: 16),
+          _buildWeekNavigator(),
 
           // 7-Day Selector Bar (Mon to Sun)
           SingleChildScrollView(

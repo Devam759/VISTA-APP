@@ -79,6 +79,24 @@ class WardenProvider with ChangeNotifier {
     final filter = _currentHostelFilter; // null means 'All'
     debugPrint('[WardenProvider] Initializing streams with filter: $filter');
 
+    int pendingInitialEvents = 7;
+
+    void notify() {
+      if (pendingInitialEvents > 0) {
+        pendingInitialEvents--;
+        if (pendingInitialEvents > 0) return;
+      }
+      notifyListeners();
+    }
+
+    // Safety fallback: if any stream fails to emit within 5s, force notify
+    Future.delayed(const Duration(seconds: 5), () {
+      if (pendingInitialEvents > 0) {
+        pendingInitialEvents = 0;
+        notifyListeners();
+      }
+    });
+
     // 1. Pending Registrations
     _subscriptions.add(
       _fs.getPendingRegistrations(filter).listen((list) {
@@ -86,7 +104,7 @@ class WardenProvider with ChangeNotifier {
           _hasNewRegistrations = true;
         }
         _pendingRegistrations = list;
-        notifyListeners();
+        notify();
       }),
     );
 
@@ -97,11 +115,11 @@ class WardenProvider with ChangeNotifier {
           _hasNewLeaves = true;
         }
         _pendingLeaves = list;
-        notifyListeners();
+        notify();
       }),
     );
 
-    // 3. Complaints
+    // 3. All Complaints (and derive pending complaints)
     _subscriptions.add(
       _fs.getComplaintsForRole(role, filter).listen((list) {
         final pending = list.where((c) => c.status == 'Pending').toList();
@@ -109,18 +127,19 @@ class WardenProvider with ChangeNotifier {
           _hasNewComplaints = true;
         }
         _pendingComplaints = pending;
-        notifyListeners();
+        _complaints = list;
+        notify();
       }),
     );
 
-    // 4. Short Stays
+    // 4. Pending Short Stays
     _subscriptions.add(
       _fs.getPendingShortStays(filter).listen((list) {
         if (list.length > _pendingShortStays.length) {
           _hasNewShortStays = true;
         }
         _pendingShortStays = list;
-        notifyListeners();
+        notify();
       }),
     );
     
@@ -130,7 +149,7 @@ class WardenProvider with ChangeNotifier {
       _fs.getHostelStudents(filter).listen((list) {
         _students = list;
         _isLoading = false;
-        notifyListeners();
+        notify();
       }),
     );
 
@@ -138,23 +157,15 @@ class WardenProvider with ChangeNotifier {
     _subscriptions.add(
       _fs.getHostelLeaves(filter).listen((list) {
         _leaves = list;
-        notifyListeners();
+        notify();
       }),
     );
 
-    // 7. All Complaints
-    _subscriptions.add(
-      _fs.getComplaintsForRole(role, filter).listen((list) {
-        _complaints = list;
-        notifyListeners();
-      }),
-    );
-
-    // 8. All Short Stays
+    // 7. All Short Stays
     _subscriptions.add(
       _fs.getHostelShortStays(filter).listen((list) {
         _shortStays = list;
-        notifyListeners();
+        notify();
       }),
     );
   }

@@ -672,9 +672,9 @@ class _AttendanceTabState extends State<AttendanceTab> with AutomaticKeepAliveCl
         return; // Always return after server call path
       }
 
-      // Web fallback: direct write (no GPS available on web)
-      if (!_isValidTime()) {
-        _showError('Attendance not marked, try after 10:00 PM');
+      // Web fallback: Attendance marking is disabled on web for security/geofence attestation
+      if (kIsWeb) {
+        _showError('Attendance marking requires the VISTA Mobile Application for GPS attestation.');
         return;
       }
 

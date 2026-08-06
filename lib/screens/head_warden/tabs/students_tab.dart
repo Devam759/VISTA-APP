@@ -113,15 +113,13 @@ class _StudentsTabState extends State<StudentsTab> with SingleTickerProviderStat
                     if (tab == 'In Campus') return !onLeave && !onShortStay;
                     return true;
                   },
-                  itemBuilder: (context, student) {
-                    final onLeave = FirebaseService.isStudentOnLeave(student.uid, leaves);
-                    final onShortStay = FirebaseService.isStudentOnShortStay(student.uid, shortStays);
-                    return WardenStudentListItem(
-                      student: student,
-                      onLeave: onLeave,
-                      onShortStay: onShortStay,
-                      showRoom: true, 
-                      onTap: () => showWardenStudentDetails(context: context, student: student, fs: widget.fs),
+                  listBuilder: (context, filteredStudents, [startIndex = 0]) {
+                    return WardenStudentTableView(
+                      students: filteredStudents,
+                      leaves: leaves,
+                      shortStays: shortStays,
+                      fs: widget.fs,
+                      startIndex: startIndex,
                     );
                   },
                 );

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart' as vista;
 import '../../utils/sanitizer.dart';
@@ -129,9 +129,17 @@ class _SignupScreenState extends State<SignupScreen> {
       _phoneController.text.trim(),
     );
 
-    final String finalEmail = emailInput.contains('@')
+    final String finalEmail = (emailInput.contains('@')
         ? emailInput
-        : '$emailInput@jklu.edu.in';
+        : '$emailInput@jklu.edu.in').toLowerCase().trim();
+
+    if (!finalEmail.endsWith('@jklu.edu.in')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only @jklu.edu.in email addresses are permitted')),
+      );
+      setState(() => _isSubmitting = false);
+      return;
+    }
 
     if (_firstNameController.text.trim().isEmpty ||
         _lastNameController.text.trim().isEmpty ||

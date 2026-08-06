@@ -16,6 +16,8 @@ class WardenTabScaffold<T> extends StatefulWidget {
   // Generic list mode
   final Stream<List<T>> Function()? streamFactory;
   final Widget Function(BuildContext, T)? itemBuilder;
+  final Widget Function(BuildContext, T, int)? indexedItemBuilder;
+  final Widget Function(BuildContext, List<T>)? listBuilder;
   final bool Function(T, String, String)? filterLogic;
   
   final List<Widget>? children;
@@ -41,6 +43,8 @@ class WardenTabScaffold<T> extends StatefulWidget {
     this.searchQueryPlaceholder = 'Search...',
     this.streamFactory,
     this.itemBuilder,
+    this.indexedItemBuilder,
+    this.listBuilder,
     this.filterLogic,
     this.children,
     this.tabController,
@@ -160,7 +164,9 @@ class _WardenTabScaffoldState<T> extends State<WardenTabScaffold<T>> with Ticker
                   sectionTitle: widget.sectionTitle,
                   showCount: widget.showCount,
                   streamFactory: widget.streamFactory!,
-                  itemBuilder: widget.itemBuilder!,
+                  itemBuilder: widget.itemBuilder,
+                  indexedItemBuilder: widget.indexedItemBuilder,
+                  listBuilder: widget.listBuilder,
                   filterLogic: widget.filterLogic!,
                   extraHeaderBuilder: widget.extraHeaderBuilder,
                   loadingWidget: widget.loadingWidget,
@@ -181,7 +187,9 @@ class _GenericFilteredList<T> extends StatefulWidget {
   final String query;
   final String? sectionTitle;
   final Stream<List<T>> Function() streamFactory;
-  final Widget Function(BuildContext, T) itemBuilder;
+  final Widget Function(BuildContext, T)? itemBuilder;
+  final Widget Function(BuildContext, T, int)? indexedItemBuilder;
+  final Widget Function(BuildContext, List<T>)? listBuilder;
   final bool Function(T, String, String) filterLogic;
   final Widget Function(BuildContext, List<T>)? extraHeaderBuilder;
   final IconData? emptyIcon;
@@ -196,7 +204,9 @@ class _GenericFilteredList<T> extends StatefulWidget {
     required this.query,
     this.sectionTitle,
     required this.streamFactory,
-    required this.itemBuilder,
+    this.itemBuilder,
+    this.indexedItemBuilder,
+    this.listBuilder,
     required this.filterLogic,
     this.extraHeaderBuilder,
     this.loadingWidget,
@@ -212,6 +222,8 @@ class _GenericFilteredList<T> extends StatefulWidget {
 
 class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with AutomaticKeepAliveClientMixin {
   late Stream<List<T>> _stream;
+  int _currentPage = 1;
+  static const int _pageSize = 50;
 
   @override
   void initState() {
@@ -222,11 +234,120 @@ class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with A
   @override
   void didUpdateWidget(covariant _GenericFilteredList<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _stream = widget.streamFactory();
+    // Query and tab changes filter the stream in-memory in build().
+    // Only recreate the Firestore stream if streamFactory changed.
+    if (widget.streamFactory != oldWidget.streamFactory) {
+      _stream = widget.streamFactory();
+    }
   }
 
   @override
   bool get wantKeepAlive => true;
+
+  Widget _buildPaginationBar(int totalItems, int totalPages, int startIndex, int endIndex) {
+    if (totalItems <= _pageSize) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Showing ${startIndex + 1}–$endIndex of $totalItems',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF475569),
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Prev button
+              InkWell(
+                onTap: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _currentPage > 1 ? kPrimary.withValues(alpha: 0.1) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.chevron_left_rounded,
+                    size: 20,
+                    color: _currentPage > 1 ? kPrimary : Colors.grey.shade400,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Page Pills
+              ...List.generate(totalPages, (i) {
+                final pageNum = i + 1;
+                final isActive = pageNum == _currentPage;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: InkWell(
+                    onTap: () => setState(() => _currentPage = pageNum),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isActive ? kPrimary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: isActive ? null : Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: Text(
+                        '$pageNum',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: isActive ? Colors.white : const Color(0xFF334155),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+
+              const SizedBox(width: 8),
+              // Next button
+              InkWell(
+                onTap: _currentPage < totalPages ? () => setState(() => _currentPage++) : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _currentPage < totalPages ? kPrimary.withValues(alpha: 0.1) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: _currentPage < totalPages ? kPrimary : Colors.grey.shade400,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -241,19 +362,59 @@ class _GenericFilteredListState<T> extends State<_GenericFilteredList<T>> with A
         final allItems = snapshot.data ?? [];
         final filtered = allItems.where((item) => widget.filterLogic(item, widget.tab, widget.query)).toList();
 
-        Widget content;
         if (filtered.isEmpty) {
-          content = WardenEmptyState(
+          final emptyWidget = WardenEmptyState(
             icon: widget.emptyIcon ?? (widget.query.isEmpty ? Icons.inbox_rounded : Icons.search_off_rounded),
             title: widget.emptyTitle ?? (widget.query.isEmpty ? 'No results in ${widget.tab}' : 'No matches found'),
             subtitle: widget.emptySubtitle ?? (widget.query.isEmpty ? 'There are no items to show here at the moment.' : 'Try adjusting your search query.'),
+          );
+          if (widget.extraHeaderBuilder != null) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                widget.extraHeaderBuilder!(context, filtered),
+                Expanded(child: emptyWidget),
+              ],
+            );
+          }
+          return emptyWidget;
+        }
+
+        final totalItems = filtered.length;
+        final totalPages = (totalItems / _pageSize).ceil() == 0 ? 1 : (totalItems / _pageSize).ceil();
+        if (_currentPage > totalPages) _currentPage = totalPages;
+        if (_currentPage < 1) _currentPage = 1;
+
+        final startIndex = (_currentPage - 1) * _pageSize;
+        final endIndex = (startIndex + _pageSize > totalItems) ? totalItems : startIndex + _pageSize;
+        final pageItems = (startIndex < totalItems) ? filtered.sublist(startIndex, endIndex) : <T>[];
+
+        Widget content;
+        if (widget.listBuilder != null) {
+          content = ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            physics: const BouncingScrollPhysics(),
+            children: [
+              widget.listBuilder!(context, pageItems),
+              _buildPaginationBar(totalItems, totalPages, startIndex, endIndex),
+            ],
           );
         } else {
           content = ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             physics: const BouncingScrollPhysics(),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) => widget.itemBuilder(context, filtered[index]),
+            itemCount: pageItems.length + (totalPages > 1 ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == pageItems.length) {
+                return _buildPaginationBar(totalItems, totalPages, startIndex, endIndex);
+              }
+
+              final itemGlobalIndex = startIndex + index + 1;
+              if (widget.indexedItemBuilder != null) {
+                return widget.indexedItemBuilder!(context, pageItems[index], itemGlobalIndex);
+              }
+              return widget.itemBuilder!(context, pageItems[index]);
+            },
           );
         }
 

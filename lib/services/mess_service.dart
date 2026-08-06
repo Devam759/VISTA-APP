@@ -433,7 +433,7 @@ class MessService {
         .collection('mess_attendance')
         .where('studentId', isEqualTo: studentId)
         .orderBy('timestamp', descending: true)
-        .limit(100)
+        .limit(50)
         .snapshots()
         .map((snap) => snap.docs.map((d) => MessAttendance.fromMap(d.data(), d.id)).toList());
   }
@@ -444,6 +444,7 @@ class MessService {
         .collection('mess_attendance')
         .where('date', isEqualTo: dateStr)
         .where('mealType', isEqualTo: mealType.name)
+        .limit(50)
         .snapshots()
         .map((snap) => snap.docs.map((d) => MessAttendance.fromMap(d.data(), d.id)).toList());
   }
@@ -454,6 +455,7 @@ class MessService {
         .collection('mess_scan_logs')
         .where('date', isEqualTo: dateStr)
         .orderBy('timestamp', descending: true)
+        .limit(500)
         .snapshots()
         .map((snap) => snap.docs.map((d) => MessScanLog.fromMap(d.data(), d.id)).toList());
   }
@@ -472,6 +474,7 @@ class MessService {
         .collection('mess_feedback')
         .where('date', isEqualTo: dateStr)
         .where('mealType', isEqualTo: mealType.name)
+        .limit(50)
         .snapshots()
         .map((snap) => snap.docs.map((d) => MessFeedback.fromMap(d.data(), d.id)).toList());
   }

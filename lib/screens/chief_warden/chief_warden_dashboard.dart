@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -23,9 +22,6 @@ import '../../widgets/mess/mess_scan_logs_tab.dart';
 import '../../widgets/mess/mess_feedback_analytics_view.dart';
 import '../../widgets/common/web_dashboard_scaffold.dart';
 
-const _kPrimary = Color(0xFF1E3A8A);
-const _kBg = Color(0xFFF0F4FF);
-
 class ChiefWardenDashboard extends StatefulWidget {
   const ChiefWardenDashboard({super.key});
 
@@ -37,20 +33,12 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
   final FirebaseService _fs = FirebaseService();
   int _selectedIndex = 0;
   late PageController _pageController;
-  final List<StreamSubscription> _subscriptions = [];
   static bool _autoEscalateRanThisSession = false;
-  
-  // Activity Markers
-  bool _hasNewRegistrations = false;
-  bool _hasNewLeaves = false;
-  bool _hasNewComplaints = false;
-  bool _hasNewShortStays = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
-    _setupChiefWardenListeners();
     if (!_autoEscalateRanThisSession) {
       _autoEscalateRanThisSession = true;
       _fs.autoEscalateOverdueComplaints('Chief Warden');
@@ -60,10 +48,20 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
   @override
   void dispose() {
     _pageController.dispose();
-    for (var s in _subscriptions) {
-      s.cancel();
-    }
     super.dispose();
+  }
+
+  void _onTabTapped(int index, WardenProvider wp) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+    wp.clearMarker(index);
   }
 
   Future<void> _showExportDialog() async {
@@ -74,7 +72,7 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
 
     if (result == null) return;
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preparing Export...')));
 
     try {
@@ -129,107 +127,6 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
     }
   }
 
-  void _setupChiefWardenListeners() {
-    _subscriptions.add(
-      _fs.getPendingRegistrations('All').listen((list) {
-        if (list.isNotEmpty) {
-          if (_selectedIndex != 0) setState(() => _hasNewRegistrations = true);
-          _showInAppAlert('New Registration Request', '${list.length} students pending', 0);
-        } else {
-          setState(() => _hasNewRegistrations = false);
-        }
-      }),
-    );
-
-    _subscriptions.add(
-      _fs.getPendingLeaves('All').listen((list) {
-        if (list.isNotEmpty) {
-          if (_selectedIndex != 2) setState(() => _hasNewLeaves = true);
-        } else {
-          setState(() => _hasNewLeaves = false);
-        }
-      }),
-    );
-
-    _subscriptions.add(
-      _fs.getComplaintsForRole('Chief Warden', 'All').listen((list) {
-        final pending = list.where((c) => c.status == 'Pending').toList();
-        if (pending.isNotEmpty) {
-          if (_selectedIndex != 3) setState(() => _hasNewComplaints = true);
-          _showInAppAlert('New Complaint Received', pending.first.title, 3);
-        } else {
-          setState(() => _hasNewComplaints = false);
-        }
-      }),
-    );
-
-    _subscriptions.add(
-      _fs.getPendingShortStays('All').listen((list) {
-        if (list.isNotEmpty) {
-          if (_selectedIndex != 4) setState(() => _hasNewShortStays = true);
-          _showInAppAlert('Short Stay Request', '${list.length} pending requests', 4);
-        } else {
-          setState(() => _hasNewShortStays = false);
-        }
-      }),
-    );
-  }
-
-  void _showInAppAlert(String title, String message, int targetIndex) {
-    if (!mounted) return;
-    if (_selectedIndex == targetIndex) return;
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(message, style: const TextStyle(fontSize: 12)),
-          ],
-        ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: _kPrimary,
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'View',
-          textColor: Colors.white,
-          onPressed: () => _onTabTapped(targetIndex),
-        ),
-      ),
-    );
-  }
-
-  void _onTabTapped(int index) {
-    if (_selectedIndex == index) return;
-    if (_pageController.hasClients) {
-      _pageController.animateToPage(
-        index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-    _clearMarkers(index);
-  }
-
-  void _clearMarkers(int index) {
-    if (!mounted) return;
-    // Hide notification alert if we're on the target tab
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    
-    setState(() {
-      _selectedIndex = index;
-      if (index == 0) _hasNewRegistrations = false;
-      if (index == 2) _hasNewLeaves = false;
-      if (index == 3) _hasNewComplaints = false;
-      if (index == 4) _hasNewShortStays = false;
-    });
-  }
-
-
-
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -237,7 +134,7 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
 
     if (warden == null) {
       return Scaffold(
-        backgroundColor: _kBg,
+        backgroundColor: const Color(0xFFF0F4FF),
         body: const DashboardSummarySkeleton(),
       );
     }
@@ -263,7 +160,7 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
               icon: Icons.groups_outlined,
               selectedIcon: Icons.groups,
               label: 'Students',
-              showBadge: _hasNewRegistrations,
+              showBadge: wp.hasNewRegistrations,
             ),
             const WebNavigationItem(
               icon: Icons.assignment_ind_outlined,
@@ -274,19 +171,19 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
               icon: Icons.event_note_outlined,
               selectedIcon: Icons.event_note,
               label: 'Leaves',
-              showBadge: _hasNewLeaves,
+              showBadge: wp.hasNewLeaves,
             ),
             WebNavigationItem(
               icon: Icons.assignment_late_outlined,
               selectedIcon: Icons.assignment_late,
               label: 'Complaints',
-              showBadge: _hasNewComplaints,
+              showBadge: wp.hasNewComplaints,
             ),
             WebNavigationItem(
               icon: Icons.hotel_outlined,
               selectedIcon: Icons.hotel,
               label: 'Short Stay',
-              showBadge: _hasNewShortStays,
+              showBadge: wp.hasNewShortStays,
             ),
             const WebNavigationItem(
               icon: Icons.restaurant_outlined,
@@ -315,7 +212,7 @@ class _ChiefWardenDashboardState extends State<ChiefWardenDashboard> {
             onHostelFilterChanged: (h) => wp.setHostelFilter(h),
             items: items,
             selectedIndex: _selectedIndex,
-            onItemSelected: (i) => _onTabTapped(i),
+            onItemSelected: (i) => _onTabTapped(i, wp),
             onSignOut: () => authProvider.signOut(),
             pages: pages,
           );
